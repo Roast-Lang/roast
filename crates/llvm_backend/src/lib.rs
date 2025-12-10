@@ -1310,12 +1310,35 @@ impl<'a> FunctionGen<'a> {
     /// Check if a type is Copy (doesn't need deallocation)
     fn is_copy_type(&self, ty: &Type) -> bool {
         match ty {
-            Type::Int | Type::Float | Type::Bool | Type::NoneType => true,
+            // Primitive types are Copy
+            Type::Int | Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64 | Type::Int128 |
+            Type::UInt | Type::UInt8 | Type::UInt16 | Type::UInt32 | Type::UInt64 | Type::UInt128 |
+            Type::Float | Type::Float32 | Type::Float64 | Type::Bool | Type::NoneType => true,
+            
+            // Tuples are Copy if all elements are Copy
             Type::Tuple(elems) => elems.iter().all(|e| self.is_copy_type(e)),
+            
             // References are Copy (the reference itself, not what it points to)
             Type::Ref { .. } => true,
-            // Everything else needs deallocation
-            _ => false,
+            
+            // Unknown/Any/Error types - treat as Copy to avoid invalid decref on integers
+            // This is conservative: we might leak some memory but won't crash
+            Type::Any | Type::Unknown | Type::Error | Type::Never => true,
+            
+            // Collections and strings need deallocation
+            Type::List(_) | Type::Dict(_, _) | Type::Set(_) | Type::Str | Type::Bytes => false,
+            
+            // Class instances need deallocation
+            Type::Class(_) => false,
+            
+            // Optionals - depends on inner type, but play it safe
+            Type::Optional(_) => true,
+            
+            // Callables are Copy (they're just pointers)
+            Type::Callable { .. } => true,
+            
+            // Everything else defaults to Copy for safety
+            _ => true,
         }
     }
 
@@ -1738,8 +1761,11 @@ impl<'a> FunctionGen<'a> {
                             .unwrap_or_else(|| format!("%v{}", local_id));
                         let val = self.fresh_value();
                         self.ir.push_str(&format!("  {} = load i64, i64* {}\n", val, ptr));
+                        // Convert to pointer (must be separate instruction for LLVM 21+)
+                        let ptr_val = self.fresh_value();
+                        self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr_val, val));
                         // Call decref - runtime checks for null
-                        self.ir.push_str(&format!("  call void @roast_decref(i8* inttoptr (i64 {} to i8*))\n", val));
+                        self.ir.push_str(&format!("  call void @roast_decref(i8* {})\n", ptr_val));
                     }
                 }
             }

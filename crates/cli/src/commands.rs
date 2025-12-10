@@ -1991,7 +1991,12 @@ pub fn build_llvm(
     cmd.arg(&ir_path)
         .arg("-o")
         .arg(output_path)
-        .arg("-Wno-override-module");
+        .arg("-Wno-override-module")
+        // Optimization flags for smaller binary size
+        .arg("-O2")           // Optimize for speed (also reduces size)
+        .arg("-flto")         // Link-time optimization (removes unused code)
+        .arg("-ffunction-sections")
+        .arg("-fdata-sections");
 
     // Try to link statically if the static library exists (try release first, then debug)
     if std::path::Path::new("target/release/libroast_runtime.a").exists() {
@@ -2006,6 +2011,8 @@ pub fn build_llvm(
     let status = cmd.arg("-lm")
         .arg("-ldl")
         .arg("-lpthread")
+        .arg("-Wl,--gc-sections")  // Remove unused sections
+        .arg("-Wl,-s")             // Strip symbols
         .status()
         .map_err(|e| anyhow::anyhow!("Failed to run clang: {}", e))?;
 

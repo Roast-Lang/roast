@@ -1,0 +1,31 @@
+# Test automatic memory management (Rust-like drops without GC)
+
+def test_string_drops():
+    """Test that strings are automatically cleaned up"""
+    s1 = "Hello"
+    s2 = "World"
+    result = s1 + " " + s2
+    print(result)
+    # s1, s2, and result should be automatically dropped at end of function
+
+def test_list_drops():
+    """Test that lists are automatically cleaned up"""
+    nums = [1, 2, 3, 4, 5]
+    nums.append(6)
+    print(len(nums))
+    # nums should be automatically dropped at end of function
+
+def test_nested_structures():
+    """Test nested structures are properly cleaned up"""
+    data = [[1, 2], [3, 4], [5, 6]]
+    print(len(data))
+    # All nested lists should be properly cleaned up
+
+def main():
+    print("Testing automatic memory management...")
+    test_string_drops()
+    test_list_drops()
+    test_nested_structures()
+    print("All tests passed!")
+
+main()

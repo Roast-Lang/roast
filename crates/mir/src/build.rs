@@ -124,18 +124,15 @@ impl<'a> MirBuilder<'a> {
         // Build body
         self.build_block(&func.body);
 
-        // Insert automatic drops for owned (non-Copy) locals before return
-        // This provides Rust-like automatic memory management
-        // NOTE: Currently disabled - the runtime uses reference counting
-        // which handles cleanup automatically. Explicit drops will be
-        // re-enabled once the LLVM codegen is updated for opaque pointers.
-        // self.insert_automatic_drops(&params);
-
-        // Add return if needed
+        // Add return if needed (BEFORE inserting drops, so drops can be inserted before return)
         let term = self.current_terminator();
         if term.is_none() || matches!(term, Some(MirTerminator::Unreachable)) {
             self.set_terminator(MirTerminator::Return(None));
         }
+
+        // Insert automatic drops for owned (non-Copy) locals before return
+        // This provides Rust-like automatic memory management without GC
+        self.insert_automatic_drops(&params);
 
         MirBody {
             name: func.name,
@@ -151,6 +148,7 @@ impl<'a> MirBuilder<'a> {
     /// This provides Rust-like automatic memory management without garbage collection.
     fn insert_automatic_drops(&mut self, params: &[MirParam]) {
         // Collect locals that need dropping (owned, non-Copy types)
+        // Only drop NAMED variables, not temporaries (which may alias named vars)
         let locals_to_drop: Vec<LocalId> = self.locals.iter()
             .filter(|local| {
                 // Skip parameters (caller owns them)
@@ -158,8 +156,14 @@ impl<'a> MirBuilder<'a> {
                 if is_param {
                     return false;
                 }
+                // Only drop named variables, not temporaries
+                // Temporaries may alias named variables and cause double-free
+                if local.name.is_none() {
+                    return false;
+                }
                 // Only drop non-Copy types (lists, dicts, objects, strings)
-                !self.ownership_analyzer.analyze(&local.ty).is_copy()
+                let info = self.ownership_analyzer.analyze(&local.ty);
+                !info.is_copy()
             })
             .map(|local| local.id)
             .collect();
@@ -171,9 +175,8 @@ impl<'a> MirBuilder<'a> {
         // For each block that ends with Return, insert drops before it
         for block_id in 0..self.blocks.len() {
             if matches!(self.blocks[block_id].terminator, MirTerminator::Return(_)) {
-                // We need to chain drops: current_block -> drop1 -> drop2 -> ... -> return_block
-                // For simplicity, we emit StorageDead statements before return
-                // The backend will handle freeing the memory
+                // Insert StorageDead statements before return
+                // The LLVM backend will handle calling roast_decref for non-Copy types
                 for &local_id in &locals_to_drop {
                     self.blocks[block_id].stmts.push(MirStmt {
                         kind: MirStmtKind::StorageDead(local_id),

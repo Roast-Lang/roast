@@ -3001,12 +3001,12 @@ pub extern "C" fn roast_is_property(value: c_long) -> c_long {
 
 #[no_mangle]
 pub extern "C" fn roast_print_int(value: c_long) {
-    println!("{}", value);
+    print!("{}", value);
 }
 
 #[no_mangle]
 pub extern "C" fn roast_print_float(value: c_double) {
-    println!("{}", value);
+    print!("{}", value);
 }
 
 #[no_mangle]
@@ -3014,14 +3014,14 @@ pub extern "C" fn roast_print_str(s: *const c_char) {
     if s.is_null() { return; }
     unsafe {
         if let Ok(string) = CStr::from_ptr(s).to_str() {
-            println!("{}", string);
+            print!("{}", string);
         }
     }
 }
 
 #[no_mangle]
 pub extern "C" fn roast_print_bool(value: bool) {
-    println!("{}", if value { "True" } else { "False" });
+    print!("{}", if value { "True" } else { "False" });
 }
 
 #[no_mangle]
@@ -3030,12 +3030,17 @@ pub extern "C" fn roast_print_newline() {
 }
 
 #[no_mangle]
+pub extern "C" fn roast_print_space() {
+    print!(" ");
+}
+
+#[no_mangle]
 pub extern "C" fn roast_print_roast_str(s: *const RoastString) {
-    if s.is_null() { println!("None"); return; }
+    if s.is_null() { print!("None"); return; }
     unsafe {
         let slice = std::slice::from_raw_parts((*s).data, (*s).len);
         if let Ok(string) = std::str::from_utf8(slice) {
-            println!("{}", string);
+            print!("{}", string);
         }
     }
 }
@@ -3083,6 +3088,54 @@ pub extern "C" fn roast_min_float(a: c_double, b: c_double) -> c_double {
 #[no_mangle]
 pub extern "C" fn roast_max_float(a: c_double, b: c_double) -> c_double {
     a.max(b)
+}
+
+/// Generic min for boxed values (assumes integers for simplicity)
+#[no_mangle]
+pub extern "C" fn roast_min(a: c_long, b: c_long) -> c_long {
+    a.min(b)
+}
+
+/// Generic max for boxed values (assumes integers for simplicity)
+#[no_mangle]
+pub extern "C" fn roast_max(a: c_long, b: c_long) -> c_long {
+    a.max(b)
+}
+
+/// List min - returns minimum element from a list
+#[no_mangle]
+pub extern "C" fn roast_min_list(list: c_long) -> c_long {
+    let ptr = list as *const RoastList;
+    if ptr.is_null() { return 0; }
+    unsafe {
+        if (*ptr).len == 0 { return 0; }
+        let mut min_val = *(*ptr).data.add(0);
+        for i in 1..(*ptr).len {
+            let val = *(*ptr).data.add(i);
+            if val < min_val {
+                min_val = val;
+            }
+        }
+        min_val
+    }
+}
+
+/// List max - returns maximum element from a list
+#[no_mangle]
+pub extern "C" fn roast_max_list(list: c_long) -> c_long {
+    let ptr = list as *const RoastList;
+    if ptr.is_null() { return 0; }
+    unsafe {
+        if (*ptr).len == 0 { return 0; }
+        let mut max_val = *(*ptr).data.add(0);
+        for i in 1..(*ptr).len {
+            let val = *(*ptr).data.add(i);
+            if val > max_val {
+                max_val = val;
+            }
+        }
+        max_val
+    }
 }
 
 #[no_mangle]

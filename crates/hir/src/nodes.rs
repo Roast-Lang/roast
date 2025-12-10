@@ -30,6 +30,7 @@ pub struct HirFunction {
 }
 
 /// A function parameter.
+#[derive(Clone, Debug)]
 pub struct HirParam {
     pub name: Symbol,
     pub ty: Type,

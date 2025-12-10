@@ -14,6 +14,7 @@ use roast_vm::{VM, VMConfig};
 use roast_llvm_backend::{LlvmCodeGen, LlvmConfig};
 use roast_hir::build::HirBuilder;
 use roast_mir::build::MirBuilder;
+use roast_borrowck::BorrowChecker;
 use roast_ast::{StmtKind, ExprKind};
 use roast_runtime::Value;
 use std::sync::Arc;
@@ -1878,6 +1879,7 @@ pub fn build_llvm(
     let mut entry_point = None;
     let mut entry_point_void = false;
     let mut function_count = 0;
+    let mut all_borrow_errors: Vec<String> = Vec::new();
     for item in &hir_module.items {
         match item {
             roast_hir::HirItem::Function(func) => {
@@ -1895,6 +1897,17 @@ pub fn build_llvm(
 
                 let mut mir_builder = MirBuilder::new(hir_builder.expr_arena());
                 let mir_body = mir_builder.build_function(func);
+
+                // Run borrow checker on MIR (using a separate diagnostics sink)
+                let mut borrow_diagnostics = DiagnosticSink::new();
+                let mut borrow_checker = BorrowChecker::new(&interner, &mut borrow_diagnostics);
+                let borrow_errors = borrow_checker.check_body(&mir_body);
+                if !borrow_errors.is_empty() {
+                    for err in &borrow_errors {
+                        eprintln!("{} in function '{}': {}", "Borrow error".red(), func_name_str, err);
+                    }
+                    all_borrow_errors.extend(borrow_errors.iter().map(|e| format!("function '{}': {}", func_name_str, e)));
+                }
 
                 codegen.compile_function(&mir_body, None)
                     .map_err(|e| anyhow::anyhow!("LLVM codegen error: {}", e))?;
@@ -1923,6 +1936,17 @@ pub fn build_llvm(
                             init_num_params = func.params.len().saturating_sub(1);
                         }
 
+                        // Run borrow checker on MIR (using a separate diagnostics sink)
+                        let mut borrow_diagnostics = DiagnosticSink::new();
+                        let mut borrow_checker = BorrowChecker::new(&interner, &mut borrow_diagnostics);
+                        let borrow_errors = borrow_checker.check_body(&mir_body);
+                        if !borrow_errors.is_empty() {
+                            for err in &borrow_errors {
+                                eprintln!("{} in method '{}.{}': {}", "Borrow error".red(), class_name, method_name_str, err);
+                            }
+                            all_borrow_errors.extend(borrow_errors.iter().map(|e| format!("method '{}.{}': {}", class_name, method_name_str, e)));
+                        }
+
                         codegen.compile_function(&mir_body, Some(class_name))
                             .map_err(|e| anyhow::anyhow!("LLVM codegen error: {}", e))?;
                     }
@@ -1937,6 +1961,13 @@ pub fn build_llvm(
             }
             _ => {}
         }
+    }
+
+    // Check for borrow errors - fail compilation if any were found
+    if !all_borrow_errors.is_empty() {
+        eprintln!("\n{}: {} borrow error(s) found", "error".red().bold(), all_borrow_errors.len());
+        eprintln!("Memory safety violations detected. Fix the errors above to compile.");
+        bail!("compilation failed due to borrow checker errors");
     }
 
     if let Some(entry) = entry_point {

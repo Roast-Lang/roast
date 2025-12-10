@@ -107,7 +107,8 @@ impl LlvmType {
             Type::Int32 => LlvmType::I32,
             Type::Float | Type::Float64 => LlvmType::F64,
             Type::Float32 => LlvmType::F32,
-            Type::NoneType => LlvmType::Void,
+            // NoneType as I64 (0 = None sentinel) since void can't be stored
+            Type::NoneType => LlvmType::I64,
             Type::Str => LlvmType::Ptr,
             Type::List(_) => LlvmType::Ptr,
             Type::Dict(_, _) => LlvmType::Ptr,

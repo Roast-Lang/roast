@@ -158,6 +158,42 @@ impl<'a> TypeChecker<'a> {
                 });
                 self.ctx.define(name.name, class_type);
             }
+            StmtKind::Import { names } => {
+                // For `import test_modules.mathlib as mathlib`:
+                // - name.name = "test_modules.mathlib"
+                // - name.asname = Some("mathlib")
+                // We define the alias (or the module name if no alias) in scope as Any type
+                // (proper module resolution would need more infrastructure)
+                for alias in names {
+                    let binding_name = if let Some(asname) = &alias.asname {
+                        asname.name
+                    } else {
+                        // For `import a.b.c` without alias, bind the first component "a"
+                        // Python semantics: `import a.b` binds `a` (not `a.b`)
+                        let name_str = self.interner.resolve(alias.name.name).unwrap_or("");
+                        if let Some(first) = name_str.split('.').next() {
+                            self.interner.intern(first)
+                        } else {
+                            alias.name.name
+                        }
+                    };
+                    // Define as Any type since we don't have full module resolution yet
+                    self.ctx.define(binding_name, Type::Any);
+                }
+            }
+            StmtKind::ImportFrom { module: _, names, level: _ } => {
+                // For `from module import a, b, c`:
+                // Define each imported name in scope
+                for alias in names {
+                    let binding_name = if let Some(asname) = &alias.asname {
+                        asname.name
+                    } else {
+                        alias.name.name
+                    };
+                    // Define as Any type since we don't have full module resolution yet
+                    self.ctx.define(binding_name, Type::Any);
+                }
+            }
             _ => {}
         }
     }
@@ -1214,6 +1250,12 @@ impl<'a> TypeChecker<'a> {
     fn check_binary_op(&mut self, op: BinOp, left: &Type, right: &Type, span: Span) -> Type {
         let left = self.ctx.resolve(left);
         let right = self.ctx.resolve(right);
+
+        // If either operand is Any or a type variable, allow the operation
+        // This enables lambda parameters to be used without explicit types
+        if matches!(&left, Type::Any | Type::Var(_)) || matches!(&right, Type::Any | Type::Var(_)) {
+            return Type::Any;
+        }
 
         // Numeric operations
         if left.is_numeric() && right.is_numeric() {

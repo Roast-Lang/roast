@@ -319,6 +319,11 @@ impl TypeContext {
             // Reference subtyping
             (Type::Ref { inner: a, .. }, Type::Ref { inner: b, .. }) => self.is_subtype(a, b),
 
+            // Owned subtyping: owned T is a subtype of T (and vice versa for compatibility)
+            (Type::Owned(inner), other) | (other, Type::Owned(inner)) => {
+                self.is_subtype(inner, other) || self.is_subtype(other, inner)
+            }
+
             _ => false,
         }
     }

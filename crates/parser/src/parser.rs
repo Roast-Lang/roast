@@ -390,6 +390,86 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
+    /// Parse lambda parameters - similar to parse_parameters but ends at `:` instead of `)`
+    fn parse_lambda_parameters(&mut self) -> Result<Arguments, ParseError> {
+        let mut args = Arguments::new();
+        let mut seen_default = false;
+        let mut seen_star = false;
+        let mut seen_double_star = false;
+
+        // Lambda parameters end at Colon, not RightParen
+        while !matches!(self.peek(), TokenKind::Colon | TokenKind::Eof) {
+            // Handle *args
+            if matches!(self.peek(), TokenKind::Star) {
+                self.advance();
+                if matches!(self.peek(), TokenKind::Name(_)) {
+                    let arg = self.parse_lambda_parameter()?;
+                    args.vararg = Some(Box::new(arg));
+                }
+                seen_star = true;
+            }
+            // Handle **kwargs
+            else if matches!(self.peek(), TokenKind::DoubleStar) {
+                self.advance();
+                let arg = self.parse_lambda_parameter()?;
+                args.kwarg = Some(Box::new(arg));
+                seen_double_star = true;
+            }
+            // Regular parameter
+            else if matches!(self.peek(), TokenKind::Name(_)) {
+                let arg = self.parse_lambda_parameter()?;
+                let has_default = arg.default.is_some();
+
+                if seen_star {
+                    args.kwonlyargs.push(arg);
+                } else {
+                    if has_default {
+                        seen_default = true;
+                    } else if seen_default && !seen_star {
+                        return Err(ParseError::Custom {
+                            message: "non-default argument follows default argument".to_string(),
+                            span: self.current().span,
+                        });
+                    }
+                    args.args.push(arg);
+                }
+            } else {
+                break;
+            }
+
+            // Comma separates parameters, but stop at colon
+            if matches!(self.peek(), TokenKind::Comma) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
+        Ok(args)
+    }
+
+    /// Parse a lambda parameter - simpler than regular parameter (no type annotations with colon)
+    fn parse_lambda_parameter(&mut self) -> Result<Arg, ParseError> {
+        let start = self.current().span;
+        let name = self.parse_ident()?;
+
+        // Lambda parameters can have defaults but NOT type annotations (colon is ambiguous)
+        let default = if matches!(self.peek(), TokenKind::Equal) {
+            self.advance();
+            Some(Box::new(self.parse_expression()?))
+        } else {
+            None
+        };
+
+        Ok(Arg {
+            name,
+            annotation: None,  // Lambda params don't have type annotations
+            default,
+            ownership: Ownership::None,
+            span: self.span_from(start),
+        })
+    }
+
     fn parse_parameter(&mut self) -> Result<Arg, ParseError> {
         let start = self.current().span;
         
@@ -1072,8 +1152,9 @@ impl<'a> Parser<'a> {
             level += 1;
         }
 
+        // Use dotted name for module path - e.g., `from test_modules.mathlib import func`
         let module = if matches!(self.peek(), TokenKind::Name(_)) {
-            Some(self.parse_ident()?)
+            Some(self.parse_dotted_name()?)
         } else {
             None
         };
@@ -1120,9 +1201,38 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    /// Parse a dotted name like `a.b.c` and return an Ident with the whole dotted string.
+    /// Used for import statements where module paths can be dotted.
+    fn parse_dotted_name(&mut self) -> Result<Ident, ParseError> {
+        let start = self.current().span;
+        let first = self.parse_ident()?;
+        
+        let mut name_parts = vec![
+            self.interner.resolve(first.name)
+                .unwrap_or("<unknown>")
+                .to_string()
+        ];
+        
+        while matches!(self.peek(), TokenKind::Dot) {
+            self.advance(); // consume '.'
+            let part = self.parse_ident()?;
+            name_parts.push(
+                self.interner.resolve(part.name)
+                    .unwrap_or("<unknown>")
+                    .to_string()
+            );
+        }
+        
+        let full_name = name_parts.join(".");
+        let sym = self.interner.intern(&full_name);
+        
+        Ok(Ident::new(sym, self.span_from(start)))
+    }
+
     fn parse_alias(&mut self) -> Result<Alias, ParseError> {
         let start = self.current().span;
-        let name = self.parse_ident()?;
+        // Use dotted name for imports - e.g., `import test_modules.mathlib`
+        let name = self.parse_dotted_name()?;
 
         let asname = if matches!(self.peek(), TokenKind::As) {
             self.advance();
@@ -1242,9 +1352,38 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    /// Parse a tuple expression or single expression (for assignment targets).
+    /// Handles `a, b, c` as a tuple without parentheses.
+    fn parse_tuple_or_expression(&mut self) -> Result<Expr, ParseError> {
+        let start = self.current().span;
+        let first = self.parse_expression()?;
+        
+        // Check if this is a tuple (comma-separated values)
+        if matches!(self.peek(), TokenKind::Comma) {
+            let mut elts = vec![first];
+            while matches!(self.peek(), TokenKind::Comma) {
+                self.advance();
+                // Allow trailing comma before = or :
+                if matches!(self.peek(), TokenKind::Equal | TokenKind::Colon | TokenKind::Newline | TokenKind::Indent | TokenKind::Dedent | TokenKind::Eof) {
+                    break;
+                }
+                elts.push(self.parse_expression()?);
+            }
+            return Ok(Expr::new(
+                ExprKind::Tuple {
+                    elts,
+                    ctx: ExprContext::Store, // For assignment targets
+                },
+                self.span_from(start),
+            ));
+        }
+        
+        Ok(first)
+    }
+
     fn parse_expr_or_assign_stmt(&mut self) -> Result<Stmt, ParseError> {
         let start = self.current().span;
-        let expr = self.parse_expression()?;
+        let expr = self.parse_tuple_or_expression()?;
 
         // Check for augmented assignment
         if self.peek().is_augmented_assign() {
@@ -1289,7 +1428,7 @@ impl<'a> Parser<'a> {
             let mut targets = vec![expr];
             while matches!(self.peek(), TokenKind::Equal) {
                 self.advance();
-                let next = self.parse_expression()?;
+                let next = self.parse_tuple_or_expression()?;
                 targets.push(next);
             }
             let value = targets.pop().unwrap();
@@ -1630,6 +1769,26 @@ impl<'a> Parser<'a> {
                 ExprKind::UnaryOp {
                     op,
                     operand: Box::new(operand),
+                },
+                self.span_from(start),
+            ));
+        }
+
+        // Handle borrow expressions: &expr or &mut expr
+        if matches!(self.peek(), TokenKind::Ampersand) {
+            self.advance();
+            // Check for &mut
+            let ownership = if matches!(self.peek(), TokenKind::Mut) {
+                self.advance();
+                Ownership::Mut
+            } else {
+                Ownership::Borrow
+            };
+            let operand = self.parse_factor()?;
+            return Ok(Expr::new(
+                ExprKind::OwnershipExpr {
+                    value: Box::new(operand),
+                    ownership,
                 },
                 self.span_from(start),
             ));
@@ -2147,7 +2306,7 @@ impl<'a> Parser<'a> {
                 let args = if matches!(self.peek(), TokenKind::Colon) {
                     Arguments::new()
                 } else {
-                    self.parse_parameters()?
+                    self.parse_lambda_parameters()?
                 };
                 self.expect(&TokenKind::Colon)?;
                 let body = self.parse_expression()?;
@@ -2327,17 +2486,33 @@ impl<'a> Parser<'a> {
             ));
         }
         
-        // For more complex expressions, we need to lex and parse them
-        // For now, treat them as simple identifiers (this handles most cases)
-        // A full implementation would create a sub-lexer and parser
-        let sym = self.interner.intern(trimmed);
-        Ok(Expr::new(
-            ExprKind::Name {
-                id: Ident::new(sym, span),
-                ctx: ExprContext::Load,
-            },
-            span,
-        ))
+        // For more complex expressions, create a sub-parser to properly parse them
+        use crate::lexer::Lexer;
+        use roast_common::{FileId, SourceFile};
+        
+        // Create a temporary source file for the sub-parser
+        let file_id = FileId::new(9999); // Temporary ID for f-string expressions
+        let temp_source = SourceFile::new(
+            file_id,
+            "<fstring>".to_string(),
+            trimmed.to_string(),
+        );
+        
+        // Create a new lexer for the expression string
+        let mut lexer = Lexer::new(&temp_source, self.interner);
+        let tokens: Vec<_> = lexer.collect();
+        
+        // Create a sub-parser for these tokens
+        let mut sub_parser = Parser {
+            tokens: &tokens,
+            source: &temp_source,
+            interner: self.interner,
+            diagnostics: self.diagnostics,
+            pos: 0,
+        };
+        
+        // Parse as an expression
+        sub_parser.parse_expression()
     }
 
     // ========== Type expression parsing ==========
@@ -2504,6 +2679,35 @@ impl<'a> Parser<'a> {
                 let inner = self.parse_type_primary()?;
                 Ok(TypeExpr::new(
                     TypeExprKind::Ref {
+                        inner: Box::new(inner),
+                        mutable,
+                    },
+                    self.span_from(start),
+                ))
+            }
+            TokenKind::Own => {
+                // owned T or own T
+                self.advance();
+                let inner = self.parse_type_primary()?;
+                Ok(TypeExpr::new(
+                    TypeExprKind::Owned {
+                        inner: Box::new(inner),
+                    },
+                    self.span_from(start),
+                ))
+            }
+            TokenKind::Borrow => {
+                // borrow T
+                self.advance();
+                let mutable = if matches!(self.peek(), TokenKind::Mut) {
+                    self.advance();
+                    true
+                } else {
+                    false
+                };
+                let inner = self.parse_type_primary()?;
+                Ok(TypeExpr::new(
+                    TypeExprKind::Borrowed {
                         inner: Box::new(inner),
                         mutable,
                     },

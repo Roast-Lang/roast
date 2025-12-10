@@ -124,6 +124,13 @@ impl<'a> MirBuilder<'a> {
         // Build body
         self.build_block(&func.body);
 
+        // Insert automatic drops for owned (non-Copy) locals before return
+        // This provides Rust-like automatic memory management
+        // NOTE: Currently disabled - the runtime uses reference counting
+        // which handles cleanup automatically. Explicit drops will be
+        // re-enabled once the LLVM codegen is updated for opaque pointers.
+        // self.insert_automatic_drops(&params);
+
         // Add return if needed
         let term = self.current_terminator();
         if term.is_none() || matches!(term, Some(MirTerminator::Unreachable)) {
@@ -137,6 +144,43 @@ impl<'a> MirBuilder<'a> {
             locals: std::mem::take(&mut self.locals),
             blocks: std::mem::take(&mut self.blocks),
             span: func.span,
+        }
+    }
+
+    /// Insert automatic drop calls for owned (non-Copy) locals before returns.
+    /// This provides Rust-like automatic memory management without garbage collection.
+    fn insert_automatic_drops(&mut self, params: &[MirParam]) {
+        // Collect locals that need dropping (owned, non-Copy types)
+        let locals_to_drop: Vec<LocalId> = self.locals.iter()
+            .filter(|local| {
+                // Skip parameters (caller owns them)
+                let is_param = params.iter().any(|p| p.local.id == local.id);
+                if is_param {
+                    return false;
+                }
+                // Only drop non-Copy types (lists, dicts, objects, strings)
+                !self.ownership_analyzer.analyze(&local.ty).is_copy()
+            })
+            .map(|local| local.id)
+            .collect();
+
+        if locals_to_drop.is_empty() {
+            return;
+        }
+
+        // For each block that ends with Return, insert drops before it
+        for block_id in 0..self.blocks.len() {
+            if matches!(self.blocks[block_id].terminator, MirTerminator::Return(_)) {
+                // We need to chain drops: current_block -> drop1 -> drop2 -> ... -> return_block
+                // For simplicity, we emit StorageDead statements before return
+                // The backend will handle freeing the memory
+                for &local_id in &locals_to_drop {
+                    self.blocks[block_id].stmts.push(MirStmt {
+                        kind: MirStmtKind::StorageDead(local_id),
+                        span: Span::dummy(),
+                    });
+                }
+            }
         }
     }
 
@@ -1617,6 +1661,99 @@ impl<'a> MirBuilder<'a> {
                     span: expr.span,
                 });
                 MirOperand::Move(MirPlace::local(temp))
+            }
+            HirExprKind::If { cond, then_expr, else_expr } => {
+                // Ternary/conditional expression: value if cond else other_value
+                // Create blocks for then, else, and merge
+                let result_temp = self.new_temp(expr.ty.clone());
+                
+                // Build condition first
+                let cond_op = self.build_expr(cond);
+                let cond_temp = self.new_temp(Type::Bool);
+                self.push_stmt(MirStmt {
+                    kind: MirStmtKind::Assign {
+                        place: MirPlace::local(cond_temp),
+                        value: MirRvalue::Use(cond_op),
+                    },
+                    span: expr.span,
+                });
+                
+                // IMPORTANT: Capture current block BEFORE creating new blocks
+                // because new_block() changes self.current_block
+                let cond_bb = self.current_block;
+                
+                // Create blocks
+                let then_bb = self.new_block();
+                let else_bb = self.new_block();
+                let merge_bb = self.new_block();
+                
+                // Branch based on condition (set terminator on the condition block)
+                self.blocks[cond_bb as usize].terminator = MirTerminator::SwitchInt {
+                    discr: MirOperand::Copy(MirPlace::local(cond_temp)),
+                    targets: vec![(1, then_bb)],  // If true (1), go to then
+                    otherwise: else_bb,           // Otherwise go to else
+                };
+                
+                // Then block: evaluate then_expr and store to result
+                self.current_block = then_bb;
+                let then_val = self.build_expr(then_expr);
+                self.push_stmt(MirStmt {
+                    kind: MirStmtKind::Assign {
+                        place: MirPlace::local(result_temp),
+                        value: MirRvalue::Use(then_val),
+                    },
+                    span: expr.span,
+                });
+                self.set_terminator(MirTerminator::Goto(merge_bb));
+                
+                // Else block: evaluate else_expr and store to result
+                self.current_block = else_bb;
+                let else_val = self.build_expr(else_expr);
+                self.push_stmt(MirStmt {
+                    kind: MirStmtKind::Assign {
+                        place: MirPlace::local(result_temp),
+                        value: MirRvalue::Use(else_val),
+                    },
+                    span: expr.span,
+                });
+                self.set_terminator(MirTerminator::Goto(merge_bb));
+                
+                // Continue from merge block
+                self.current_block = merge_bb;
+                MirOperand::Move(MirPlace::local(result_temp))
+            }
+            HirExprKind::Ref { expr: inner_expr, mutable } => {
+                // Build a reference to the inner expression
+                // The inner expression must be a place (variable, field, index)
+                let place = self.build_place(inner_expr);
+                
+                // Create a temp to hold the reference
+                let temp = self.new_temp(expr.ty.clone());
+                self.push_stmt(MirStmt {
+                    kind: MirStmtKind::Assign {
+                        place: MirPlace::local(temp),
+                        value: MirRvalue::Ref(place, *mutable),
+                    },
+                    span: expr.span,
+                });
+                MirOperand::Move(MirPlace::local(temp))
+            }
+            HirExprKind::Deref(inner_expr) => {
+                // Dereference an expression
+                let inner_op = self.build_expr(inner_expr);
+                let temp = self.new_temp(expr.ty.clone());
+                self.push_stmt(MirStmt {
+                    kind: MirStmtKind::Assign {
+                        place: MirPlace::local(temp),
+                        value: MirRvalue::Use(inner_op),
+                    },
+                    span: expr.span,
+                });
+                // Add deref projection
+                MirOperand::Copy(MirPlace {
+                    local: temp,
+                    projections: smallvec![MirProjection::Deref],
+                })
             }
             _ => MirOperand::Constant(MirConstant::None),
         }

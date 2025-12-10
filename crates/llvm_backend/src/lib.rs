@@ -771,8 +771,10 @@ entry:
         ir.push_str("declare void @roast_print_int(i64) nounwind\n");
         ir.push_str("declare void @roast_print_float(double) nounwind\n");
         ir.push_str("declare void @roast_print_str(i8*) nounwind\n");
+        ir.push_str("declare void @roast_print_roast_str(i8*) nounwind\n");
         ir.push_str("declare void @roast_print_bool(i1) nounwind\n");
         ir.push_str("declare void @roast_print_newline() nounwind\n");
+        ir.push_str("declare void @roast_print_space() nounwind\n");
         ir.push('\n');
 
         // Memory management
@@ -806,6 +808,7 @@ entry:
         ir.push_str("declare i8* @roast_str_replace(i8*, i8*, i8*) nounwind\n");
         ir.push_str("declare i1 @roast_str_startswith(i8*, i8*) nounwind\n");
         ir.push_str("declare i1 @roast_str_endswith(i8*, i8*) nounwind\n");
+        ir.push_str("declare i1 @roast_str_contains(i8*, i8*) nounwind\n");
         ir.push_str("declare i8* @roast_str_index(i8*, i64) nounwind\n");
         ir.push_str("declare i64 @roast_str_count(i8*, i8*) nounwind\n");
         ir.push_str("declare i8* @roast_str_repeat(i8*, i64) nounwind\n");
@@ -858,6 +861,7 @@ entry:
         ir.push_str("; Set operations\n");
         ir.push_str("declare i8* @roast_set_new() nounwind\n");
         ir.push_str("declare void @roast_set_add(i8*, i64) nounwind\n");
+        ir.push_str("declare void @roast_set_remove(i8*, i64) nounwind\n");
         ir.push_str("declare i1 @roast_set_contains(i8*, i64) nounwind\n");
         ir.push_str("declare i64 @roast_set_len(i8*) nounwind\n");
         ir.push('\n');
@@ -966,6 +970,17 @@ entry:
         ir.push_str("declare i64 @roast_is_property(i64) nounwind\n");
         ir.push('\n');
 
+        // Type constants (external globals from runtime)
+        ir.push_str("; Type constants\n");
+        ir.push_str("@roast_type_int = external global i64\n");
+        ir.push_str("@roast_type_float = external global i64\n");
+        ir.push_str("@roast_type_str = external global i64\n");
+        ir.push_str("@roast_type_bool = external global i64\n");
+        ir.push_str("@roast_type_list = external global i64\n");
+        ir.push_str("@roast_type_dict = external global i64\n");
+        ir.push_str("@roast_type_none = external global i64\n");
+        ir.push('\n');
+
         // Builtin functions (for direct calls)
         ir.push_str("; Builtin functions\n");
         ir.push_str("declare i64 @roast_print(i64) nounwind\n");
@@ -983,6 +998,8 @@ entry:
         ir.push_str("declare i64 @roast_abs(i64) nounwind\n");
         ir.push_str("declare i64 @roast_min(i64, i64) nounwind\n");
         ir.push_str("declare i64 @roast_max(i64, i64) nounwind\n");
+        ir.push_str("declare i64 @roast_min_list(i64) nounwind\n");
+        ir.push_str("declare i64 @roast_max_list(i64) nounwind\n");
         ir.push_str("declare i64 @roast_sum(i64) nounwind\n");
         ir.push_str("declare i64 @roast_sorted(i64) nounwind\n");
         ir.push_str("declare i64 @roast_reversed(i64) nounwind\n");
@@ -1284,6 +1301,24 @@ impl<'a> FunctionGen<'a> {
         format!("%v{}", v)
     }
 
+    fn fresh_label(&mut self) -> usize {
+        let l = self.next_value;
+        self.next_value += 1;
+        l
+    }
+
+    /// Check if a type is Copy (doesn't need deallocation)
+    fn is_copy_type(&self, ty: &Type) -> bool {
+        match ty {
+            Type::Int | Type::Float | Type::Bool | Type::NoneType => true,
+            Type::Tuple(elems) => elems.iter().all(|e| self.is_copy_type(e)),
+            // References are Copy (the reference itself, not what it points to)
+            Type::Ref { .. } => true,
+            // Everything else needs deallocation
+            _ => false,
+        }
+    }
+
     /// Get the type of a local variable by its ID.
     fn get_local_type(&self, local_id: u32) -> Option<&Type> {
         self.body.locals.iter()
@@ -1582,7 +1617,8 @@ impl<'a> FunctionGen<'a> {
             Type::Int32 => "i32",
             Type::Float | Type::Float64 => "double",
             Type::Float32 => "float",
-            Type::NoneType => "void",
+            // NoneType: use i64 for variables (0 = None), void only for function returns
+            Type::NoneType => "i64",
             // Strings and all complex types are represented as i64 (tagged pointers)
             Type::Str => "i64",
             _ => "i64", // Default to i64 for complex types
@@ -1687,8 +1723,25 @@ impl<'a> FunctionGen<'a> {
                     self.ir.push_str(&format!("  store {} {}, {}* {}\n", ty, val, ty, ptr));
                 }
             }
-            MirStmtKind::StorageLive(_) | MirStmtKind::StorageDead(_) => {
-                // Ignore storage annotations for now
+            MirStmtKind::StorageLive(_) => {
+                // Storage live - no action needed (allocation happens at declaration)
+            }
+            MirStmtKind::StorageDead(local_id) => {
+                // Automatic memory deallocation for owned values
+                // This implements Rust-like RAII without garbage collection
+                if let Some(local_ty) = self.get_local_type(*local_id) {
+                    let local_ty = local_ty.clone();
+                    if !self.is_copy_type(&local_ty) {
+                        // For non-Copy types (lists, objects, strings), decrement refcount
+                        // The runtime handles null pointers gracefully
+                        let ptr = self.locals.get(local_id).cloned()
+                            .unwrap_or_else(|| format!("%v{}", local_id));
+                        let val = self.fresh_value();
+                        self.ir.push_str(&format!("  {} = load i64, i64* {}\n", val, ptr));
+                        // Call decref - runtime checks for null
+                        self.ir.push_str(&format!("  call void @roast_decref(i8* inttoptr (i64 {} to i8*))\n", val));
+                    }
+                }
             }
             MirStmtKind::ListAppend { list, value } => {
                 // Get the pointer to the list storage location
@@ -1929,10 +1982,13 @@ impl<'a> FunctionGen<'a> {
                 self.generate_aggregate(kind, operands)
             }
 
-            MirRvalue::Ref(place, mutable) => {
+            MirRvalue::Ref(place, _mutable) => {
                 // Create a reference to the place
+                // The place pointer needs to be converted to i64 for storage
                 let ptr = self.get_place_ptr(place);
-                Ok(ptr)
+                let result = self.fresh_value();
+                self.ir.push_str(&format!("  {} = ptrtoint ptr {} to i64\n", result, ptr));
+                Ok(result)
             }
 
             MirRvalue::Len(place) => {
@@ -2015,8 +2071,11 @@ impl<'a> FunctionGen<'a> {
 
         // Determine types for proper instruction selection
         let lhs_ty = self.operand_type(lhs);
-        let is_float = matches!(lhs_ty, Type::Float | Type::Float32 | Type::Float64);
-        let is_string = matches!(lhs_ty, Type::Str);
+        let rhs_ty = self.operand_type(rhs);
+        let is_float = matches!(lhs_ty, Type::Float | Type::Float32 | Type::Float64) 
+                    || matches!(rhs_ty, Type::Float | Type::Float32 | Type::Float64);
+        // Check either side for string type - handles method call results where LHS type might be Unknown
+        let is_string = matches!(lhs_ty, Type::Str) || matches!(rhs_ty, Type::Str);
 
         // String operations
         if is_string {
@@ -2073,9 +2132,20 @@ impl<'a> FunctionGen<'a> {
 
         if is_float {
             // Floating point operations
-            // Convert integer operand to double if needed
-            let rhs_ty = self.operand_type(rhs);
-            let r_float = if !matches!(rhs_ty, Type::Float | Type::Float32 | Type::Float64) {
+            // Convert integer operands to double if needed
+            let lhs_is_float = matches!(lhs_ty, Type::Float | Type::Float32 | Type::Float64);
+            let rhs_is_float = matches!(rhs_ty, Type::Float | Type::Float32 | Type::Float64);
+            
+            let l_float = if !lhs_is_float {
+                // Left operand is integer, convert to double
+                let converted = self.fresh_value();
+                self.ir.push_str(&format!("  {} = sitofp i64 {} to double\n", converted, l));
+                converted
+            } else {
+                l.clone()
+            };
+            
+            let r_float = if !rhs_is_float {
                 // Right operand is integer, convert to double
                 let converted = self.fresh_value();
                 self.ir.push_str(&format!("  {} = sitofp i64 {} to double\n", converted, r));
@@ -2092,38 +2162,50 @@ impl<'a> FunctionGen<'a> {
                 MirBinOp::Rem => "frem",
                 MirBinOp::Pow => {
                     // Call power function
-                    self.ir.push_str(&format!("  {} = call double @roast_pow_float(double {}, double {})\n", result, l, r_float));
+                    self.ir.push_str(&format!("  {} = call double @roast_pow_float(double {}, double {})\n", result, l_float, r_float));
                     return Ok(result);
                 }
                 MirBinOp::Lt => {
-                    self.ir.push_str(&format!("  {} = fcmp olt double {}, {}\n", result, l, r_float));
+                    let cmp = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = fcmp olt double {}, {}\n", cmp, l_float, r_float));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp));
                     return Ok(result);
                 }
                 MirBinOp::Le => {
-                    self.ir.push_str(&format!("  {} = fcmp ole double {}, {}\n", result, l, r_float));
+                    let cmp = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = fcmp ole double {}, {}\n", cmp, l_float, r_float));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp));
                     return Ok(result);
                 }
                 MirBinOp::Gt => {
-                    self.ir.push_str(&format!("  {} = fcmp ogt double {}, {}\n", result, l, r_float));
+                    let cmp = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = fcmp ogt double {}, {}\n", cmp, l_float, r_float));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp));
                     return Ok(result);
                 }
                 MirBinOp::Ge => {
-                    self.ir.push_str(&format!("  {} = fcmp oge double {}, {}\n", result, l, r_float));
+                    let cmp = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = fcmp oge double {}, {}\n", cmp, l_float, r_float));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp));
                     return Ok(result);
                 }
                 MirBinOp::Eq => {
-                    self.ir.push_str(&format!("  {} = fcmp oeq double {}, {}\n", result, l, r_float));
+                    let cmp = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = fcmp oeq double {}, {}\n", cmp, l_float, r_float));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp));
                     return Ok(result);
                 }
                 MirBinOp::Ne => {
-                    self.ir.push_str(&format!("  {} = fcmp one double {}, {}\n", result, l, r_float));
+                    let cmp = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = fcmp one double {}, {}\n", cmp, l_float, r_float));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp));
                     return Ok(result);
                 }
                 _ => "fadd", // Default
             };
             // Float arithmetic produces double, but we store as i64 - need bitcast
             let float_result = self.fresh_value();
-            self.ir.push_str(&format!("  {} = {} double {}, {}\n", float_result, instr, l, r_float));
+            self.ir.push_str(&format!("  {} = {} double {}, {}\n", float_result, instr, l_float, r_float));
             self.ir.push_str(&format!("  {} = bitcast double {} to i64\n", result, float_result));
         } else {
             // Integer operations
@@ -2151,15 +2233,59 @@ impl<'a> FunctionGen<'a> {
                 MirBinOp::Ne => ("icmp ne", true),
                 MirBinOp::In => {
                     // Check if value is in collection
+                    // First check the type of the container (rhs)
+                    let rhs_ty = self.operand_type(rhs);
+                    let ptr = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, r));
                     let cmp = self.fresh_value();
-                    self.ir.push_str(&format!("  {} = call i1 @roast_list_contains(i8* inttoptr (i64 {} to i8*), i64 {})\n", cmp, r, l));
+                    
+                    match rhs_ty {
+                        Type::Str => {
+                            // String contains - lhs is also a string
+                            let l_ptr = self.fresh_value();
+                            self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                            self.ir.push_str(&format!("  {} = call i1 @roast_str_contains(i8* {}, i8* {})\n", cmp, ptr, l_ptr));
+                        }
+                        Type::Dict(_, _) => {
+                            self.ir.push_str(&format!("  {} = call i1 @roast_dict_contains(i8* {}, i64 {})\n", cmp, ptr, l));
+                        }
+                        Type::Set(_) => {
+                            self.ir.push_str(&format!("  {} = call i1 @roast_set_contains(i8* {}, i64 {})\n", cmp, ptr, l));
+                        }
+                        _ => {
+                            // Default to list contains
+                            self.ir.push_str(&format!("  {} = call i1 @roast_list_contains(i8* {}, i64 {})\n", cmp, ptr, l));
+                        }
+                    }
                     // Extend i1 to i64
                     self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp));
                     return Ok(result);
                 }
                 MirBinOp::NotIn => {
+                    // Check the type of the container (rhs)
+                    let rhs_ty = self.operand_type(rhs);
+                    let ptr = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, r));
                     let tmp = self.fresh_value();
-                    self.ir.push_str(&format!("  {} = call i1 @roast_list_contains(i8* inttoptr (i64 {} to i8*), i64 {})\n", tmp, r, l));
+                    
+                    match rhs_ty {
+                        Type::Str => {
+                            // String contains - lhs is also a string
+                            let l_ptr = self.fresh_value();
+                            self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                            self.ir.push_str(&format!("  {} = call i1 @roast_str_contains(i8* {}, i8* {})\n", tmp, ptr, l_ptr));
+                        }
+                        Type::Dict(_, _) => {
+                            self.ir.push_str(&format!("  {} = call i1 @roast_dict_contains(i8* {}, i64 {})\n", tmp, ptr, l));
+                        }
+                        Type::Set(_) => {
+                            self.ir.push_str(&format!("  {} = call i1 @roast_set_contains(i8* {}, i64 {})\n", tmp, ptr, l));
+                        }
+                        _ => {
+                            // Default to list contains
+                            self.ir.push_str(&format!("  {} = call i1 @roast_list_contains(i8* {}, i64 {})\n", tmp, ptr, l));
+                        }
+                    }
                     let neg = self.fresh_value();
                     self.ir.push_str(&format!("  {} = xor i1 {}, true\n", neg, tmp));
                     // Extend i1 to i64 for consistent storage
@@ -2605,7 +2731,15 @@ impl<'a> FunctionGen<'a> {
                 MirConstant::None => Type::NoneType,
                 _ => Type::Int,
             },
-            MirOperand::Global(_) => Type::Int, // Functions are represented as pointers
+            MirOperand::Global(sym) => {
+                // Check for magic variables with known types
+                if let Some(name) = self.codegen.resolve_symbol(sym.as_raw()) {
+                    if name == "__name__" {
+                        return Type::Str;
+                    }
+                }
+                Type::Int // Functions are represented as pointers
+            }
         }
     }
 
@@ -2637,6 +2771,29 @@ impl<'a> FunctionGen<'a> {
                 self.generate_constant(constant)
             }
             MirOperand::Global(sym) => {
+                // Check for magic variables like __name__
+                if let Some(name) = self.codegen.resolve_symbol(sym.as_raw()) {
+                    if name == "__name__" {
+                        // __name__ is always "__main__" when running as script
+                        let str_ptr = self.codegen.add_string("__main__");
+                        let str_gep = self.fresh_value();
+                        self.ir.push_str(&format!(
+                            "  {} = getelementptr [9 x i8], [9 x i8]* {}, i64 0, i64 0\n",
+                            str_gep, str_ptr
+                        ));
+                        let result = self.fresh_value();
+                        self.ir.push_str(&format!(
+                            "  {} = call i8* @roast_str_new(i8* {}, i64 8)\n",
+                            result, str_gep
+                        ));
+                        let final_result = self.fresh_value();
+                        self.ir.push_str(&format!(
+                            "  {} = ptrtoint i8* {} to i64\n",
+                            final_result, result
+                        ));
+                        return Ok(final_result);
+                    }
+                }
                 // Convert function pointer to i64 for use as value
                 let func_name = format!("@roast_fn_{}", sym.as_raw());
                 let result = self.fresh_value();
@@ -2751,6 +2908,19 @@ impl<'a> FunctionGen<'a> {
                                 ));
                             }
                         }
+                        Type::Str => {
+                            // String indexing - returns a single-character string
+                            let base_ptr = self.i64_to_ptr(&current);
+                            let str_result = self.fresh_value();
+                            self.ir.push_str(&format!(
+                                "  {} = call i8* @roast_str_index(i8* {}, i64 {})\n",
+                                str_result, base_ptr, idx
+                            ));
+                            self.ir.push_str(&format!(
+                                "  {} = ptrtoint i8* {} to i64\n",
+                                result, str_result
+                            ));
+                        }
                         _ => {
                             // Use runtime-typed subscript function
                             self.ir.push_str(&format!(
@@ -2837,7 +3007,12 @@ impl<'a> FunctionGen<'a> {
     fn generate_constant(&mut self, constant: &MirConstant) -> LlvmResult<String> {
         match constant {
             MirConstant::Int(n) => Ok(format!("{}", n)),
-            MirConstant::Float(f) => Ok(format!("{:e}", f)),
+            MirConstant::Float(f) => {
+                // LLVM requires explicit decimal point for floating point constants
+                // Format with enough precision and ensure decimal point exists
+                let formatted = format!("{:.15e}", f);
+                Ok(formatted)
+            }
             MirConstant::Bool(b) => Ok(if *b { "1".to_string() } else { "0".to_string() }),
             MirConstant::None | MirConstant::Unit => Ok("0".to_string()),
             MirConstant::Str(s) => {
@@ -2879,13 +3054,14 @@ impl<'a> FunctionGen<'a> {
                 self.ir.push_str(&format!("  ret {} {}\n", ty, val));
             }
             MirTerminator::Return(None) => {
+                // NoneType returns i64 0 (None sentinel value)
+                let ty = Self::type_to_llvm(&self.body.return_ty);
                 if self.body.return_ty == Type::NoneType {
-                    self.ir.push_str("  ret void\n");
+                    self.ir.push_str(&format!("  ret {} 0\n", ty));
                 } else {
                     // Return from local 0
                     let ptr = self.locals.get(&0).cloned();
                     if let Some(ptr) = ptr {
-                        let ty = Self::type_to_llvm(&self.body.return_ty);
                         let val = self.fresh_value();
                         self.ir.push_str(&format!("  {} = load {}, {}* {}\n", val, ty, ty, ptr));
                         self.ir.push_str(&format!("  ret {} {}\n", ty, val));
@@ -3102,7 +3278,34 @@ impl<'a> FunctionGen<'a> {
                             }
                             // Check if it's a builtin function
                             if is_builtin(name) {
-                                format!("@roast_{}", name)
+                                // Handle min/max specially based on argument count
+                                if (name == "min" || name == "max") && args.len() == 1 {
+                                    // Single argument means it's a list
+                                    format!("@roast_{}_list", name)
+                                } else if name == "print" && args.len() > 1 {
+                                    // Multi-argument print - handle specially
+                                    "@@multi_print@@".to_string()
+                                } else if name == "str" && args.len() == 1 {
+                                    // Check if argument is a float - use roast_float_to_str
+                                    let arg_ty = self.operand_type(&args[0]);
+                                    if matches!(arg_ty, Type::Float | Type::Float32 | Type::Float64) {
+                                        // Will be handled specially below
+                                        "@@float_to_str@@".to_string() // Special marker
+                                    } else {
+                                        format!("@roast_{}", name)
+                                    }
+                                } else if name == "type" && args.len() == 1 {
+                                    // Check if argument is a float - use compile-time type knowledge
+                                    let arg_ty = self.operand_type(&args[0]);
+                                    if matches!(arg_ty, Type::Float | Type::Float32 | Type::Float64) {
+                                        // Will be handled specially below - return roast_type_float constant
+                                        "@@type_of_float@@".to_string() // Special marker
+                                    } else {
+                                        format!("@roast_{}", name)
+                                    }
+                                } else {
+                                    format!("@roast_{}", name)
+                                }
                             } else {
                                 // Check if this is a method call on a builtin type
                                 // For method calls, the first argument is 'self'
@@ -3597,6 +3800,69 @@ impl<'a> FunctionGen<'a> {
                     } else if is_builtin_method {
                         // Builtin method call - first arg needs to be converted to pointer
                         self.generate_builtin_method_call(&func_name, &arg_vals, &result)?;
+                    } else if func_name == "@@float_to_str@@" {
+                        // Special handling for str(float_value)
+                        // Generate the float argument directly (not as i64)
+                        let float_val = self.generate_operand(&args[0])?;
+                        let str_ptr = self.fresh_value();
+                        self.ir.push_str(&format!(
+                            "  {} = call i8* @roast_float_to_str(double {})\n",
+                            str_ptr, float_val
+                        ));
+                        // Convert string pointer to i64
+                        self.ir.push_str(&format!(
+                            "  {} = ptrtoint i8* {} to i64\n",
+                            result, str_ptr
+                        ));
+                    } else if func_name == "@@type_of_float@@" {
+                        // Special handling for type(float_value)
+                        // We know at compile time that this is a float, so just load the constant
+                        self.ir.push_str(&format!(
+                            "  {} = load i64, i64* @roast_type_float\n",
+                            result
+                        ));
+                    } else if func_name == "@@multi_print@@" {
+                        // Special handling for print with multiple arguments
+                        // Print each argument with a space between, newline at end
+                        for (i, arg) in args.iter().enumerate() {
+                            if i > 0 {
+                                // Print space between arguments
+                                self.ir.push_str("  call void @roast_print_space()\n");
+                            }
+                            // Check the type of the argument to call the correct print function
+                            let arg_ty = self.operand_type(arg);
+                            let arg_val = self.generate_operand(arg)?;
+                            let _ = self.fresh_value();
+                            match arg_ty {
+                                Type::Float | Type::Float32 | Type::Float64 => {
+                                    self.ir.push_str(&format!("  call void @roast_print_float(double {})\n", arg_val));
+                                }
+                                Type::Bool => {
+                                    // Bool is stored as i64, need to truncate to i1
+                                    let bool_val = self.fresh_value();
+                                    self.ir.push_str(&format!("  {} = trunc i64 {} to i1\n", bool_val, arg_val));
+                                    self.ir.push_str(&format!("  call void @roast_print_bool(i1 {})\n", bool_val));
+                                }
+                                Type::Str => {
+                                    // String is a RoastString pointer (i64) - convert back to pointer
+                                    let ptr = self.fresh_value();
+                                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, arg_val));
+                                    self.ir.push_str(&format!("  call void @roast_print_roast_str(i8* {})\n", ptr));
+                                }
+                                Type::Int | Type::Int32 | Type::Int64 => {
+                                    // Use roast_print_int for integers (no newline)
+                                    self.ir.push_str(&format!("  call void @roast_print_int(i64 {})\n", arg_val));
+                                }
+                                _ => {
+                                    // Default to roast_print for other values (might add newline)
+                                    self.ir.push_str(&format!("  call i64 @roast_print(i64 {})\n", arg_val));
+                                }
+                            }
+                        }
+                        // Print newline at end
+                        self.ir.push_str("  call void @roast_print_newline()\n");
+                        // Result is 0 (None)
+                        self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
                     } else {
                         let args_str = arg_vals.iter().map(|a| format!("i64 {}", a)).collect::<Vec<_>>().join(", ");
                         self.ir.push_str(&format!("  {} = call i64 {}({})\n", result, func_name, args_str));

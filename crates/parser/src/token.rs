@@ -478,6 +478,7 @@ pub fn keyword_to_token(s: &str) -> Option<TokenKind> {
         "borrow" => TokenKind::Borrow,
         "move" => TokenKind::Move,
         "own" => TokenKind::Own,
+        "owned" => TokenKind::Own,  // Alias for 'own'
         "ref" => TokenKind::Ref,
         _ => return None,
     })

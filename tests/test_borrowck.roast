@@ -1,0 +1,61 @@
+# Borrow Checker Tests for Roast Language
+# =========================================
+# This file demonstrates valid borrowing patterns.
+# The borrow checker enforces Rust-like ownership and borrowing rules
+# to ensure memory safety without garbage collection.
+#
+# INVALID code (would fail to compile):
+# -------------------------------------
+# def bad_double_mut():
+#     x = 42
+#     a = &mut x  # first mutable borrow
+#     b = &mut x  # ERROR: cannot borrow as mutable twice
+#
+# def bad_use_after_move():
+#     data: list[int] = [1, 2, 3]
+#     other = data  # data is moved
+#     print(data)   # ERROR: use of moved value
+
+# Test 1: Copy types don't move
+def test_copy_types():
+    # Integers are Copy, so assignment copies instead of moving
+    x: int = 42
+    y = x  # Copy, not move
+    print(x)  # x is still valid!
+    print(y)
+
+# Test 2: Sequential borrows are fine
+def test_sequential_borrows():
+    x: int = 100
+    # First borrow ends before second begins
+    y = x + 1  # Uses x
+    z = x + 2  # Can still use x
+    print(y)
+    print(z)
+
+# Test 3: Valid function with local list
+def test_list_usage():
+    data: list[int] = [1, 2, 3]
+    # Using the list (not moving it away)
+    print(data)
+
+# Test 4: Passing ownership explicitly
+def consume_list(items: list[int]):
+    print(items)
+
+def test_ownership_transfer():
+    data: list[int] = [10, 20, 30]
+    consume_list(data)  # Ownership transferred to function
+    # data is no longer valid here - but we don't use it
+
+# Run the tests
+print("=== Borrow Checker Tests ===")
+print("Testing copy types...")
+test_copy_types()
+print("Testing sequential borrows...")
+test_sequential_borrows()
+print("Testing list usage...")
+test_list_usage()
+print("Testing ownership transfer...")
+test_ownership_transfer()
+print("All borrow tests passed!")

@@ -1,3 +1,10 @@
 @test
 def test_addition():
     assert 1 + 1 == 2, "Math is broken"
+
+def main():
+    test_addition()
+    print("Test passed!")
+
+if __name__ == "__main__":
+    main()

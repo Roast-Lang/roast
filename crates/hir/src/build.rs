@@ -7,6 +7,12 @@ use roast_common::{DiagnosticSink, Interner, Span, Symbol};
 use roast_typer::{Type, TypeContext, TypeChecker, compute_mro};
 use std::collections::HashMap;
 
+/// Function signature with default values for parameter defaulting
+#[derive(Clone, Debug)]
+pub struct FunctionSig {
+    pub params: Vec<HirParam>,
+}
+
 /// HIR builder context.
 pub struct HirBuilder<'a> {
     interner: &'a Interner,
@@ -17,6 +23,10 @@ pub struct HirBuilder<'a> {
     current_class: Option<String>,
     /// MROs for all classes built so far (for multiple inheritance resolution)
     class_mros: HashMap<String, Vec<String>>,
+    /// Nested functions extracted during building (to be compiled as top-level)
+    nested_functions: Vec<HirFunction>,
+    /// Function signatures for default argument filling (function name symbol -> signature)
+    function_sigs: HashMap<Symbol, FunctionSig>,
 }
 
 impl<'a> HirBuilder<'a> {
@@ -32,6 +42,8 @@ impl<'a> HirBuilder<'a> {
             expr_arena: Arena::new(),
             current_class: None,
             class_mros: HashMap::new(),
+            nested_functions: Vec::new(),
+            function_sigs: HashMap::new(),
         }
     }
 
@@ -57,6 +69,11 @@ impl<'a> HirBuilder<'a> {
         if !top_level_stmts.is_empty() {
             let init_func = self.build_module_init(&top_level_stmts, module.span);
             items.push(HirItem::Function(init_func));
+        }
+
+        // Add any nested functions that were extracted during building
+        for nested_func in std::mem::take(&mut self.nested_functions) {
+            items.push(HirItem::Function(nested_func));
         }
 
         HirModule {
@@ -196,6 +213,9 @@ impl<'a> HirBuilder<'a> {
 
         let return_type = returns.map(|r| self.resolve_type(r)).unwrap_or(Type::NoneType);
         let hir_body = self.build_block(body, span);
+
+        // Register function signature for default argument filling at call sites
+        self.function_sigs.insert(name.name, FunctionSig { params: params.clone() });
 
         HirFunction {
             name: name.name,
@@ -719,6 +739,23 @@ impl<'a> HirBuilder<'a> {
                 HirStmtKind::Raise { exc: exc_expr, cause: cause_expr }
             }
             StmtKind::Pass => return vec![],
+            // Handle nested function definitions - extract them as top-level functions
+            StmtKind::FunctionDef {
+                name,
+                args,
+                body,
+                returns,
+                decorators,
+                is_async,
+                ..
+            } => {
+                // Build the nested function as a top-level function
+                let func = self.build_function(name, args, body, returns.as_deref(), decorators, *is_async, stmt.span);
+                self.nested_functions.push(func);
+                // The nested function becomes a local variable referencing the function
+                // Return empty - the function will be callable by name
+                return vec![];
+            }
             _ => return vec![],
         };
 
@@ -896,7 +933,36 @@ impl<'a> HirBuilder<'a> {
             }
             ExprKind::Call { func, args, .. } => {
                 let callee = self.build_expr(func);
-                let hir_args: Vec<_> = args.iter().map(|a| self.build_expr(a)).collect();
+                let mut hir_args: Vec<_> = args.iter().map(|a| self.build_expr(a)).collect();
+                
+                // Fill in default arguments if we have function signature info
+                // Get the function name from the callee if it's a simple name reference
+                let func_name = match &func.kind {
+                    ExprKind::Name { id, .. } => Some(id.name),
+                    _ => None,
+                };
+                
+                if let Some(name) = func_name {
+                    if let Some(sig) = self.function_sigs.get(&name) {
+                        // Fill in missing arguments with defaults
+                        let num_provided = hir_args.len();
+                        let num_params = sig.params.iter()
+                            .filter(|p| p.kind == HirParamKind::Regular)
+                            .count();
+                        
+                        if num_provided < num_params {
+                            // Need to fill in defaults for missing parameters
+                            for i in num_provided..num_params {
+                                if let Some(param) = sig.params.get(i) {
+                                    if let Some(default_id) = param.default {
+                                        hir_args.push(default_id);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 HirExprKind::Call { callee, args: hir_args }
             }
             ExprKind::Attribute { value, attr, .. } => {
@@ -1126,6 +1192,28 @@ impl<'a> HirBuilder<'a> {
             ExprKind::Await { value } => {
                 let awaited = self.build_expr(value);
                 HirExprKind::Await { value: awaited }
+            }
+            // Ownership/borrow expressions: &x, &mut x
+            ExprKind::OwnershipExpr { value, ownership } => {
+                let inner = self.build_expr(value);
+                match ownership {
+                    Ownership::Borrow => {
+                        // Immutable borrow: &x
+                        HirExprKind::Ref { expr: inner, mutable: false }
+                    }
+                    Ownership::Mut => {
+                        // Mutable borrow: &mut x
+                        HirExprKind::Ref { expr: inner, mutable: true }
+                    }
+                    Ownership::Move => {
+                        // Explicit move - just use the expression as-is (ownership transfer)
+                        return inner;
+                    }
+                    _ => {
+                        // For other ownership modes (Own, Imm, None), just return the inner expr
+                        return inner;
+                    }
+                }
             }
             _ => HirExprKind::Literal(HirLiteral::None),
         };

@@ -160,6 +160,9 @@ pub fn unify(ctx: &mut TypeContext, a: &Type, b: &Type) -> Result<(), UnifyError
         // Owned types
         (Type::Owned(a), Type::Owned(b)) => unify(ctx, a, b),
 
+        // Owned T is compatible with T (owned is an annotation, not a separate type)
+        (Type::Owned(inner), other) | (other, Type::Owned(inner)) => unify(ctx, inner, other),
+
         // No unification possible
         _ => Err(UnifyError::Mismatch {
             expected: a.clone(),

@@ -1,0 +1,153 @@
+# Pattern Matching Examples in Roast
+# Demonstrates Python 3.10+ style match/case statements
+
+# Basic value matching
+def describe_number(x: int) -> str:
+    match x:
+        case 0:
+            return "zero"
+        case 1:
+            return "one"
+        case 2:
+            return "two"
+        case _:
+            return "many"
+
+# Matching with guards
+def classify_age(age: int) -> str:
+    match age:
+        case n if n < 0:
+            return "invalid"
+        case n if n < 13:
+            return "child"
+        case n if n < 20:
+            return "teenager"
+        case n if n < 65:
+            return "adult"
+        case _:
+            return "senior"
+
+# Sequence matching
+def first_two(items: list[int]) -> str:
+    match items:
+        case []:
+            return "empty"
+        case [x]:
+            return f"single: {x}"
+        case [x, y]:
+            return f"pair: {x}, {y}"
+        case [x, y, *rest]:
+            return f"first two: {x}, {y}, plus {len(rest)} more"
+
+# Tuple matching
+def process_point(point: tuple[int, int]) -> str:
+    match point:
+        case (0, 0):
+            return "origin"
+        case (0, y):
+            return f"on y-axis at {y}"
+        case (x, 0):
+            return f"on x-axis at {x}"
+        case (x, y):
+            return f"point at ({x}, {y})"
+
+# Class pattern matching
+class Point:
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+class Circle:
+    def __init__(self, center: Point, radius: float):
+        self.center = center
+        self.radius = radius
+
+class Rectangle:
+    def __init__(self, p1: Point, p2: Point):
+        self.p1 = p1
+        self.p2 = p2
+
+def describe_shape(shape) -> str:
+    match shape:
+        case Circle(center=Point(x=0, y=0), radius=r):
+            return f"circle at origin with radius {r}"
+        case Circle(center=c, radius=r):
+            return f"circle at ({c.x}, {c.y}) with radius {r}"
+        case Rectangle(p1=p1, p2=p2):
+            width = abs(p2.x - p1.x)
+            height = abs(p2.y - p1.y)
+            return f"rectangle {width}x{height}"
+        case _:
+            return "unknown shape"
+
+# Or patterns
+def is_weekend(day: str) -> bool:
+    match day.lower():
+        case "saturday" | "sunday":
+            return True
+        case _:
+            return False
+
+# Mapping patterns (dict matching)
+def parse_command(cmd: dict) -> str:
+    match cmd:
+        case {"action": "move", "x": x, "y": y}:
+            return f"moving to ({x}, {y})"
+        case {"action": "jump"}:
+            return "jumping!"
+        case {"action": action}:
+            return f"unknown action: {action}"
+        case _:
+            return "invalid command"
+
+# As patterns (capture with alias)
+def process_data(data) -> str:
+    match data:
+        case [first, second] as pair:
+            return f"pair {pair}: sum is {first + second}"
+        case [x, *rest] as all_items if len(all_items) > 5:
+            return f"long list starting with {x}"
+        case _:
+            return "other"
+
+# Main
+def main():
+    # Test value matching
+    print(describe_number(0))   # zero
+    print(describe_number(1))   # one
+    print(describe_number(42))  # many
+    
+    # Test guards
+    print(classify_age(5))      # child
+    print(classify_age(15))     # teenager
+    print(classify_age(30))     # adult
+    
+    # Test sequence matching
+    print(first_two([]))              # empty
+    print(first_two([1]))             # single: 1
+    print(first_two([1, 2]))          # pair: 1, 2
+    print(first_two([1, 2, 3, 4, 5])) # first two: 1, 2, plus 3 more
+    
+    # Test tuple matching
+    print(process_point((0, 0)))   # origin
+    print(process_point((0, 5)))   # on y-axis at 5
+    print(process_point((3, 4)))   # point at (3, 4)
+    
+    # Test class patterns
+    c1 = Circle(Point(0, 0), 5.0)
+    c2 = Circle(Point(1, 2), 3.0)
+    r1 = Rectangle(Point(0, 0), Point(10, 5))
+    print(describe_shape(c1))  # circle at origin...
+    print(describe_shape(c2))  # circle at (1, 2)...
+    print(describe_shape(r1))  # rectangle 10x5
+    
+    # Test or patterns
+    print(is_weekend("Saturday"))  # True
+    print(is_weekend("Monday"))    # False
+    
+    # Test mapping patterns
+    print(parse_command({"action": "move", "x": 10, "y": 20}))
+    print(parse_command({"action": "jump"}))
+
+if __name__ == "__main__":
+    main()

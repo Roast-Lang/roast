@@ -1,0 +1,21 @@
+# Test import x.y.z as name (with alias)
+# Note: import x.y.z without alias requires dotted name lookup which
+# is not yet fully implemented. Use an alias instead.
+
+import test_modules.helpers as helpers
+
+print("=== Test: import with alias ===")
+
+# Access via alias
+result = helpers.double(5)
+print("double(5) =", result)
+
+result2 = helpers.triple(3)
+print("triple(3) =", result2)
+
+# Access class via alias
+counter = helpers.Counter(10)
+c1 = counter.increment()
+print("Counter after increment:", c1)
+
+print("Test: import with alias PASSED!")

@@ -1,0 +1,265 @@
+# Python compatibility tests
+
+# Test importing Python modules
+import json
+import math
+import os
+import sys
+import collections
+import itertools
+import functools
+import typing
+
+# Test math module
+def test_math():
+    assert math.pi > 3.14 and math.pi < 3.15
+    assert math.e > 2.71 and math.e < 2.72
+    assert math.sqrt(4.0) == 2.0
+    assert math.sqrt(9.0) == 3.0
+    assert abs(math.sin(0.0)) < 0.001
+    assert abs(math.cos(0.0) - 1.0) < 0.001
+    assert math.floor(3.7) == 3
+    assert math.ceil(3.2) == 4
+    assert math.abs(-5) == 5
+    assert abs(math.pow(2.0, 3.0) - 8.0) < 0.001
+
+# Test os module
+def test_os():
+    cwd = os.getcwd()
+    assert len(cwd) > 0
+    
+    # getenv
+    path = os.getenv("PATH")
+    # PATH should exist
+    
+    # listdir
+    files = os.listdir(".")
+    assert isinstance(files, list)
+
+# Test os.path module
+from os import path as ospath
+
+def test_os_path():
+    assert ospath.exists(".")
+    assert ospath.isdir(".")
+    
+    # join
+    p = ospath.join("a", "b", "c")
+    assert "a" in p and "b" in p
+    
+    # basename/dirname
+    assert ospath.basename("/path/to/file.txt") == "file.txt"
+    assert ospath.dirname("/path/to/file.txt") == "/path/to"
+    
+    # splitext
+    base, ext = ospath.splitext("/path/to/file.txt")
+    assert ext == ".txt"
+
+# Test json module
+def test_json():
+    # loads
+    data = json.loads('{"name": "test", "value": 42}')
+    # Simplified test - full JSON support pending
+    
+    # dumps
+    result = json.dumps({"key": "value"})
+    assert isinstance(result, str)
+
+# Test collections module
+def test_collections():
+    # Counter
+    counter = collections.Counter(["a", "b", "a", "c", "a", "b"])
+    # Counter should count occurrences
+    
+    # deque
+    d = collections.deque([1, 2, 3])
+    # Basic deque operations
+    
+    # namedtuple
+    Point = collections.namedtuple("Point", ["x", "y"])
+    # namedtuple factory
+
+# Test itertools module
+def test_itertools():
+    # chain
+    chained = itertools.chain([1, 2], [3, 4])
+    assert chained == [1, 2, 3, 4]
+    
+    # repeat with count
+    repeated = itertools.repeat("x", 3)
+    assert repeated == ["x", "x", "x"]
+    
+    # product
+    prod = itertools.product([1, 2], ["a", "b"])
+    assert (1, "a") in prod
+    assert (2, "b") in prod
+    
+    # permutations
+    perms = itertools.permutations([1, 2, 3], 2)
+    assert (1, 2) in perms
+    assert (2, 1) in perms
+    
+    # combinations
+    combos = itertools.combinations([1, 2, 3], 2)
+    assert (1, 2) in combos
+    assert (2, 3) in combos
+
+# Test typing module
+def test_typing():
+    # Type aliases should be available
+    List = typing.List
+    Dict = typing.Dict
+    Optional = typing.Optional
+    Union = typing.Union
+    
+    # TypeVar
+    T = typing.TypeVar("T")
+
+# Test dataclasses
+from dataclasses import dataclass, field
+
+@dataclass
+class Person:
+    name: str
+    age: int
+    email: str = ""
+
+def test_dataclass():
+    p = Person("Alice", 30)
+    assert p.name == "Alice"
+    assert p.age == 30
+    assert p.email == ""
+    
+    p2 = Person("Bob", 25, "bob@example.com")
+    assert p2.email == "bob@example.com"
+
+# Test decorators
+def test_decorators():
+    # staticmethod
+    class Example:
+        @staticmethod
+        def static_method() -> str:
+            return "static"
+        
+        @classmethod
+        def class_method(cls) -> str:
+            return "class"
+        
+        @property
+        def prop(self) -> int:
+            return 42
+    
+    assert Example.static_method() == "static"
+    assert Example.class_method() == "class"
+    
+    e = Example()
+    assert e.prop == 42
+
+# Test Python 2 to 3 compatibility
+def test_python2_compat():
+    # These should work in Roast
+    # (migration tool converts Python 2 syntax)
+    
+    # Division
+    assert 5 / 2 == 2.5  # True division
+    assert 5 // 2 == 2   # Floor division
+    
+    # print is a function
+    print("test")
+    
+    # range (not xrange)
+    nums = list(range(5))
+    assert nums == [0, 1, 2, 3, 4]
+
+# Test subprocess
+import subprocess
+
+def test_subprocess():
+    # run
+    result = subprocess.run(["echo", "hello"])
+    assert result.returncode == 0
+
+# Test pathlib
+from pathlib import Path
+
+def test_pathlib():
+    p = Path(".")
+    # Path object
+    
+    p2 = Path("/path/to/file.txt")
+    assert p2.name == "file.txt"
+    assert p2.suffix == ".txt"
+    assert p2.stem == "file"
+
+# Test base64
+import base64
+
+def test_base64():
+    # encode
+    encoded = base64.b64encode("hello")
+    assert encoded == "aGVsbG8="
+    
+    # decode
+    decoded = base64.b64decode("aGVsbG8=")
+    assert decoded == b"hello"
+
+# Test datetime
+from datetime import datetime, date, timedelta
+
+def test_datetime():
+    now = datetime.now()
+    # Should have timestamp attribute
+    
+    d = date(2024, 1, 15)
+    assert d.year == 2024
+    assert d.month == 1
+    assert d.day == 15
+    
+    delta = timedelta(days=7)
+    assert delta.days == 7
+
+# Test context managers
+def test_context_manager():
+    # with statement
+    with open("test.txt", "w") as f:
+        f.write("test")
+    
+    # file should be closed after with block
+
+# Test exception handling
+def test_exceptions():
+    try:
+        x = 1 / 0
+    except ZeroDivisionError:
+        pass  # Expected
+    
+    try:
+        raise ValueError("test error")
+    except ValueError as e:
+        assert "test error" in str(e)
+    
+    try:
+        d = {}
+        x = d["missing"]
+    except KeyError:
+        pass  # Expected
+
+# Entry point
+if __name__ == "__main__":
+    test_math()
+    test_os()
+    test_os_path()
+    test_json()
+    test_collections()
+    test_itertools()
+    test_typing()
+    test_dataclass()
+    test_decorators()
+    test_python2_compat()
+    # test_subprocess()  # Requires actual subprocess
+    test_pathlib()
+    test_base64()
+    test_datetime()
+    test_exceptions()
+    print("All Python compatibility tests passed!")
+

@@ -1,0 +1,23 @@
+[package]
+name = "roast-runtime"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Runtime library for Roast programs"
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+roast-common.workspace = true
+parking_lot.workspace = true
+thiserror.workspace = true
+dashmap.workspace = true
+roast-codegen.workspace = true
+libc = "0.2"
+
+[features]
+default = ["refcount"]
+refcount = []
+cpython-compat = []

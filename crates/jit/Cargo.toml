@@ -1,0 +1,31 @@
+[package]
+name = "roast-jit"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "JIT compilation system for Roast with tiered compilation"
+
+[dependencies]
+roast-common = { path = "../common" }
+roast-codegen = { path = "../codegen" }
+roast-mir = { path = "../mir" }
+roast-optimizer = { path = "../optimizer" }
+
+thiserror.workspace = true
+rustc-hash.workspace = true
+parking_lot.workspace = true
+smallvec.workspace = true
+tracing.workspace = true
+
+# For native code generation
+cranelift-codegen = { version = "0.112", optional = true }
+cranelift-frontend = { version = "0.112", optional = true }
+cranelift-module = { version = "0.112", optional = true }
+cranelift-jit = { version = "0.112", optional = true }
+cranelift-native = { version = "0.112", optional = true }
+target-lexicon = { version = "0.12", optional = true }
+
+[features]
+default = []
+cranelift-backend = ["cranelift-codegen", "cranelift-frontend", "cranelift-module", "cranelift-jit", "cranelift-native", "target-lexicon"]

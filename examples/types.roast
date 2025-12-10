@@ -1,0 +1,99 @@
+# Type system examples in Roast
+# Demonstrates static typing, generics, and type annotations
+
+from typing import List, Dict, Optional, Union, Callable
+
+# Basic type annotations
+name: str = "Roast"
+version: float = 0.1
+count: int = 42
+active: bool = True
+
+# Collection types
+numbers: List[int] = [1, 2, 3, 4, 5]
+scores: Dict[str, int] = {"alice": 100, "bob": 95}
+coordinates: tuple[int, int] = (10, 20)
+
+# Optional types
+maybe_value: Optional[int] = None
+maybe_value = 42
+
+# Union types
+id_or_name: Union[int, str] = 123
+id_or_name = "user_123"
+
+# Generic function
+def first[T](items: List[T]) -> Optional[T]:
+    """Return the first item or None if empty."""
+    if items:
+        return items[0]
+    return None
+
+# Function types
+Predicate = Callable[[int], bool]
+
+def filter_items(items: List[int], pred: Predicate) -> List[int]:
+    """Filter items using a predicate function."""
+    result: List[int] = []
+    for item: int in items:
+        if pred(item):
+            result.append(item)
+    return result
+
+# Class with type annotations
+class Point:
+    x: float
+    y: float
+    
+    def __init__(self, x: float, y: float) -> None:
+        self.x = x
+        self.y = y
+    
+    def distance_to(self, other: "Point") -> float:
+        dx: float = self.x - other.x
+        dy: float = self.y - other.y
+        return (dx ** 2 + dy ** 2) ** 0.5
+    
+    def __repr__(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+# Generic class
+class Container[T]:
+    _value: T
+    
+    def __init__(self, value: T) -> None:
+        self._value = value
+    
+    def get(self) -> T:
+        return self._value
+    
+    def set(self, value: T) -> None:
+        self._value = value
+
+def main() -> None:
+    # Using typed values
+    print(f"Name: {name}")
+    print(f"Version: {version}")
+    print(f"Numbers: {numbers}")
+    
+    # Using generic function
+    first_num: Optional[int] = first(numbers)
+    print(f"First number: {first_num}")
+    
+    # Using filter
+    is_even: Predicate = lambda x: x % 2 == 0
+    evens: List[int] = filter_items(numbers, is_even)
+    print(f"Even numbers: {evens}")
+    
+    # Using classes
+    p1: Point = Point(0.0, 0.0)
+    p2: Point = Point(3.0, 4.0)
+    print(f"Distance from {p1} to {p2}: {p1.distance_to(p2)}")
+    
+    # Using generic class
+    box: Container[str] = Container("hello")
+    print(f"Box contains: {box.get()}")
+
+if __name__ == "__main__":
+    main()
+

@@ -1,0 +1,21 @@
+# Test from x import * (star import)
+from test_modules.mathlib import *
+
+print("=== Test: from x import * ===")
+
+# Access imported functions directly (not via module namespace)
+result = double(5)
+print("double(5) =", result)  # Should print 10
+
+result2 = square(4)
+print("square(4) =", result2)  # Should print 16
+
+result3 = add(10, 20)
+print("add(10, 20) =", result3)  # Should print 30
+
+# Access class directly
+calc = Calculator()
+res = calc.compute(100, 200)
+print("Calculator.compute(100, 200) =", res)  # Should print 300
+
+print("Test: from x import * PASSED!")

@@ -1,0 +1,39 @@
+# Test super() builtin
+
+class Animal:
+    def __init__(self, name: str):
+        self._name: str = name
+
+    def speak(self) -> str:
+        return "..."
+
+    def describe(self) -> str:
+        return f"Animal named {self._name}"
+
+class Dog(Animal):
+    def __init__(self, name: str, breed: str):
+        # Would use super().__init__(name) here
+        self._name = name
+        self._breed: str = breed
+
+    def speak(self) -> str:
+        return "Woof!"
+
+    def describe(self) -> str:
+        return f"Dog ({self._breed}) named {self._name}"
+
+def main():
+    print("=" * 50)
+    print("Testing inheritance and super()")
+    print("=" * 50)
+
+    dog = Dog("Buddy", "Golden Retriever")
+    print(f"\nDog created:")
+    print(f"  Name: {dog._name}")
+    print(f"  Breed: {dog._breed}")
+    print(f"  Speak: {dog.speak()}")
+    print(f"  Describe: {dog.describe()}")
+
+    print("\n" + "=" * 50)
+    print("Inheritance test completed!")
+    print("=" * 50)

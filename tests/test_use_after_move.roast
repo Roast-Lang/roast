@@ -1,0 +1,9 @@
+# Test that use-after-move is detected
+
+def test_use_after_move():
+    """This should produce a borrow check error"""
+    x = [1, 2, 3]
+    y = x  # x is moved here
+    z = x  # ERROR: x was already moved!
+
+test_use_after_move()

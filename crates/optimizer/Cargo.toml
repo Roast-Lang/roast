@@ -1,0 +1,16 @@
+[package]
+name = "roast-optimizer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Optimization passes for Roast MIR"
+
+[dependencies]
+roast-common.workspace = true
+roast-mir.workspace = true
+roast-typer.workspace = true
+petgraph.workspace = true
+indexmap.workspace = true
+rustc-hash.workspace = true
+

@@ -1,0 +1,40 @@
+[package]
+name = "roast-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Command-line interface for the Roast compiler (roastc)"
+
+[dependencies]
+roast-common.workspace = true
+roast-ast.workspace = true
+roast-parser.workspace = true
+roast-typer.workspace = true
+roast-hir.workspace = true
+roast-mir.workspace = true
+roast-borrowck.workspace = true
+roast-optimizer.workspace = true
+roast-codegen.workspace = true
+roast-llvm-backend.workspace = true
+roast-vm.workspace = true
+roast-runtime.workspace = true
+roast-stdlib.workspace = true
+roast-pycompat.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+colored.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+codespan-reporting.workspace = true
+walkdir.workspace = true
+dirs = "5.0"
+rustyline = "14.0"
+
+[features]
+default = ["cranelift"]
+cranelift = ["roast-codegen/cranelift"]
+
+[[bin]]
+name = "roastc"
+path = "src/main.rs"

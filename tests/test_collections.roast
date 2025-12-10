@@ -1,0 +1,66 @@
+# Test collections: strings, lists, dicts with methods and negative indexing
+
+# Test string operations
+def test_strings():
+    s: str = "  Hello World  "
+
+    # String length
+    print(len("Hello"))  # 5
+
+    # String concatenation
+    greeting: str = "Hello" + " " + "Roast!"
+    print(greeting)  # Hello Roast!
+
+    # String methods
+    print("hello".upper())  # HELLO
+    print("WORLD".lower())  # world
+    stripped: str = s.strip()
+    print(stripped)  # Hello World
+
+    # find returns index or -1
+    print("Hello World".find("World"))  # 6
+    print("Hello".find("xyz"))  # -1
+
+# Test list operations
+def test_lists():
+    nums: list[int] = [3, 1, 4, 1, 5, 9, 2, 6]
+
+    # Positive indexing
+    print(nums[0])  # 3
+
+    # Negative indexing
+    print(nums[-1])  # 6 (last element)
+    print(nums[-2])  # 2 (second to last)
+    print(nums[-3])  # 9 (third to last)
+
+    # List methods
+    nums.append(10)
+    print(len(nums))  # 9
+
+    popped: int = nums.pop()
+    print(popped)  # 10
+
+    # Loop over list
+    for n in nums:
+        print(n)
+
+# Test dict operations
+def test_dicts():
+    d: dict[str, int] = {"a": 1, "b": 2, "c": 3}
+
+    # Get/set value
+    print(d["a"])  # 1
+    d["d"] = 4
+    print(d["d"])  # 4
+    print(len(d))  # 4
+
+# Run tests
+def main():
+    print("=== String Tests ===")
+    test_strings()
+    print("=== List Tests ===")
+    test_lists()
+    print("=== Dict Tests ===")
+    test_dicts()
+
+main()

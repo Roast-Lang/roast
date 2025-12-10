@@ -1,0 +1,16 @@
+[package]
+name = "roast-common"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Common utilities and types for the Roast compiler"
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+codespan-reporting.workspace = true
+string-interner.workspace = true
+rustc-hash.workspace = true
+indexmap.workspace = true
+

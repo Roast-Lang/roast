@@ -1,0 +1,28 @@
+class Dog:
+    def __init__(self, name: str):
+        self.name = name
+
+    def speak(self) -> str:
+        return "Woof!"
+
+class Cat:
+    def __init__(self, name: str):
+        self.name = name
+
+    def speak(self) -> str:
+        return "Meow!"
+
+def main():
+    print("Testing Dog...")
+    dog = Dog("Rex")
+    msg = dog.speak()
+    print("After dog.speak()")
+    print(msg)
+
+    print("Testing Cat...")
+    cat = Cat("Whiskers")
+    msg2 = cat.speak()
+    print("After cat.speak()")
+    print(msg2)
+
+    print("Multi-class test passed!")

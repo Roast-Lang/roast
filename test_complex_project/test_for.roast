@@ -1,0 +1,26 @@
+# Simple test file for debugging specific features
+
+def test_for_range() -> int:
+    """Test for loop with range."""
+    print("Testing for loop:")
+
+    i: int = 0
+    while i < 5:
+        print(i)
+        i = i + 1
+
+    print("While loop done")
+
+    # Now test for loop
+    print("For loop:")
+    for j in range(5):
+        print(j)
+
+    print("For loop done")
+    return 0
+
+def main() -> int:
+    test_for_range()
+    return 0
+
+main()

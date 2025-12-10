@@ -1,0 +1,5 @@
+# Minimal test
+def main():
+    print("Hello World")
+
+main()

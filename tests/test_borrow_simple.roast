@@ -1,0 +1,16 @@
+# Simple borrow checker test
+
+def test_basic():
+    x = 10
+    y = x  # Copy for integers (Copy type)
+    print(f"x = {x}, y = {y}")
+
+def test_move_string():
+    s = "hello"
+    t = s  # String is moved
+    # Using s here should be error
+    print(f"t = {t}")
+
+test_basic()
+test_move_string()
+print("Basic tests passed!")

@@ -1,0 +1,17 @@
+[package]
+name = "roast-pycompat"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Python compatibility layer for Roast"
+
+[dependencies]
+roast-common.workspace = true
+roast-runtime.workspace = true
+roast-vm.workspace = true
+roast-codegen.workspace = true
+thiserror.workspace = true
+rustc-hash.workspace = true
+walkdir.workspace = true
+

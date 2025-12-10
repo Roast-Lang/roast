@@ -1,0 +1,206 @@
+================================================================================
+                    ROAST - NEXT TASKS ANALYSIS
+================================================================================
+Generated: December 2, 2025
+Previous Session: Fixed Cross-Module Imports (COMPLETED)
+
+================================================================================
+                    SESSION SUMMARY
+================================================================================
+
+✅ COMPLETED THIS SESSION:
+- Implemented cross-module imports (`from module import name`)
+- Added dotted module path support (`from utils.strings import greet`)
+- Added import alias support (`from x import y as z`)
+- Added module registration in VM (`register_module`, `import_from_module`)
+- Type checker now recognizes imported names as `Type::Any`
+- Recursive module loading with circular import prevention
+
+Result: `from x import y` now fully works!
+```python
+# math_utils.roast
+def add(a: int, b: int) -> int:
+    return a + b
+
+# main.roast
+from math_utils import add
+print(add(3, 4))  # Output: 7
+```
+
+✅ PREVIOUSLY COMPLETED:
+- Fixed `is_async` flag propagation in bytecode_modules
+- Added `asyncio_run` builtin function
+- Added `HirExprKind::Await` and `MirRvalue::Await`
+- Fixed `await` type inference to unwrap coroutine types
+- Fixed coroutine frame management (base_frame_count)
+- Fixed MIR Call block management (current_block update)
+- Fixed await parsing (parse_unary_postfix instead of parse_primary)
+
+================================================================================
+                    REMAINING CRITICAL ISSUES (Priority Order)
+================================================================================
+
+[B1] NATIVE COMPILATION BROKEN ⭐⭐⭐⭐⭐
+    Status: 🔴 SCAFFOLDING ONLY - Cannot produce working binaries
+    Location: crates/codegen/src/cranelift.rs
+
+    Problem: Cranelift backend exists but function calls return 0:
+    ```rust
+    // TODO: Actually call the function
+    let result = self.builder.ins().iconst(types::I64, 0);
+    ```
+
+    Tasks:
+    [ ] Implement actual function call emission in Cranelift
+    [ ] Create data section for string constants
+    [ ] Link runtime library (builtins, GC)
+    [ ] Handle object allocation in native code
+
+    Effort: 1-2 weeks
+    Impact: Critical for "Fast like Rust" goal
+
+--------------------------------------------------------------------------------
+
+[B2] DEBUGGER NOT CONNECTED TO VM ⭐⭐⭐⭐
+    Status: 🔴 PROTOCOL ONLY - Cannot debug Roast code
+    Location: crates/debugger/ + crates/vm/src/interpreter.rs
+
+    Problem: DAP protocol is complete but VM doesn't expose step hooks.
+    The debugger infrastructure exists but cannot actually debug code.
+
+    Tasks:
+    [ ] Add `on_step` callback to VM interpreter loop
+    [ ] Expose stack frames to debugger
+    [ ] Wire breakpoint manager to VM execution
+    [ ] Test actual debugging workflow
+
+    Effort: 3-5 days
+    Impact: Essential for developer experience
+
+--------------------------------------------------------------------------------
+
+[B3] CROSS-MODULE IMPORTS ✅ COMPLETED
+    Status: 🟢 WORKING
+    Location: crates/cli/src/commands.rs, crates/vm/src/interpreter.rs
+
+    Implemented:
+    [x] Module loader in VM (register_module, import_from_module)
+    [x] Module resolution logic (search paths, dotted names)
+    [x] Circular import prevention (loaded_modules set)
+    [x] Support `from x import y`, `from x.y import z`, aliases
+
+    Not yet implemented:
+    [ ] `import x` (importing whole module as namespace)
+    [ ] `from x import *` (type checker support)
+    [ ] Standard library module paths
+
+--------------------------------------------------------------------------------
+
+[B4] PYTHON INTEROP NOT WORKING ⭐⭐⭐
+    Status: 🔴 NOT IMPLEMENTED - py: prefix downloads but can't call
+    Location: crates/pycompat/
+
+    Problem: Kitchen can download PyPI packages, but there's no FFI.
+
+    Tasks:
+    [ ] Implement CPython FFI (PyO3 or ctypes)
+    [ ] Add py: module resolution in import system
+    [ ] Zero-copy NumPy array sharing
+    [ ] Type stub generation from Python packages
+
+    Effort: 1-2 weeks
+    Impact: High for Python migration story
+
+================================================================================
+                    RECOMMENDED NEXT TASK
+================================================================================
+
+🎯 RECOMMENDATION: [B3] CROSS-MODULE IMPORTS
+
+Reasoning:
+1. Most impactful for user experience - can't build real programs without it
+2. Reasonable scope (3-5 days)
+3. Foundation for other features (Python interop needs imports)
+4. Async/await is done, this is natural next step
+
+Implementation Plan:
+1. Add ModuleLoader to VM that can find and load .roast files
+2. Implement `import` statement handling in commands.rs
+3. Add module search paths (current dir, stdlib, packages)
+4. Handle `from x import y` syntax
+5. Prevent circular import issues with visited set
+
+Files to Modify:
+- crates/vm/src/interpreter.rs - Add module loading
+- crates/vm/src/lib.rs - Add Module struct
+- crates/cli/src/commands.rs - Wire up import resolution
+- crates/parser/src/parser.rs - Ensure import parsing is correct
+
+================================================================================
+                    QUICK WINS (Can Be Done Anytime)
+================================================================================
+
+[ ] F-string evaluation - Lexer recognizes but not evaluated
+    Location: crates/vm/src/interpreter.rs
+    Effort: 1-2 days
+
+[ ] `@dataclass` code generation - Classified but no __init__/__repr__
+    Location: crates/hir/src/build.rs
+    Effort: 2-3 days
+
+[ ] `for i, x in enumerate(list)` syntax - Tuple unpacking in for
+    Location: crates/hir/src/build.rs
+    Status: COMPLETED in this session!
+
+[ ] Cross-module go-to-definition in LSP
+    Location: crates/lsp/src/analysis.rs
+    Effort: 1-2 days
+
+[ ] Set operations (& |) in type checker
+    Location: crates/typer/src/checker.rs
+    Effort: 0.5 days
+
+================================================================================
+                    TYPE SYSTEM ISSUES TO FIX
+================================================================================
+
+These errors appeared in test files:
+
+1. Tuple type annotation: `point: tuple[int, int]` gives mismatch error
+   - Type variables not resolving correctly
+
+2. F-string return type: `return f"..."` returns None instead of str
+   - F-strings not typed correctly
+
+3. *args/**kwargs: Not recognized in function definitions
+   - Variadic params not implemented
+
+4. Generic List initialization: `results: list[int] = []` fails
+   - Empty list doesn't infer element type
+
+================================================================================
+                    TESTING CHECKLIST
+================================================================================
+
+After each fix, verify:
+[ ] ./target/release/roastc run tests/test_basics.roast
+[ ] ./target/release/roastc run examples/fibonacci.roast
+[ ] ./target/release/roastc run examples/hello.roast
+
+New tests to create:
+[ ] tests/test_imports.roast - Cross-module import tests
+[ ] tests/test_modules/ directory with multiple files
+
+================================================================================
+                    NOTES
+================================================================================
+
+- The async executor is Rust-native, now connected to bytecode via asyncio_run
+- Parser now correctly handles `await f()` (fixed this session)
+- MIR Call expressions now properly update current_block
+- Coroutine frame management uses base_frame_count to avoid stack corruption
+
+Build command: `cargo build --release`
+Test command: `./target/release/roastc run <file.roast>`
+
+================================================================================

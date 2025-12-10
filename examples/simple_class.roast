@@ -1,0 +1,23 @@
+# Simple class test
+
+class Counter:
+    def __init__(self, start: int):
+        self.value = start
+
+    def increment(self):
+        self.value = self.value + 1
+
+    def get_value(self) -> int:
+        return self.value
+
+def main():
+    c = Counter(0)
+    print(f"Initial value: {c.value}")
+    c.increment()
+    print(f"After increment: {c.value}")
+    c.increment()
+    print(f"After second increment: {c.value}")
+    val = c.get_value()
+    print(f"get_value returns: {val}")
+
+main()

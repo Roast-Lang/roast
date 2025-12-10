@@ -1,0 +1,41 @@
+[package]
+name = "roast-codegen"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Code generation for Roast (bytecode and native)"
+
+[dependencies]
+roast-common.workspace = true
+roast-mir.workspace = true
+roast-typer.workspace = true
+thiserror.workspace = true
+indexmap.workspace = true
+rustc-hash.workspace = true
+
+# Cranelift for native code generation
+cranelift-codegen = { version = "0.111", optional = true }
+cranelift-frontend = { version = "0.111", optional = true }
+cranelift-module = { version = "0.111", optional = true }
+cranelift-object = { version = "0.111", optional = true }
+cranelift-jit = { version = "0.111", optional = true }
+cranelift-native = { version = "0.111", optional = true }
+target-lexicon = { version = "0.12", optional = true }
+object = { version = "0.36", optional = true }
+gimli = { version = "0.31", optional = true }
+
+[features]
+default = ["cranelift"]
+cranelift = [
+    "dep:cranelift-codegen",
+    "dep:cranelift-frontend",
+    "dep:cranelift-module",
+    "dep:cranelift-object",
+    "dep:cranelift-jit",
+    "dep:cranelift-native",
+    "dep:target-lexicon",
+    "dep:object",
+    "dep:gimli",
+]
+

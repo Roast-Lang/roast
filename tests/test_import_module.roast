@@ -1,0 +1,21 @@
+# Test import x (whole module as namespace)
+import test_modules.mathlib as mathlib
+
+print("=== Test: import module as namespace ===")
+
+# Access functions via module namespace
+result = mathlib.double(5)
+print("mathlib.double(5) =", result)  # Should print 10
+
+result2 = mathlib.square(4)
+print("mathlib.square(4) =", result2)  # Should print 16
+
+result3 = mathlib.add(10, 20)
+print("mathlib.add(10, 20) =", result3)  # Should print 30
+
+# Access class via module namespace
+calc = mathlib.Calculator()
+res = calc.compute(100, 200)
+print("Calculator.compute(100, 200) =", res)  # Should print 300
+
+print("Test: import x PASSED!")

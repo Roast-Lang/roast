@@ -1,0 +1,3 @@
+@test
+def test_failure():
+    assert 1 == 2, "This should fail"

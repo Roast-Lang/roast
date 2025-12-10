@@ -1,0 +1,19 @@
+[package]
+name = "roast-stdlib"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Standard library for Roast"
+
+[dependencies]
+roast-common.workspace = true
+roast-runtime.workspace = true
+hostname = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
+

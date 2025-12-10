@@ -1,0 +1,181 @@
+# Type system tests
+
+# Test basic type annotations
+def test_basic_types():
+    x: int = 42
+    y: float = 3.14
+    s: str = "hello"
+    b: bool = True
+    n: None = None
+    
+    assert type(x) == int
+    assert type(y) == float
+    assert type(s) == str
+    assert type(b) == bool
+
+# Test generic types
+def first[T](items: list[T]) -> T:
+    return items[0]
+
+def test_generics():
+    nums: list[int] = [1, 2, 3]
+    strs: list[str] = ["a", "b", "c"]
+    
+    assert first(nums) == 1
+    assert first(strs) == "a"
+
+# Test Optional type
+def find_item(items: list[str], target: str) -> str | None:
+    for item in items:
+        if item == target:
+            return item
+    return None
+
+def test_optional():
+    items: list[str] = ["apple", "banana", "cherry"]
+    
+    result = find_item(items, "banana")
+    assert result == "banana"
+    
+    result = find_item(items, "grape")
+    assert result is None
+
+# Test Union types
+def process_value(value: int | str) -> str:
+    if isinstance(value, int):
+        return f"Integer: {value}"
+    else:
+        return f"String: {value}"
+
+def test_union():
+    assert process_value(42) == "Integer: 42"
+    assert process_value("hello") == "String: hello"
+
+# Test typed dictionary
+class Config:
+    host: str
+    port: int
+    debug: bool = False
+    
+    def __init__(self, host: str, port: int, debug: bool = False) -> None:
+        self.host = host
+        self.port = port
+        self.debug = debug
+
+def test_typed_class():
+    cfg = Config("localhost", 8080, debug=True)
+    assert cfg.host == "localhost"
+    assert cfg.port == 8080
+    assert cfg.debug == True
+
+# Test callable types
+def apply_operation(x: int, op: callable[[int], int]) -> int:
+    return op(x)
+
+def test_callable():
+    double = lambda x: x * 2
+    square = lambda x: x * x
+    
+    assert apply_operation(5, double) == 10
+    assert apply_operation(5, square) == 25
+
+# Test tuple types
+def get_stats(nums: list[int]) -> tuple[int, int, float]:
+    return (min(nums), max(nums), sum(nums) / len(nums))
+
+def test_tuple_type():
+    nums: list[int] = [1, 2, 3, 4, 5]
+    min_val, max_val, avg = get_stats(nums)
+    
+    assert min_val == 1
+    assert max_val == 5
+    assert avg == 3.0
+
+# Test literal types
+def get_status(code: int) -> str:  # Would be Literal["ok", "error", "pending"]
+    if code == 0:
+        return "ok"
+    elif code < 0:
+        return "error"
+    else:
+        return "pending"
+
+def test_literal():
+    assert get_status(0) == "ok"
+    assert get_status(-1) == "error"
+    assert get_status(1) == "pending"
+
+# Test type aliases
+IntList = list[int]
+StringDict = dict[str, str]
+
+def sum_intlist(nums: IntList) -> int:
+    return sum(nums)
+
+def test_type_alias():
+    nums: IntList = [1, 2, 3, 4, 5]
+    assert sum_intlist(nums) == 15
+    
+    headers: StringDict = {"Content-Type": "application/json"}
+    assert headers["Content-Type"] == "application/json"
+
+# Test constrained generics
+def max_item[T: (int, float)](items: list[T]) -> T:
+    result = items[0]
+    for item in items[1:]:
+        if item > result:
+            result = item
+    return result
+
+def test_constrained_generics():
+    ints: list[int] = [3, 1, 4, 1, 5]
+    floats: list[float] = [3.14, 2.71, 1.41]
+    
+    assert max_item(ints) == 5
+    assert max_item(floats) == 3.14
+
+# Test protocol/structural typing
+class Sizeable:
+    def size(self) -> int:
+        raise NotImplementedError
+
+class File:
+    def __init__(self, size: int) -> None:
+        self._size = size
+    
+    def size(self) -> int:
+        return self._size
+
+class Folder:
+    def __init__(self, files: list[File]) -> None:
+        self.files = files
+    
+    def size(self) -> int:
+        return sum(f.size() for f in self.files)
+
+def get_total_size(items: list[Sizeable]) -> int:
+    return sum(item.size() for item in items)
+
+def test_protocol():
+    file1 = File(100)
+    file2 = File(200)
+    folder = Folder([file1, file2])
+    
+    assert file1.size() == 100
+    assert folder.size() == 300
+
+# Entry point
+if __name__ == "__main__":
+    test_basic_types()
+    test_generics()
+    test_optional()
+    test_union()
+    test_typed_class()
+    test_callable()
+    test_tuple_type()
+    test_literal()
+    test_type_alias()
+    test_constrained_generics()
+    test_protocol()
+    print("All type tests passed!")
+

@@ -1,0 +1,21 @@
+[package]
+name = "roast-parser"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Lexer and parser for the Roast language"
+
+[dependencies]
+roast-common.workspace = true
+roast-ast.workspace = true
+logos.workspace = true
+thiserror.workspace = true
+codespan-reporting.workspace = true
+unicode-xid.workspace = true
+num-bigint.workspace = true
+string-interner.workspace = true
+
+[dev-dependencies]
+insta = "1.34"
+

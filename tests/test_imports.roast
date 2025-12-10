@@ -1,0 +1,25 @@
+# Test cross-module imports
+from test_modules.helpers import double, triple, Counter
+
+def test_import_functions():
+    result = double(5)
+    assert result == 10, "double(5) should be 10"
+
+    result2 = triple(5)
+    assert result2 == 15, "triple(5) should be 15"
+
+    print("✓ test_import_functions passed")
+
+def test_import_class():
+    c = Counter(0)
+    assert c.increment() == 1, "first increment should be 1"
+    assert c.increment() == 2, "second increment should be 2"
+    print("✓ test_import_class passed")
+
+def main():
+    print("Running import tests...")
+    test_import_functions()
+    test_import_class()
+    print("All import tests passed!")
+
+main()

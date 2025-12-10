@@ -1,0 +1,57 @@
+# Test LLVM compilation features
+
+def test_arithmetic() -> int:
+    a: int = 10
+    b: int = 3
+    c: int = a + b  # 13
+    d: int = a - b  # 7
+    e: int = a * b  # 30
+    f: int = a // b # 3
+    g: int = a % b  # 1
+    return c + d + e + f + g  # 54
+
+def test_comparison() -> int:
+    result: int = 0
+    if 5 > 3:
+        result = result + 1
+    if 3 < 5:
+        result = result + 1
+    if 5 >= 5:
+        result = result + 1
+    if 5 <= 5:
+        result = result + 1
+    if 5 == 5:
+        result = result + 1
+    if 5 != 3:
+        result = result + 1
+    return result  # 6
+
+def test_recursion(n: int) -> int:
+    if n <= 0:
+        return 0
+    return n + test_recursion(n - 1)
+
+def test_strings() -> int:
+    s: str = "Hello"
+    print(s)
+    print("World")
+    return 0
+
+def main() -> int:
+    print("Testing arithmetic...")
+    r1: int = test_arithmetic()
+    print(r1)
+
+    print("Testing comparisons...")
+    r2: int = test_comparison()
+    print(r2)
+
+    print("Testing recursion...")
+    r3: int = test_recursion(10)
+    print(r3)
+
+    print("Testing strings...")
+    test_strings()
+
+    print("All tests passed!")
+    return 0

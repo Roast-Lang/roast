@@ -1,0 +1,92 @@
+[package]
+name = "roast-kitchen"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Project and environment manager for Roast (like Cargo + uv)"
+
+[[bin]]
+name = "kitchen"
+path = "src/main.rs"
+
+[dependencies]
+roast-common.workspace = true
+roast-parser.workspace = true
+roast-typer.workspace = true
+roast-codegen = { workspace = true, features = ["cranelift"] }
+roast-vm.workspace = true
+roast-optimizer.workspace = true
+
+# Glob for workspace patterns
+glob = "0.3"
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+colored = "2.0"
+
+# Diagnostics
+codespan-reporting.workspace = true
+
+# Async runtime
+tokio = { version = "1.34", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# HTTP for registry
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+
+# Crypto for checksums
+sha2 = "0.10"
+hex = "0.4"
+
+# Compression
+flate2 = "1.0"
+tar = "0.4"
+zip = "0.6"
+
+# Semver
+semver = "1.0"
+
+# File system
+walkdir = "2.4"
+dirs = "5.0"
+tempfile = "3.8"
+fs_extra = "1.3"
+
+# Error handling
+thiserror.workspace = true
+anyhow = "1.0"
+
+# Progress
+indicatif = "0.17"
+console = "0.15"
+
+# Parallel
+rayon = "1.8"
+
+# URL parsing
+url = "2.5"
+
+# UUID for lockfiles
+uuid = { version = "1.6", features = ["v4"] }
+
+# Time
+chrono = "0.4"
+
+# GPU detection
+which = "5.0"
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.27", features = ["fs"] }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+
+[features]
+default = ["cranelift"]
+cranelift = []
+

@@ -1,0 +1,24 @@
+[package]
+name = "roast-package-manager"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Package manager for Roast (roastpkg)"
+
+[dependencies]
+roast-common.workspace = true
+serde.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+walkdir.workspace = true
+indexmap.workspace = true
+petgraph.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+clap.workspace = true
+
+[[bin]]
+name = "roastpkg"
+path = "src/main.rs"
+

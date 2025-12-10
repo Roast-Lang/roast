@@ -1,0 +1,63 @@
+# Test dict and set mutation
+def test_dict_mutation():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(f"Initial: {d}")
+
+    # Set new key
+    d["c"] = 3
+    print(f"After d['c'] = 3: {d}")
+    assert d["c"] == 3
+
+    # Update existing key
+    d["a"] = 100
+    print(f"After d['a'] = 100: {d}")
+    assert d["a"] == 100
+
+    # Clear
+    d.clear()
+    print(f"After clear: {d}")
+    assert len(d) == 0
+
+    print("test_dict_mutation passed!")
+
+def test_set_mutation():
+    s: set[int] = {1, 2, 3}
+    print(f"Initial: {s}")
+
+    # Add
+    s.add(4)
+    print(f"After add(4): {s}")
+    assert 4 in s
+
+    # Remove
+    s.remove(1)
+    print(f"After remove(1): {s}")
+    assert 1 not in s
+
+    # Discard (doesn't raise if not present)
+    s.discard(100)
+    print(f"After discard(100): {s}")
+
+    print("test_set_mutation passed!")
+
+def test_list_mutation():
+    l: list[int] = [1, 2, 3]
+    print(f"Initial: {l}")
+
+    # Set item
+    l[0] = 100
+    print(f"After l[0] = 100: {l}")
+    assert l[0] == 100
+
+    # Append
+    l.append(4)
+    print(f"After append(4): {l}")
+    assert l[-1] == 4
+
+    print("test_list_mutation passed!")
+
+if __name__ == "__main__":
+    test_dict_mutation()
+    test_set_mutation()
+    test_list_mutation()
+    print("All mutation tests passed!")

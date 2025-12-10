@@ -1,0 +1,109 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/common",
+    "crates/ast",
+    "crates/parser",
+    "crates/typer",
+    "crates/hir",
+    "crates/mir",
+    "crates/borrowck",
+    "crates/optimizer",
+    "crates/codegen",
+    "crates/llvm_backend",
+    "crates/vm",
+    "crates/runtime",
+    "crates/pycompat",
+    "crates/lsp",
+    "crates/package_manager",
+    "crates/cli",
+    "crates/stdlib",
+    "crates/kitchen",
+    "crates/gpu",
+    "crates/debugger",
+    "crates/jit",
+]
+
+# Optional: enable LLVM backend (requires LLVM 17 installed)
+# To enable: cargo build --features llvm
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Roast Language Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/roast-lang/roast"
+description = "The Roast programming language - Python syntax with Rust performance"
+keywords = ["compiler", "language", "python", "rust", "llvm"]
+categories = ["compilers", "development-tools"]
+
+[workspace.dependencies]
+# Internal crates
+roast-common = { path = "crates/common" }
+roast-ast = { path = "crates/ast" }
+roast-parser = { path = "crates/parser" }
+roast-typer = { path = "crates/typer" }
+roast-hir = { path = "crates/hir" }
+roast-mir = { path = "crates/mir" }
+roast-optimizer = { path = "crates/optimizer" }
+roast-llvm-backend = { path = "crates/llvm_backend" }
+roast-runtime = { path = "crates/runtime" }
+roast-lsp = { path = "crates/lsp" }
+roast-package-manager = { path = "crates/package_manager" }
+roast-stdlib = { path = "crates/stdlib" }
+roast-borrowck = { path = "crates/borrowck" }
+roast-codegen = { path = "crates/codegen" }
+roast-vm = { path = "crates/vm" }
+roast-pycompat = { path = "crates/pycompat" }
+roast-kitchen = { path = "crates/kitchen" }
+roast-gpu = { path = "crates/gpu" }
+roast-jit = { path = "crates/jit" }
+
+# External dependencies
+thiserror = "1.0"
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+clap = { version = "4.4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+colored = "2.0"
+logos = "0.14"
+codespan-reporting = "0.11"
+indexmap = { version = "2.0", features = ["serde"] }
+rustc-hash = "1.1"
+smallvec = "1.11"
+bumpalo = { version = "3.14", features = ["collections"] }
+parking_lot = "0.12"
+dashmap = "5.5"
+rayon = "1.8"
+# inkwell = { version = "0.4", features = ["llvm17-0"] }  # Optional, for LLVM backend
+tower-lsp = "0.20"
+tokio = { version = "1.34", features = ["full"] }
+async-trait = "0.1"
+walkdir = "2.4"
+petgraph = "0.6"
+id-arena = "2.2"
+string-interner = "0.17"
+unicode-xid = "0.2"
+num-bigint = "0.4"
+num-traits = "0.2"
+half = "2.3"
+bitflags = "2.4"
+glob = "0.3"
+chrono = "0.4"
+libloading = "0.8"
+bytemuck = { version = "1.14", features = ["derive"] }
+which = "5.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+debug = false
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true

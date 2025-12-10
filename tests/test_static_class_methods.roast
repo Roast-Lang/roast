@@ -1,0 +1,37 @@
+# Test method types (simplified version)
+# Full @staticmethod/@classmethod require type checker updates
+
+class Counter:
+    def __init__(self):
+        self.count = 0
+
+    def increment(self):
+        self.count = self.count + 1
+
+    def decrement(self):
+        self.count = self.count - 1
+
+    def get_count(self) -> int:
+        return self.count
+
+    def add(self, value: int):
+        self.count = self.count + value
+
+def main():
+    c = Counter()
+
+    c.increment()
+    c.increment()
+    c.increment()
+    v1 = c.get_count()
+    print(v1)  # Should print 3
+
+    c.decrement()
+    v2 = c.get_count()
+    print(v2)  # Should print 2
+
+    c.add(10)
+    v3 = c.get_count()
+    print(v3)  # Should print 12
+
+    print("Method test passed!")

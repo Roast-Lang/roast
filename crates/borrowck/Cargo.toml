@@ -1,0 +1,20 @@
+[package]
+name = "roast-borrowck"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Borrow checker and ownership analysis for Roast"
+
+[dependencies]
+roast-common.workspace = true
+roast-mir.workspace = true
+roast-typer.workspace = true
+roast-hir.workspace = true
+thiserror.workspace = true
+indexmap.workspace = true
+rustc-hash.workspace = true
+petgraph.workspace = true
+smallvec.workspace = true
+bitflags.workspace = true
+

@@ -1,0 +1,11 @@
+# Fibonacci test for native compilation
+
+def fib(n: int) -> int:
+    if n <= 1:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+def main() -> int:
+    result: int = fib(30)
+    print(result)
+    return 0

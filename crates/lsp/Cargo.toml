@@ -1,0 +1,24 @@
+[package]
+name = "roast-lsp"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Language Server Protocol implementation for Roast"
+
+[dependencies]
+roast-common.workspace = true
+roast-ast.workspace = true
+roast-parser.workspace = true
+roast-typer.workspace = true
+tower-lsp.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+serde_json.workspace = true
+dashmap.workspace = true
+tracing.workspace = true
+
+[[bin]]
+name = "roast-lsp"
+path = "src/main.rs"
+

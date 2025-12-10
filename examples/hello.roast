@@ -1,0 +1,6 @@
+# Hello World in Roast
+# This is the simplest Roast program
+
+def main() -> int:
+    print("Hello, World!")
+    return 0

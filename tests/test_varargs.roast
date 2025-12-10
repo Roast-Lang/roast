@@ -1,0 +1,35 @@
+# Test basic varargs type checking passes
+
+# Test function with *args (no use of args in body for now)
+def sum_simple(*args) -> int:
+    """Simple vararg function"""
+    return 42
+
+# Test function with **kwargs (no use of kwargs in body for now)
+def print_simple(**kwargs):
+    """Simple kwarg function"""
+    print("Called with kwargs")
+
+# Test function with regular args and *args
+def greet_simple(greeting: str, *names):
+    """Simple mixed function"""
+    print(f"Greeting: {greeting}")
+
+def main():
+    print("=" * 50)
+    print("Testing *args and **kwargs (type checking)")
+    print("=" * 50)
+
+    print("\n--- Test 1: *args ---")
+    result = sum_simple(1, 2, 3, 4, 5)
+    print(f"sum_simple(1, 2, 3, 4, 5) = {result}")
+
+    print("\n--- Test 2: **kwargs ---")
+    print_simple(name="Alice", age=30, city="NYC")
+
+    print("\n--- Test 3: Mixed args ---")
+    greet_simple("Hello", "Alice", "Bob")
+
+    print("\n" + "=" * 50)
+    print("All *args/**kwargs type check tests passed!")
+    print("=" * 50)

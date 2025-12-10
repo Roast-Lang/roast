@@ -1,0 +1,41 @@
+# Test basic try/except
+def test_basic_except():
+    try:
+        x = 1
+        print("in try")
+        raise ValueError("test error")
+        print("after raise - should not see this")
+    except ValueError as e:
+        print("caught ValueError")
+    print("after try/except")
+
+# Test try without raise
+def test_no_exception():
+    try:
+        x = 10
+        y = 20
+        print(f"sum = {x + y}")
+    except ValueError:
+        print("should not see this")
+    print("try completed normally")
+
+# Test nested try
+def test_nested_try():
+    try:
+        print("outer try")
+        try:
+            print("inner try")
+            raise TypeError("inner error")
+        except TypeError:
+            print("caught inner TypeError")
+        print("after inner try")
+    except ValueError:
+        print("caught outer ValueError - should not see")
+    print("nested test done")
+
+# Run tests
+test_basic_except()
+print("---")
+test_no_exception()
+print("---")
+test_nested_try()

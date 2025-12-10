@@ -1,0 +1,179 @@
+================================================================================
+                    ROAST ASYNC FUTURE TASKS
+================================================================================
+
+These are async features that need to be implemented in the future.
+Core async/await is working - these are advanced features.
+
+--------------------------------------------------------------------------------
+1. ASYNC FOR LOOPS (async generators)
+--------------------------------------------------------------------------------
+Priority: Medium
+Complexity: High
+
+What's needed:
+- Async generator protocol (__anext__, __aiter__)
+- Parser support for `async for item in async_iterable:`
+- Async yield support in generators
+- AsyncIterator type in type system
+
+Example that should work:
+```
+async def async_range(n: int):
+    for i in range(n):
+        await asyncio_sleep(0.1)
+        yield i
+
+async def main():
+    async for num in async_range(5):
+        print(num)
+```
+
+Implementation steps:
+1. Add AsyncIterator/AsyncGenerator types to typer
+2. Add __anext__ protocol handling in VM
+3. Parse `async for` as special AST node
+4. Lower to HIR/MIR with async iteration opcodes
+5. Add bytecode ops: ASYNC_FOR_ITER, GET_ANEXT
+
+--------------------------------------------------------------------------------
+2. ASYNC WITH CONTEXT MANAGERS
+--------------------------------------------------------------------------------
+Priority: Medium
+Complexity: Medium
+
+What's needed:
+- Async context manager protocol (__aenter__, __aexit__)
+- Parser support for `async with expr as var:`
+- Proper await on __aenter__ and __aexit__ calls
+
+Example that should work:
+```
+class AsyncFile:
+    async def __aenter__(self):
+        print("Opening file")
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        print("Closing file")
+        return False
+
+async def main():
+    async with AsyncFile() as f:
+        print("Using file")
+```
+
+Implementation steps:
+1. Add __aenter__, __aexit__ to known dunder methods
+2. Parse `async with` as special AST node
+3. Generate code that awaits both __aenter__ and __aexit__
+4. Handle exception propagation to __aexit__
+5. Add AsyncContextManager type to typer
+
+--------------------------------------------------------------------------------
+3. ASYNCIO MODULE
+--------------------------------------------------------------------------------
+Priority: High
+Complexity: Medium-High
+
+Need to implement a standard asyncio module with common functions.
+
+3.1 asyncio.sleep(seconds: float) -> None
+-----------------------------------------
+- Pauses coroutine for specified seconds
+- Most basic async primitive
+- Uses runtime timer + event loop integration
+
+Implementation:
+- Add SLEEP opcode or builtin
+- Integrate with work-stealing executor's timer queue
+- Return control to executor, resume after timeout
+
+3.2 asyncio.gather(*coroutines) -> list
+----------------------------------------
+- Run multiple coroutines concurrently
+- Return list of results when all complete
+- Handle exceptions from any coroutine
+
+Implementation:
+- Create wrapper coroutine that spawns all tasks
+- Use executor to run tasks concurrently
+- Collect results in order
+- Consider: fail-fast vs collect-all semantics
+
+3.3 asyncio.create_task(coro) -> Task
+--------------------------------------
+- Schedule coroutine for concurrent execution
+- Return Task object to await later
+- Background execution without blocking
+
+Implementation:
+- Task wrapper type
+- Register with executor for concurrent running
+- await on Task waits for completion
+
+3.4 asyncio.wait_for(coro, timeout) -> result
+----------------------------------------------
+- Run coroutine with timeout
+- Raise TimeoutError if exceeded
+
+3.5 asyncio.Queue
+-----------------
+- Async-safe queue for producer/consumer patterns
+- async put(), async get() methods
+
+--------------------------------------------------------------------------------
+4. TASK CANCELLATION
+--------------------------------------------------------------------------------
+Priority: Low
+Complexity: High
+
+- CancelledError exception
+- task.cancel() method
+- Proper cleanup on cancellation
+- Shielding from cancellation
+
+--------------------------------------------------------------------------------
+5. ASYNC COMPREHENSIONS
+--------------------------------------------------------------------------------
+Priority: Low
+Complexity: Medium
+
+Example:
+```
+results = [x async for x in async_generator()]
+results = {x: y async for x, y in async_items()}
+```
+
+Requires async for loops to work first.
+
+--------------------------------------------------------------------------------
+IMPLEMENTATION ORDER (Recommended)
+--------------------------------------------------------------------------------
+
+Phase 1: asyncio basics
+  1. asyncio.sleep() - most useful, enables realistic async code
+  2. asyncio.gather() - enables concurrent execution
+
+Phase 2: async protocols
+  3. async with - common pattern for resources
+  4. async for - needed for streams/iteration
+
+Phase 3: advanced
+  5. asyncio.create_task()
+  6. asyncio.Queue
+  7. Task cancellation
+  8. Async comprehensions
+
+--------------------------------------------------------------------------------
+NOTES
+--------------------------------------------------------------------------------
+
+- Current executor: Work-stealing in crates/runtime/src/executor.rs
+- Coroutine handling: crates/vm/src/interpreter.rs run_coroutine()
+- Type system: crates/typer/src/types.rs has Coroutine type
+- Parser: crates/parser/src/parser.rs handles async def, await
+
+The foundation is solid - these features build on existing infrastructure.
+
+================================================================================

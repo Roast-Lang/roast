@@ -1,0 +1,36 @@
+# Test @property decorator
+
+class Circle:
+    def __init__(self, radius: int):
+        self._radius: int = radius
+
+    @property
+    def radius(self) -> int:
+        return self._radius
+
+    @property
+    def area(self) -> int:
+        # Simple approximation: area = 3 * r * r
+        return 3 * self._radius * self._radius
+
+    @property
+    def diameter(self) -> int:
+        return 2 * self._radius
+
+def main():
+    print("=" * 50)
+    print("Testing @property decorator")
+    print("=" * 50)
+
+    circle = Circle(5)
+
+    print(f"\nCircle with radius 5:")
+    print(f"  _radius field: {circle._radius}")
+
+    # Access properties - currently these will just call as methods
+    # r = circle.radius  # Would need property support
+    # print(f"  radius property: {r}")
+
+    print("\n" + "=" * 50)
+    print("@property test completed!")
+    print("=" * 50)

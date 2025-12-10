@@ -1,0 +1,20 @@
+# Simple integer class test
+
+class Counter:
+    def __init__(self, start: int):
+        self._count: int = start
+
+    def get_count(self) -> int:
+        return self._count
+
+    def increment(self):
+        self._count = self._count + 1
+
+def main():
+    c = Counter(10)
+    print(f"Count: {c._count}")
+    print(f"Via method: {c.get_count()}")
+    c.increment()
+    print(f"After increment: {c.get_count()}")
+
+main()

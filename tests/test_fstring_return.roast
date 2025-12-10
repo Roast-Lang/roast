@@ -1,0 +1,19 @@
+# Test f-string as return value
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+def format_number(n: int) -> str:
+    return f"Number: {n}"
+
+# Test the functions
+msg1 = greet("World")
+print(msg1)
+
+msg2 = format_number(42)
+print(msg2)
+
+# Multiple expressions
+def describe(name: str, age: int) -> str:
+    return f"{name} is {age} years old"
+
+print(describe("Alice", 30))

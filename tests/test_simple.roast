@@ -1,0 +1,11 @@
+# Simple test
+def test_simple():
+    x: int = 42
+    print(f"x = {x}")
+
+def main():
+    print("Starting...")
+    test_simple()
+    print("Done!")
+
+main()

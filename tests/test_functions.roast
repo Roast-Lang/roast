@@ -1,0 +1,184 @@
+# Function and control flow tests
+
+# Test basic function
+def add(a: int, b: int) -> int:
+    return a + b
+
+def test_basic_function():
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+    assert add(0, 0) == 0
+
+# Test default arguments
+def greet(name: str, greeting: str = "Hello") -> str:
+    return f"{greeting}, {name}!"
+
+def test_default_args():
+    assert greet("World") == "Hello, World!"
+    assert greet("World", "Hi") == "Hi, World!"
+
+# Test keyword arguments
+def create_person(name: str, age: int, city: str = "Unknown") -> dict[str, any]:
+    return {"name": name, "age": age, "city": city}
+
+def test_kwargs():
+    p = create_person("Alice", 30)
+    assert p["name"] == "Alice"
+    assert p["age"] == 30
+    assert p["city"] == "Unknown"
+    
+    p2 = create_person(name="Bob", age=25, city="NYC")
+    assert p2["city"] == "NYC"
+
+# Test *args
+def sum_all(*args: int) -> int:
+    total: int = 0
+    for n in args:
+        total += n
+    return total
+
+def test_varargs():
+    assert sum_all() == 0
+    assert sum_all(1) == 1
+    assert sum_all(1, 2, 3) == 6
+    assert sum_all(1, 2, 3, 4, 5) == 15
+
+# Test **kwargs
+def build_config(**kwargs: any) -> dict[str, any]:
+    return kwargs
+
+def test_keyword_varargs():
+    cfg = build_config(debug=True, port=8080)
+    assert cfg["debug"] == True
+    assert cfg["port"] == 8080
+
+# Test recursion
+def factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+def test_recursion():
+    assert factorial(0) == 1
+    assert factorial(1) == 1
+    assert factorial(5) == 120
+    assert factorial(10) == 3628800
+
+# Test nested functions
+def outer(x: int) -> int:
+    def inner(y: int) -> int:
+        return y * 2
+    return inner(x) + 1
+
+def test_nested_functions():
+    assert outer(5) == 11
+    assert outer(0) == 1
+
+# Test closures
+def make_counter() -> callable:
+    count: int = 0
+    def counter() -> int:
+        nonlocal count
+        count += 1
+        return count
+    return counter
+
+def test_closures():
+    c = make_counter()
+    assert c() == 1
+    assert c() == 2
+    assert c() == 3
+    
+    c2 = make_counter()
+    assert c2() == 1  # Separate counter
+
+# Test lambda functions
+def test_lambdas():
+    double = lambda x: x * 2
+    assert double(5) == 10
+    
+    add_fn = lambda a, b: a + b
+    assert add_fn(3, 4) == 7
+    
+    # Lambda in higher-order functions
+    nums: list[int] = [1, 2, 3, 4, 5]
+    squared = list(map(lambda x: x ** 2, nums))
+    assert squared == [1, 4, 9, 16, 25]
+
+# Test if/elif/else
+def classify_number(n: int) -> str:
+    if n < 0:
+        return "negative"
+    elif n == 0:
+        return "zero"
+    else:
+        return "positive"
+
+def test_conditionals():
+    assert classify_number(-5) == "negative"
+    assert classify_number(0) == "zero"
+    assert classify_number(5) == "positive"
+
+# Test for loops
+def test_for_loops():
+    total: int = 0
+    for i in range(5):
+        total += i
+    assert total == 10
+    
+    # For with enumerate
+    items: list[str] = ["a", "b", "c"]
+    result: list[tuple[int, str]] = []
+    for idx, item in enumerate(items):
+        result.append((idx, item))
+    assert result == [(0, "a"), (1, "b"), (2, "c")]
+    
+    # For with break/continue
+    found: int = -1
+    for i in range(10):
+        if i == 5:
+            found = i
+            break
+    assert found == 5
+
+# Test while loops
+def test_while_loops():
+    count: int = 0
+    while count < 5:
+        count += 1
+    assert count == 5
+    
+    # While with break
+    n: int = 0
+    while True:
+        n += 1
+        if n >= 10:
+            break
+    assert n == 10
+
+# Test ternary expression
+def test_ternary():
+    x: int = 5
+    result: str = "big" if x > 3 else "small"
+    assert result == "big"
+    
+    result = "even" if x % 2 == 0 else "odd"
+    assert result == "odd"
+
+# Entry point
+if __name__ == "__main__":
+    test_basic_function()
+    test_default_args()
+    test_kwargs()
+    test_varargs()
+    test_keyword_varargs()
+    test_recursion()
+    test_nested_functions()
+    test_closures()
+    test_lambdas()
+    test_conditionals()
+    test_for_loops()
+    test_while_loops()
+    test_ternary()
+    print("All function tests passed!")
+

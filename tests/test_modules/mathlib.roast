@@ -1,0 +1,20 @@
+# Simple math utilities module
+
+PI = 3.14159
+
+def double(x: int) -> int:
+    return x * 2
+
+def square(x: int) -> int:
+    return x * x
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+class Calculator:
+    def __init__(self):
+        self.last_result = 0
+
+    def compute(self, a: int, b: int) -> int:
+        self.last_result = a + b
+        return self.last_result

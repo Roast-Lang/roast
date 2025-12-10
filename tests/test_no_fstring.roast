@@ -1,0 +1,12 @@
+# Test without f-strings
+def test_simple():
+    x: int = 42
+    print("x = ")
+    print(x)
+
+def main():
+    print("Starting...")
+    test_simple()
+    print("Done!")
+
+main()

@@ -1,0 +1,17 @@
+[package]
+name = "roast-mir"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mid-level Intermediate Representation for Roast"
+
+[dependencies]
+roast-common.workspace = true
+roast-hir.workspace = true
+roast-typer.workspace = true
+indexmap.workspace = true
+id-arena.workspace = true
+petgraph.workspace = true
+smallvec.workspace = true
+

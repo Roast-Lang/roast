@@ -1,0 +1,17 @@
+[package]
+name = "roast-llvm-backend"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "LLVM code generation backend for Roast"
+
+[dependencies]
+roast-common.workspace = true
+roast-mir.workspace = true
+roast-typer.workspace = true
+thiserror.workspace = true
+indexmap.workspace = true
+
+[features]
+default = []

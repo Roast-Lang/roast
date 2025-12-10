@@ -1,0 +1,6 @@
+# Minimal f-string test
+def main():
+    x: int = 42
+    print(f"x = {x}")
+
+main()

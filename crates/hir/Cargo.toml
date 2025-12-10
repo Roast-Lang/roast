@@ -1,0 +1,16 @@
+[package]
+name = "roast-hir"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "High-level Intermediate Representation for Roast"
+
+[dependencies]
+roast-common.workspace = true
+roast-ast.workspace = true
+roast-typer.workspace = true
+indexmap.workspace = true
+id-arena.workspace = true
+rustc-hash.workspace = true
+

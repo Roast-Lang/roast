@@ -1,0 +1,219 @@
+# Roast Lifetime Examples
+# =======================
+#
+# Lifetimes ensure references remain valid for their entire scope.
+# Roast uses Rust-style lifetime annotations when needed.
+
+from typing import Optional, ref, mut_ref
+
+# =============================================================================
+# 1. Basic Lifetime Annotations
+# =============================================================================
+
+# Most of the time, lifetimes are inferred automatically.
+# When ambiguous, explicit annotations are needed.
+
+def get_first<'a>(items: ref[list[int], 'a]) -> Optional[ref[int, 'a]]:
+    """The returned reference lives as long as the input."""
+    if len(*items) > 0:
+        return &(*items)[0]
+    return None
+
+# =============================================================================
+# 2. Multiple Lifetimes
+# =============================================================================
+
+def select_data<'a, 'b>(
+    primary: ref[str, 'a],
+    fallback: ref[str, 'b],
+    use_primary: bool
+) -> ref[str, 'a] | ref[str, 'b]:
+    """Returns either primary or fallback reference."""
+    if use_primary:
+        return primary
+    else:
+        return fallback
+
+# =============================================================================
+# 3. Lifetime Bounds
+# =============================================================================
+
+# 'a: 'b means 'a outlives 'b (or 'a is at least as long as 'b)
+
+def with_bound<'a, 'b: 'a>(
+    outer: ref[str, 'a],
+    inner: ref[str, 'b]
+) -> ref[str, 'a]:
+    """'b must outlive 'a, so returning outer is safe."""
+    return outer
+
+# =============================================================================
+# 4. Struct with Lifetimes
+# =============================================================================
+
+class Container<'a, T>:
+    """A container holding a reference."""
+    data: ref[T, 'a]
+    
+    def __init__(self, data: ref[T, 'a]):
+        self.data = data
+    
+    def get(&self) -> ref[T, 'a]:
+        return self.data
+
+def struct_lifetime_example():
+    value: int = 42
+    container = Container(&value)
+    print(*container.get())  # 42
+
+# =============================================================================
+# 5. Static Lifetime
+# =============================================================================
+
+# 'static means the reference is valid for the entire program duration
+
+GLOBAL_MESSAGE: str = "Hello, Roast!"
+
+def get_static_ref() -> ref[str, 'static]:
+    """Returns a reference with static lifetime."""
+    return &GLOBAL_MESSAGE
+
+def print_static(msg: ref[str, 'static]):
+    """Requires a static reference."""
+    print(*msg)
+
+# =============================================================================
+# 6. Lifetime Elision
+# =============================================================================
+
+# In many cases, lifetimes can be elided (omitted).
+# The compiler infers them based on simple rules.
+
+# Rule 1: Each elided lifetime gets a unique lifetime parameter
+def single_ref(x: ref[int]) -> ref[int]:
+    # Expanded: def single_ref<'a>(x: ref[int, 'a]) -> ref[int, 'a]
+    return x
+
+# Rule 2: If there's exactly one input lifetime, it's used for all outputs
+def first_word(s: ref[str]) -> ref[str]:
+    # Expanded: def first_word<'a>(s: ref[str, 'a]) -> ref[str, 'a]
+    for i, c in enumerate(*s):
+        if c == ' ':
+            return &(*s)[:i]
+    return s
+
+# Rule 3: If one of the inputs is &self or &mut self, that lifetime is used
+class Parser:
+    source: str
+    
+    def get_source(&self) -> ref[str]:
+        # Expanded: def get_source<'a>(&'a self) -> ref[str, 'a]
+        return &self.source
+
+# =============================================================================
+# 7. Lifetime in Generic Bounds
+# =============================================================================
+
+from typing import Protocol
+
+class Displayable(Protocol):
+    def display(&self) -> str: ...
+
+def print_all<'a, T: Displayable>(items: ref[list[T], 'a]):
+    """Print all items that implement Displayable."""
+    for item in *items:
+        print(item.display())
+
+# =============================================================================
+# 8. Higher-Ranked Trait Bounds (HRTB)
+# =============================================================================
+
+# for<'a> means "for any lifetime 'a"
+
+from typing import Callable
+
+def apply_to_str(f: Callable[[ref[str]], str], s: str) -> str:
+    """Apply a function that works with any string reference."""
+    # f must work for any lifetime, expressed as:
+    # f: for<'a> Callable[[ref[str, 'a]], str]
+    return f(&s)
+
+# =============================================================================
+# 9. Common Lifetime Patterns
+# =============================================================================
+
+# Iterator pattern
+class ListIter<'a, T>:
+    data: ref[list[T], 'a]
+    index: int
+    
+    def __iter__(&self) -> ListIter['a, T]:
+        return ListIter(self.data, 0)
+    
+    def __next__(&mut self) -> Optional[ref[T, 'a]]:
+        if self.index < len(*self.data):
+            result = &(*self.data)[self.index]
+            self.index += 1
+            return result
+        return None
+
+# Split borrow pattern
+def split_at_mut<'a, T>(
+    data: mut_ref[list[T], 'a],
+    mid: int
+) -> (mut_ref[list[T], 'a], mut_ref[list[T], 'a]):
+    """Split a mutable slice into two non-overlapping parts."""
+    # This is safe because the two halves don't overlap
+    left = &mut (*data)[:mid]
+    right = &mut (*data)[mid:]
+    return (left, right)
+
+# =============================================================================
+# 10. Avoiding Lifetime Issues
+# =============================================================================
+
+# Problem: Returning references to local data
+def bad_example():
+    # data: list[int] = [1, 2, 3]
+    # return &data  # Error: returns reference to local
+    pass
+
+# Solution 1: Return owned data
+def return_owned() -> list[int]:
+    data: list[int] = [1, 2, 3]
+    return data  # Ownership transferred
+
+# Solution 2: Take reference as parameter
+def return_element<'a>(data: ref[list[int], 'a], i: int) -> ref[int, 'a]:
+    return &(*data)[i]  # OK: lifetime tied to input
+
+# Solution 3: Use smart pointers for shared ownership
+from roast.rc import Rc
+
+def return_shared() -> Rc[list[int]]:
+    data = Rc([1, 2, 3])
+    return data  # Reference-counted, lives as long as needed
+
+# =============================================================================
+# Main
+# =============================================================================
+
+def main():
+    print("=== Lifetime Examples ===\n")
+    
+    # Static reference
+    static_ref = get_static_ref()
+    print_static(static_ref)
+    
+    # Container with lifetime
+    struct_lifetime_example()
+    
+    # Elision examples
+    numbers = [1, 2, 3, 4, 5]
+    first = get_first(&numbers)
+    if first is not None:
+        print(f"First: {*first}")
+
+if __name__ == "__main__":
+    main()
+

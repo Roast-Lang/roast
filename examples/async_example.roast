@@ -1,0 +1,76 @@
+# Async/await examples in Roast
+# Demonstrates asynchronous programming
+
+from typing import List
+import asyncio
+
+# Async function
+async def fetch_data(url: str) -> str:
+    """Simulate fetching data from a URL."""
+    print(f"Fetching {url}...")
+    await asyncio.sleep(1.0)  # Simulate network delay
+    return f"Data from {url}"
+
+# Async generator
+async def async_counter(n: int) -> int:
+    """Async generator that yields numbers with delays."""
+    for i: int in range(n):
+        await asyncio.sleep(0.1)
+        yield i
+
+# Parallel execution
+async def fetch_all(urls: List[str]) -> List[str]:
+    """Fetch multiple URLs in parallel."""
+    tasks = [fetch_data(url) for url: str in urls]
+    results: List[str] = await asyncio.gather(*tasks)
+    return results
+
+# Async context manager
+class AsyncResource:
+    name: str
+    
+    def __init__(self, name: str) -> None:
+        self.name = name
+    
+    async def __aenter__(self) -> "AsyncResource":
+        print(f"Acquiring {self.name}...")
+        await asyncio.sleep(0.1)
+        return self
+    
+    async def __aexit__(self, *args) -> None:
+        print(f"Releasing {self.name}...")
+        await asyncio.sleep(0.1)
+    
+    async def do_work(self) -> str:
+        await asyncio.sleep(0.2)
+        return f"Work done with {self.name}"
+
+# Main async function
+async def main() -> None:
+    # Single async call
+    data: str = await fetch_data("https://example.com")
+    print(f"Received: {data}")
+    
+    # Parallel fetching
+    urls: List[str] = [
+        "https://api.example.com/1",
+        "https://api.example.com/2",
+        "https://api.example.com/3",
+    ]
+    results: List[str] = await fetch_all(urls)
+    for result: str in results:
+        print(f"Got: {result}")
+    
+    # Async iteration
+    print("Counting asynchronously:")
+    async for i: int in async_counter(5):
+        print(f"  {i}")
+    
+    # Async context manager
+    async with AsyncResource("database") as resource:
+        result: str = await resource.do_work()
+        print(result)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+

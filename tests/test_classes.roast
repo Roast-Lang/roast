@@ -1,0 +1,131 @@
+# Class and OOP tests - basic features that work
+
+# Basic class
+class Point:
+    def __init__(self, x: int, y: int):
+        self.x: int = x
+        self.y: int = y
+
+    def translate(self, dx: int, dy: int):
+        self.x = self.x + dx
+        self.y = self.y + dy
+
+    def distance_squared(self) -> int:
+        return self.x * self.x + self.y * self.y
+
+def test_basic_class():
+    p = Point(3, 4)
+    print("Testing Point class...")
+    print(p.x)  # 3
+    print(p.y)  # 4
+    print(p.distance_squared())  # 25
+
+    p.translate(1, 1)
+    print(p.x)  # 4
+    print(p.y)  # 5
+    print("Basic class test passed!")
+
+# Inheritance
+class Animal:
+    def __init__(self, name: str):
+        self.name: str = name
+
+    def speak(self) -> str:
+        return "..."
+
+    def describe(self) -> str:
+        return self.name
+
+class Dog(Animal):
+    def __init__(self, name: str, breed: str):
+        super().__init__(name)
+        self.breed: str = breed
+
+    def speak(self) -> str:
+        return "Woof!"
+
+class Cat(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    def speak(self) -> str:
+        return "Meow!"
+
+def test_inheritance():
+    print("Testing inheritance...")
+    dog = Dog("Buddy", "Golden Retriever")
+    print(dog.name)      # Buddy
+    print(dog.breed)     # Golden Retriever
+    print(dog.speak())   # Woof!
+
+    cat = Cat("Whiskers")
+    print(cat.name)      # Whiskers
+    print(cat.speak())   # Meow!
+    print("Inheritance test passed!")
+
+# Encapsulation with private attributes
+class BankAccount:
+    def __init__(self, initial_balance: int):
+        self.__balance: int = initial_balance
+
+    def deposit(self, amount: int):
+        self.__balance = self.__balance + amount
+
+    def get_balance(self) -> int:
+        return self.__balance
+
+def test_encapsulation():
+    print("Testing encapsulation...")
+    account = BankAccount(100)
+    print(account.get_balance())  # 100
+    account.deposit(50)
+    print(account.get_balance())  # 150
+    print("Encapsulation test passed!")
+
+# Multiple classes
+class Rectangle:
+    def __init__(self, width: int, height: int):
+        self.width: int = width
+        self.height: int = height
+
+    def area(self) -> int:
+        return self.width * self.height
+
+    def perimeter(self) -> int:
+        return 2 * (self.width + self.height)
+
+class Circle:
+    def __init__(self, radius: int):
+        self.radius: int = radius
+
+    def area(self) -> int:
+        # Approximate pi as 3
+        return 3 * self.radius * self.radius
+
+def test_multiple_classes():
+    print("Testing multiple classes...")
+    rect = Rectangle(4, 5)
+    print(rect.area())       # 20
+    print(rect.perimeter())  # 18
+
+    circle = Circle(3)
+    print(circle.area())     # 27
+    print("Multiple classes test passed!")
+
+def main():
+    print("=" * 50)
+    print("Running OOP Tests")
+    print("=" * 50)
+
+    test_basic_class()
+    print("")
+    test_inheritance()
+    print("")
+    test_encapsulation()
+    print("")
+    test_multiple_classes()
+
+    print("")
+    print("=" * 50)
+    print("All OOP tests passed!")
+    print("=" * 50)

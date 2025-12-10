@@ -1,0 +1,215 @@
+# Automatic Ownership Inference Tests
+#
+# This demonstrates how Roast works like normal Python syntax,
+# but the backend automatically understands ownership semantics.
+# NO OWNERSHIP ANNOTATIONS NEEDED - just write normal Python-style code!
+
+# =========================================
+# Copy Types - automatically detected
+# =========================================
+
+def test_copy_int():
+    """Integers are Copy - can be used multiple times"""
+    x = 42
+    y = x  # Copy happens automatically
+    z = x  # Still works - x wasn't moved
+    print(f"Copy int: x={x}, y={y}, z={z}")
+    assert x == 42
+    assert y == 42
+    assert z == 42
+
+def test_copy_float():
+    """Floats are Copy"""
+    pi = 3.14159
+    radius = pi
+    diameter = pi * 2
+    print(f"Copy float: pi={pi}, r={radius}")
+    assert pi == 3.14159
+
+def test_copy_bool():
+    """Booleans are Copy"""
+    flag = True
+    a = flag
+    b = flag
+    c = flag
+    print(f"Copy bool: flag={flag}, a={a}, b={b}, c={c}")
+    assert flag == True
+
+# =========================================
+# Move Types - automatically detected
+# =========================================
+
+def test_move_list():
+    """Lists are Move types - ownership transfers"""
+    items = [1, 2, 3, 4, 5]
+    new_items = items  # Ownership moves to new_items
+    # items is no longer valid here
+    print(f"Move list: new_items={new_items}")
+    assert new_items == [1, 2, 3, 4, 5]
+
+def test_move_string():
+    """Strings are Move types in Roast"""
+    greeting = "Hello, World!"
+    message = greeting  # Ownership moves
+    # greeting is no longer valid
+    print(f"Move string: message={message}")
+    assert message == "Hello, World!"
+
+# =========================================
+# Classes - automatic ownership
+# =========================================
+
+class Point:
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    def get_x(self) -> int:
+        """Method call borrows self automatically"""
+        return self.x
+
+    def get_y(self) -> int:
+        return self.y
+
+def test_class_ownership():
+    """Class instances are Move types"""
+    p = Point(3, 4)
+
+    # Method calls borrow, don't move
+    x = p.get_x()
+    y = p.get_y()
+    print(f"Coords: x={x}, y={y}")
+
+    # Can still use p after method calls
+    px = p.x
+    py = p.y
+    print(f"Point: ({px}, {py})")
+
+    assert x == 3
+    assert y == 4
+
+class Counter:
+    def __init__(self, start: int):
+        self.value = start
+
+    def increment(self) -> int:
+        self.value = self.value + 1
+        return self.value
+
+    def get(self) -> int:
+        return self.value
+
+def test_class_methods():
+    """Multiple method calls work - methods borrow self"""
+    c = Counter(0)
+
+    # Each method call borrows, doesn't consume
+    c.increment()
+    c.increment()
+    c.increment()
+
+    result = c.get()
+    print(f"Counter value: {result}")
+    assert result == 3
+
+# =========================================
+# Functions with Copy types
+# =========================================
+
+def double(x: int) -> int:
+    """Takes a copy of x (int is Copy)"""
+    return x * 2
+
+def test_function_copy():
+    """Passing copy types doesn't consume them"""
+    value = 21
+    a = double(value)
+    b = double(value)  # value still valid - int is Copy
+    c = double(value)
+    print(f"value={value}, a={a}, b={b}, c={c}")
+    assert value == 21
+    assert a == 42
+    assert b == 42
+    assert c == 42
+
+# =========================================
+# Field access borrows
+# =========================================
+
+class Person:
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+def test_field_access():
+    """Accessing fields borrows the object, doesn't move it"""
+    person = Person("Bob", 25)
+
+    # Each field access borrows person
+    n = person.name
+    a = person.age
+
+    # person is still valid
+    print(f"Person: name={person.name}, age={person.age}")
+    print(f"Extracted: n={n}, a={a}")
+
+    assert person.name == "Bob"
+    assert person.age == 25
+
+# =========================================
+# Nested structures
+# =========================================
+
+class Container:
+    def __init__(self, value: int):
+        self.value = value
+        self.count = 0
+
+    def get_value(self) -> int:
+        return self.value
+
+    def increment_count(self) -> None:
+        self.count = self.count + 1
+
+def test_nested():
+    """Nested structures work with automatic ownership"""
+    c = Container(42)
+
+    # Method calls borrow
+    c.increment_count()
+    c.increment_count()
+
+    v = c.get_value()
+    print(f"Value: {v}, Count: {c.count}")
+    assert c.count == 2
+    assert v == 42
+
+# =========================================
+# Main - run all tests
+# =========================================
+
+if __name__ == "__main__":
+    print("=== Copy Types ===")
+    test_copy_int()
+    test_copy_float()
+    test_copy_bool()
+
+    print("\n=== Move Types ===")
+    test_move_list()
+    test_move_string()
+
+    print("\n=== Class Ownership ===")
+    test_class_ownership()
+    test_class_methods()
+
+    print("\n=== Function Semantics ===")
+    test_function_copy()
+
+    print("\n=== Field Access ===")
+    test_field_access()
+
+    print("\n=== Nested Structures ===")
+    test_nested()
+
+    print("\n✓ All automatic ownership tests passed!")
+    print("No ownership annotations needed - Roast infers ownership automatically!")

@@ -1,0 +1,16 @@
+[package]
+name = "roast-ast"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Abstract Syntax Tree definitions for the Roast language"
+
+[dependencies]
+roast-common.workspace = true
+serde.workspace = true
+indexmap.workspace = true
+bitflags.workspace = true
+num-bigint.workspace = true
+string-interner.workspace = true
+

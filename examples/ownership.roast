@@ -1,0 +1,95 @@
+# Ownership and borrowing examples in Roast
+# Demonstrates Roast's optional ownership system
+
+from typing import List
+
+# Roast supports optional ownership annotations for performance
+# These are compile-time only and enable zero-copy optimizations
+
+# Basic ownership - value is moved
+def consume(mut data: List[int]) -> int:
+    """Consumes ownership of the list and returns its sum."""
+    total: int = 0
+    for x: int in data:
+        total += x
+    return total
+
+# Borrowing - read-only reference
+def read_only(borrow data: List[int]) -> int:
+    """Borrows the list immutably to compute length."""
+    return len(data)
+
+# Mutable borrowing - exclusive mutable reference
+def modify(mut borrow data: List[int]) -> None:
+    """Borrows the list mutably to modify it in place."""
+    for i: int in range(len(data)):
+        data[i] *= 2
+
+# Reference types for explicit borrowing
+def process(ref data: List[int]) -> List[int]:
+    """Takes a reference and returns a new list."""
+    result: List[int] = []
+    for x: int in data:
+        result.append(x * 2)
+    return result
+
+# Immutable by default
+class ImmutablePoint:
+    """An immutable point class."""
+    x: imm float
+    y: imm float
+    
+    def __init__(self, x: float, y: float) -> None:
+        self.x = x
+        self.y = y
+    
+    def moved_by(self, dx: float, dy: float) -> "ImmutablePoint":
+        """Returns a new point moved by the given amounts."""
+        return ImmutablePoint(self.x + dx, self.y + dy)
+
+# Mutable class
+class MutablePoint:
+    """A mutable point class."""
+    x: mut float
+    y: mut float
+    
+    def __init__(self, x: float, y: float) -> None:
+        self.x = x
+        self.y = y
+    
+    def move_by(mut self, dx: float, dy: float) -> None:
+        """Moves this point by the given amounts."""
+        self.x += dx
+        self.y += dy
+
+def main() -> None:
+    # Ownership examples
+    numbers: List[int] = [1, 2, 3, 4, 5]
+    
+    # Borrowing - original list remains usable
+    length: int = read_only(numbers)
+    print(f"Length: {length}")
+    print(f"Numbers still available: {numbers}")
+    
+    # Mutable borrowing - modifies in place
+    modify(numbers)
+    print(f"After doubling: {numbers}")
+    
+    # Moving - transfers ownership
+    total: int = consume(numbers)
+    print(f"Sum: {total}")
+    # numbers is no longer usable here in strict mode
+    
+    # Immutable vs mutable classes
+    imm_point: ImmutablePoint = ImmutablePoint(1.0, 2.0)
+    new_point: ImmutablePoint = imm_point.moved_by(3.0, 4.0)
+    print(f"Original: ({imm_point.x}, {imm_point.y})")
+    print(f"New: ({new_point.x}, {new_point.y})")
+    
+    mut_point: MutablePoint = MutablePoint(1.0, 2.0)
+    mut_point.move_by(3.0, 4.0)
+    print(f"Moved point: ({mut_point.x}, {mut_point.y})")
+
+if __name__ == "__main__":
+    main()
+

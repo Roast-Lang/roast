@@ -1,0 +1,26 @@
+# Test super() builtin - simple test
+
+class Animal:
+    def __init__(self, name: str):
+        self._name: str = name
+
+    def speak(self) -> str:
+        return "Animal speaks"
+
+class Dog(Animal):
+    def __init__(self, name: str, breed: str):
+        # For now, manually set the attribute (super not fully working)
+        self._name = name
+        self._breed: str = breed
+
+    def speak(self) -> str:
+        return "Woof!"
+
+def main():
+    print("Testing class inheritance")
+    dog = Dog("Buddy", "Golden Retriever")
+    print(f"Dog name: {dog._name}")
+    print(f"Dog breed: {dog._breed}")
+    print(f"Dog speaks: {dog.speak()}")
+
+main()

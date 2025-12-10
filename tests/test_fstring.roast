@@ -1,0 +1,13 @@
+# Test f-strings
+name = "World"
+greeting = f"Hello, {name}!"
+print(greeting)
+
+x = 42
+msg = f"The answer is {x}"
+print(msg)
+
+a = 10
+b = 20
+result = f"{a} + {b} = {a + b}"
+print(result)

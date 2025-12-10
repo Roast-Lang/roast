@@ -1,0 +1,287 @@
+# Roast Borrowing and Ownership Examples
+# ======================================
+#
+# This file demonstrates Roast's opt-in ownership system, which provides
+# Rust-like memory safety guarantees while maintaining Python ergonomics.
+
+from typing import List, Optional, ref, mut_ref
+
+# =============================================================================
+# 1. Basic Ownership - Owned Values
+# =============================================================================
+
+def basic_ownership():
+    # In Roast, values are owned by default
+    name: str = "Alice"
+    
+    # Moving a value transfers ownership
+    other_name = name  # 'name' is moved to 'other_name'
+    
+    # This would be an error in strict mode:
+    # print(name)  # Error: use of moved value 'name'
+    
+    # Copy types (int, float, bool) are copied, not moved
+    x: int = 42
+    y = x  # 'x' is copied
+    print(x)  # OK: 'x' is still valid
+
+# =============================================================================
+# 2. References and Borrowing
+# =============================================================================
+
+def references_demo():
+    # Create a list
+    numbers: List[int] = [1, 2, 3, 4, 5]
+    
+    # Immutable (shared) reference: &numbers
+    # Multiple shared references are allowed
+    sum_result = calculate_sum(&numbers)
+    average = calculate_average(&numbers)
+    
+    print(f"Sum: {sum_result}, Average: {average}")
+    
+    # Mutable reference: &mut numbers
+    # Only one mutable reference at a time
+    append_value(&mut numbers, 6)
+    print(numbers)  # [1, 2, 3, 4, 5, 6]
+
+def calculate_sum(nums: ref[List[int]]) -> int:
+    """Takes a shared reference, cannot modify."""
+    total = 0
+    for n in *nums:  # Dereference to iterate
+        total += n
+    return total
+
+def calculate_average(nums: ref[List[int]]) -> float:
+    """Another shared reference is fine."""
+    return calculate_sum(nums) / len(*nums)
+
+def append_value(nums: mut_ref[List[int]], value: int):
+    """Takes a mutable reference, can modify."""
+    (*nums).append(value)
+
+# =============================================================================
+# 3. Borrowing Rules
+# =============================================================================
+
+def borrowing_rules():
+    data: List[int] = [1, 2, 3]
+    
+    # Rule 1: Multiple shared references are OK
+    r1: ref[List[int]] = &data
+    r2: ref[List[int]] = &data
+    print(*r1, *r2)  # Both valid
+    
+    # Rule 2: Only ONE mutable reference at a time
+    mut_ref: mut_ref[List[int]] = &mut data
+    # This would be an error:
+    # other_mut = &mut data  # Error: cannot borrow as mutable more than once
+    
+    # Rule 3: Cannot have mutable and immutable refs simultaneously
+    # This is automatically enforced by the borrow checker
+
+# =============================================================================
+# 4. Lifetimes
+# =============================================================================
+
+# Lifetimes ensure references don't outlive their data
+def lifetime_example():
+    outer_ref: Optional[ref[int]] = None
+    
+    if True:
+        value: int = 42
+        # This would be an error:
+        # outer_ref = &value  # Error: 'value' doesn't live long enough
+    
+    # Correct version: value lives long enough
+    value: int = 42
+    outer_ref = &value
+    print(*outer_ref)  # OK
+
+# Function with explicit lifetime annotations
+def longest<'a>(x: ref[str, 'a], y: ref[str, 'a]) -> ref[str, 'a]:
+    """Return the longer string, with correct lifetime."""
+    if len(*x) > len(*y):
+        return x
+    else:
+        return y
+
+# =============================================================================
+# 5. Struct with Ownership
+# =============================================================================
+
+class Person:
+    name: str  # Owned string
+    age: int   # Copy type
+    
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+    
+    def get_name(&self) -> ref[str]:
+        """Returns a reference to the name."""
+        return &self.name
+    
+    def set_name(&mut self, new_name: str):
+        """Takes mutable self reference to modify."""
+        self.name = new_name
+
+def struct_ownership():
+    person = Person("Bob", 30)
+    
+    # Shared borrow for reading
+    name_ref = person.get_name()
+    print(*name_ref)
+    
+    # Mutable borrow for modification
+    person.set_name("Robert")
+    print(person.name)
+
+# =============================================================================
+# 6. Interior Mutability (Cell pattern)
+# =============================================================================
+
+from roast.cell import Cell, RefCell
+
+def interior_mutability():
+    # Cell for Copy types
+    counter: Cell[int] = Cell(0)
+    
+    # Multiple shared references, but can still mutate
+    def increment(c: ref[Cell[int]]):
+        c.set(c.get() + 1)
+    
+    r1 = &counter
+    increment(r1)
+    increment(r1)
+    print(counter.get())  # 2
+    
+    # RefCell for non-Copy types
+    names: RefCell[List[str]] = RefCell(["Alice", "Bob"])
+    
+    # Borrow at runtime
+    with names.borrow_mut() as lst:
+        lst.append("Charlie")
+
+# =============================================================================
+# 7. Smart Pointers
+# =============================================================================
+
+from roast.rc import Rc, Weak
+from roast.arc import Arc
+
+def smart_pointers():
+    # Reference-counted pointer (single-threaded)
+    shared_data: Rc[List[int]] = Rc([1, 2, 3])
+    
+    # Clone bumps reference count
+    another_ref = Rc.clone(&shared_data)
+    print(Rc.strong_count(&shared_data))  # 2
+    
+    # Atomic reference counting (thread-safe)
+    thread_safe: Arc[str] = Arc("shared string")
+    
+    # Weak references (don't prevent deallocation)
+    weak: Weak[List[int]] = Rc.downgrade(&shared_data)
+
+# =============================================================================
+# 8. Move Semantics in Functions
+# =============================================================================
+
+def takes_ownership(s: str):
+    """This function takes ownership of the string."""
+    print(s)
+    # 's' is dropped at end of function
+
+def borrows(s: ref[str]):
+    """This function borrows the string."""
+    print(*s)
+    # 's' goes out of scope, but data is not dropped
+
+def move_semantics():
+    s1: str = "hello"
+    
+    borrows(&s1)  # Borrow: s1 still valid
+    print(s1)     # OK
+    
+    takes_ownership(s1)  # Move: s1 is gone
+    # print(s1)  # Error: use of moved value
+
+# =============================================================================
+# 9. Pattern Matching with Ownership
+# =============================================================================
+
+from typing import Union
+
+def pattern_matching():
+    value: Union[int, str, List[int]] = [1, 2, 3]
+    
+    match value:
+        case int(n):
+            print(f"Got integer: {n}")  # n is copied
+        case str(s):
+            print(f"Got string: {s}")   # s is moved
+        case list(lst):
+            print(f"Got list: {lst}")   # lst is moved
+    
+    # For references, use 'ref' keyword
+    value2: List[int] = [1, 2, 3]
+    match &value2:
+        case ref list(lst):
+            print(f"Borrowed list: {lst}")  # lst is a reference
+    print(value2)  # Still valid
+
+# =============================================================================
+# 10. Drop and RAII
+# =============================================================================
+
+class Resource:
+    """A resource that needs cleanup."""
+    
+    def __init__(self, name: str):
+        self.name = name
+        print(f"Acquired: {self.name}")
+    
+    def __drop__(self):
+        """Called when the resource is dropped."""
+        print(f"Released: {self.name}")
+    
+    def use_resource(&self):
+        print(f"Using: {self.name}")
+
+def raii_example():
+    {
+        resource = Resource("Database Connection")
+        resource.use_resource()
+        # resource is dropped here, __drop__ is called
+    }
+    print("After block")
+
+# =============================================================================
+# Main
+# =============================================================================
+
+def main():
+    print("=== Roast Ownership Examples ===\n")
+    
+    print("1. Basic Ownership")
+    basic_ownership()
+    
+    print("\n2. References")
+    references_demo()
+    
+    print("\n3. Borrowing Rules")
+    borrowing_rules()
+    
+    print("\n4. Struct Ownership")
+    struct_ownership()
+    
+    print("\n5. Move Semantics")
+    move_semantics()
+    
+    print("\n6. RAII")
+    raii_example()
+
+if __name__ == "__main__":
+    main()
+

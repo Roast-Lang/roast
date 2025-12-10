@@ -1,0 +1,26 @@
+[package]
+name = "roast-vm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Virtual machine for executing Roast bytecode"
+
+[dependencies]
+roast-common.workspace = true
+roast-codegen.workspace = true
+roast-runtime.workspace = true
+thiserror.workspace = true
+rustc-hash.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+
+# Optional JIT support
+roast-jit = { path = "../jit", optional = true }
+
+[features]
+default = []
+jit = ["roast-jit"]
+
+[dev-dependencies]
+

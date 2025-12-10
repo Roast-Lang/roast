@@ -1,0 +1,17 @@
+# Test attribute access directly
+
+class Box:
+    def __init__(self, val: int):
+        self.val = val
+
+    def get(self) -> int:
+        return self.val
+
+def main():
+    box = Box(42)
+    x = box.val
+    print(x)
+    y = box.get()
+    print(y)
+
+main()

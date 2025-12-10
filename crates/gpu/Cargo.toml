@@ -1,0 +1,63 @@
+[package]
+name = "roast-gpu"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "GPU compute backend for Roast (CUDA, OpenCL, Metal)"
+
+[features]
+default = ["cuda", "opencl"]
+cuda = []
+opencl = []
+metal = ["dep:metal", "dep:objc", "dep:block"]
+vulkan = []
+
+[dependencies]
+roast-common.workspace = true
+roast-runtime.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+
+# Collections
+rustc-hash.workspace = true
+
+# Parallel
+rayon.workspace = true
+
+# Numeric
+num-traits.workspace = true
+half = "2.3"
+
+# Memory
+bytemuck = { version = "1.14", features = ["derive"] }
+
+# Dynamic library loading
+libloading = "0.8"
+
+# GPU detection (from kitchen)
+which = "5.0"
+
+# Logging
+tracing.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+metal = { version = "0.28", optional = true }
+objc = { version = "0.2", optional = true }
+block = { version = "0.1", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["libloaderapi"] }
+
+# [dev-dependencies]
+# criterion = "0.5"
+
+# [[bench]]
+# name = "gpu_bench"
+# harness = false
+

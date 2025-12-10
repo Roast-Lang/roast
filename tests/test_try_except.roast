@@ -1,0 +1,28 @@
+# Test try/except basics
+# NOTE: Full raise/except with control transfer needs setjmp/longjmp
+
+def test_simple_try():
+    x: int = 0
+    try:
+        x = 10
+        print(f"In try: x = {x}")
+    except:
+        x = -1
+        print(f"In except: x = {x}")
+    print(f"After try/except: x = {x}")
+
+def test_no_exception():
+    result: int = 0
+    try:
+        result = 42
+    except:
+        result = -1
+    print(f"Result (should be 42): {result}")
+
+def main():
+    print("Testing try/except...")
+    test_simple_try()
+    test_no_exception()
+    print("Done!")
+
+main()

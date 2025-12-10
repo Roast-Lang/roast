@@ -1,0 +1,61 @@
+# Test basic class functionality
+
+# Test 1: Simple class with __init__ and methods
+class Point:
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    def translate(self, dx: int, dy: int):
+        self.x = self.x + dx
+        self.y = self.y + dy
+
+    def distance_from_origin(self) -> int:
+        # Using simplified calculation (no sqrt)
+        return self.x * self.x + self.y * self.y
+
+# Test 2: Multiple instances
+class BankAccount:
+    def __init__(self, balance: int):
+        self.balance = balance
+
+    def deposit(self, amount: int):
+        self.balance = self.balance + amount
+
+    def withdraw(self, amount: int):
+        self.balance = self.balance - amount
+
+    def get_balance(self) -> int:
+        return self.balance
+
+def main():
+    p = Point(3, 4)
+    px = p.x
+    py = p.y
+    print(px)
+    print(py)
+
+    p.translate(2, 1)
+    px2 = p.x
+    py2 = p.y
+    print(px2)
+    print(py2)
+
+    dist_squared = p.distance_from_origin()
+    print(dist_squared)
+
+    print("Test 1: Point class - PASSED")
+
+    acc1 = BankAccount(100)
+    acc2 = BankAccount(50)
+
+    acc1.deposit(50)
+    acc2.withdraw(20)
+
+    b1 = acc1.get_balance()
+    b2 = acc2.get_balance()
+    print(b1)
+    print(b2)
+
+    print("Test 2: Multiple instances - PASSED")
+    print("All class tests passed!")

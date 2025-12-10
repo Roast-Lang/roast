@@ -1,0 +1,19 @@
+# Test basic move semantics
+
+def test_copy_int():
+    """Integers are Copy - can use after assignment"""
+    x = 42
+    y = x
+    z = x  # Should work - int is Copy
+    print(f"Copy test: x={x}, y={y}, z={z}")
+
+def test_move_list():
+    """Lists are NOT Copy - moved on assignment"""
+    x = [1, 2, 3]
+    y = x  # x is moved here
+    print(f"Move test: y={y}")
+    # print(x)  # ERROR: use after move - uncomment to see error
+
+test_copy_int()
+test_move_list()
+print("All tests passed!")

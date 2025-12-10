@@ -1,0 +1,961 @@
+================================================================================
+                    ROAST LANGUAGE - TASK TRACKER
+================================================================================
+Last Updated: December 10, 2025
+Goal: Rich like Python, Fast like Rust
+
+📊 CURRENT STATUS SUMMARY:
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ PYTHON RICHNESS: 75% (Syntax: 85%, Stdlib: 70%, Semantics: 80%)        │
+   │ RUST SPEED:      30% (VM: working, JIT: partial, Native: broken)       │
+   │ TOOLING:         60% (CLI: good, LSP: partial, Debugger: protocol only)│
+   └─────────────────────────────────────────────────────────────────────────┘
+
+   🔴 CRITICAL BLOCKERS:
+   1. REPL doesn't execute code (shows "execution not yet implemented")
+   2. Native compilation broken (LLVM segfaults, Cranelift incomplete)
+   3. Python interop not working (can download packages, cannot call them)
+   4. GC has no cycle detection (circular refs leak memory forever)
+   5. Debugger protocol exists but not connected to VM
+
+================================================================================
+                    🧪 TEST RESULTS (December 10, 2025)
+================================================================================
+
+✅ PASSING TESTS (12):
+   test_simple, test_minimal, test_print, test_llvm_fib, test_classes,
+   test_collections, test_oop_simple, test_simple_method, test_point,
+   test_try_except, test_static_class_methods, test_varargs
+
+❌ FAILING TESTS (10):
+   ┌──────────────────────────┬─────────────────────────────────────────────┐
+   │ Test                     │ Error                                       │
+   ├──────────────────────────┼─────────────────────────────────────────────┤
+   │ test_fstring             │ LLVM: undefined @roast_fn_95                │
+   │ test_inheritance         │ LLVM: undefined @roast_fn_100               │
+   │ test_exception_handling  │ LLVM: undefined @roast_fn_96                │
+   │ test_property            │ LLVM: undefined @roast_fn_96                │
+   │ test_super               │ LLVM: undefined function reference          │
+   │ test_counter             │ LLVM: undefined function reference          │
+   │ test_async               │ Parser: `asyncio.sleep` dotted syntax fails │
+   │ test_basics              │ Type: tuple[int,int] inference broken       │
+   │ test_types               │ Undefined function references               │
+   │ test_import_module       │ Parser: `module.submodule` import fails     │
+   │ test_functions           │ Compilation hangs/timeout (infinite loop?)  │
+   └──────────────────────────┴─────────────────────────────────────────────┘
+
+🔴 ROOT CAUSES IDENTIFIED:
+   1. LLVM Backend: Function symbols not emitted for f-strings, properties,
+      certain inheritance patterns - missing @roast_fn_XX definitions
+   2. Parser: Dotted module imports `import a.b` not supported
+   3. Parser: Dotted attribute access in types `asyncio.Lock` fails  
+   4. Type System: *args varargs not recognized in call site validation
+   5. Type System: tuple[T, T] type annotation confused with function type
+   6. Compiler: Infinite loop on complex files (test_functions hangs)
+
+================================================================================
+                    🔴 CRITICAL BLOCKING ISSUES
+================================================================================
+
+[B1] ASYNC/AWAIT CANNOT EXECUTE
+    Status: 🔴 BROKEN - Syntax parses but code cannot run
+    Priority: ★★★★★
+    
+    Problem: async/await syntax is parsed and type-checked, but VM has no
+             Await opcode. The async executor is Rust-native only.
+    
+    [ ] Add OpCode::Await to VM (crates/vm/src/interpreter.rs)
+    [ ] Implement coroutine/generator protocol
+    [ ] Bridge async executor with bytecode interpreter
+    [ ] Support `async for`, `async with`
+    
+[B2] NATIVE COMPILATION BROKEN
+    Status: 🔴 SCAFFOLDING ONLY - Cannot produce working binaries
+    Priority: ★★★★★
+    
+    Problem: Cranelift backend exists but has "TODO: Actually call the function"
+             comments. Function calls return 0 instead of calling.
+    
+    [ ] Implement function call emission in Cranelift (crates/codegen/src/cranelift.rs)
+    [ ] Create data section for string constants
+    [ ] Link runtime library (builtins, GC)
+    [ ] Handle object allocation in native code
+
+[B3] DEBUGGER NOT CONNECTED TO VM
+    Status: 🔴 PROTOCOL ONLY - Cannot debug Roast code
+    Priority: ★★★★☆
+    
+    Problem: DAP protocol is complete but VM doesn't expose step hooks or frames.
+    
+    [ ] Add on_step callback to VM interpreter loop
+    [ ] Expose stack frames to debugger
+    [ ] Wire breakpoint manager to VM execution
+    [ ] Test actual debugging workflow
+
+[B4] PYTHON INTEROP NOT WORKING
+    Status: 🔴 NOT IMPLEMENTED - py: prefix doesn't work
+    Priority: ★★★★☆
+    
+    Problem: Kitchen can download PyPI packages, but there's no FFI to call them.
+    
+    [ ] Implement CPython FFI (PyO3 or ctypes)
+    [ ] Add py: module resolution in import system
+    [ ] Zero-copy NumPy array sharing
+    [ ] Type stub generation from Python packages
+
+[B5] LLVM BACKEND MISSING FUNCTION SYMBOLS
+    Status: 🔴 BROKEN - Many tests fail with undefined @roast_fn_XX
+    Priority: ★★★★★
+    
+    Problem: LLVM backend doesn't emit all required function symbols. Tests
+             fail at link time with "use of undefined value '@roast_fn_XX'"
+    
+    Affected: test_fstring, test_inheritance, test_property, test_super,
+              test_counter, test_exception_handling
+    
+    [ ] Fix function symbol emission for f-string helpers
+    [ ] Fix function symbol emission for property getters/setters
+    [ ] Fix function symbol emission in inheritance chains
+    [ ] Audit all runtime function references in LLVM IR generation
+
+[B6] PARSER: DOTTED MODULE IMPORTS NOT WORKING
+    Status: 🔴 BROKEN - `import a.b` fails to parse
+    Priority: ★★★★☆
+    
+    Problem: Parser rejects dotted module paths like `import test_modules.mathlib`
+             Error: "unexpected token: expected expression, found ."
+    
+    Affected: test_import_module
+    
+    [ ] Support `import a.b.c` syntax in parser
+    [ ] Support `import a.b as alias` syntax
+    [ ] Support `from a.b import c` syntax
+    [ ] Wire module resolution for nested paths
+
+[B7] VARARGS (*args) NOT WORKING IN CALLS
+    Status: ✅ FIXED (December 10, 2025)
+    Priority: ★★★★☆
+    
+    Problem: Type checker reports "takes 0 args but N given" when calling
+             functions defined with *args parameter.
+    
+    Example: def sum_all(*args: int) -> int  # Calling sum_all(1,2,3) fails
+    
+    Affected: test_varargs
+    
+    FIX APPLIED:
+    [x] Fixed collect_definitions() to handle posonlyargs, vararg, kwonlyargs, kwarg
+    [x] Fixed check_function_def() to build full FuncParam list with ParamKind
+    [x] Fixed check_class_def() method scanning for same varargs handling
+    [x] Added vararg/kwarg to function body scope
+    
+    Files Modified: crates/typer/src/checker.rs
+
+[B8] TUPLE TYPE ANNOTATION BUG
+    Status: 🔴 BROKEN - tuple[T,T] confused with function type
+    Priority: ★★★☆☆
+    
+    Problem: `point: tuple[int, int] = (3, 4)` gives error:
+             "expected (Any) -> Tuple[][Tuple[int, int]], got Tuple[int, int]"
+    
+    Affected: test_basics
+    
+    [ ] Fix tuple type annotation parsing/inference
+    [ ] Distinguish tuple type from callable type
+
+[B9] COMPILER HANGS ON COMPLEX FILES
+    Status: 🔴 BROKEN - Compilation times out on some files
+    Priority: ★★★★☆
+    
+    Problem: test_functions.roast causes compiler to hang indefinitely
+             (timeout after 5+ seconds). Likely infinite loop in type
+             checker or MIR builder.
+    
+    [ ] Profile and identify the infinite loop
+    [ ] Add recursion limits to type inference
+    [ ] Add timeout/progress indicator for long compilations
+
+================================================================================
+                        CRITICAL (REAL STATUS)
+================================================================================
+
+[C1] NATIVE COMPILATION ⚠️ SCAFFOLDING ONLY
+    Status: PARTIAL - Infrastructure exists, core features broken
+    Priority: ★★★★★
+    
+    [x] Cranelift IR generation (crates/codegen/src/cranelift.rs)
+    [x] MIR to Cranelift lowering (arithmetic, control flow)
+    [x] x86_64 code generation structure
+    [x] Linking with system libraries (crates/codegen/src/linker.rs)
+    [ ] Function calls (returns 0 instead of calling)
+    [ ] String constants (TODO in code)
+    [ ] Object creation (returns null)
+    [ ] Runtime library linking
+    [ ] ARM64 code generation
+
+[C2] ASYNC RUNTIME ⚠️ RUST-NATIVE ONLY
+    Status: PARTIAL - Rust works, bytecode doesn't
+    Priority: ★★★★★
+    
+    [x] Task executor implementation (crates/runtime/src/executor.rs)
+    [x] Work-stealing scheduler (Rust-level)
+    [x] Async channels (Rust-level)
+    [x] Async file I/O (stdlib/async_io.rs)
+    [ ] OpCode::Await in VM
+    [ ] Coroutine protocol
+    [ ] async for, async with
+
+[C3] LSP IMPROVEMENTS ⚠️ SAME-FILE ONLY
+    Status: PARTIAL - Works within files, not across modules
+    Priority: ★★★★☆
+    
+    [x] Go to definition (within file)
+    [x] Auto-completion (keywords, types, builtins)
+    [x] Signature help
+    [x] Hover with type information
+    [x] Find all references (same file)
+    [x] Rename symbol (same file)
+    [x] Document symbols
+    [x] Inlay hints
+    [ ] Go to definition (cross-module) - infrastructure exists, not wired
+    [ ] Code actions
+    [ ] Semantic highlighting
+
+================================================================================
+                        HIGH PRIORITY
+================================================================================
+
+[H1] PATTERN MATCHING ✓ COMPLETED
+    Status: IMPLEMENTED
+    
+    [x] VM implementation of match statement (bytecode opcodes added)
+    [x] Guard clauses (case x if condition)
+    [x] Structural patterns (case Point(x, y))
+    [x] Or patterns (case 1 | 2)
+    [x] Wildcard patterns
+    [x] Exhaustiveness checking (typer/exhaustiveness.rs - Maranget algorithm)
+
+[H2] TESTING FRAMEWORK ✓ COMPLETED
+    Status: IMPLEMENTED
+    
+    [x] Test suite and test cases
+    [x] Test discovery
+    [x] Setup/teardown hooks
+    [x] Parameterized tests
+    [x] Mock counter
+    [x] Parallel execution (test runner)
+    [x] Rich assertions
+    [x] Fixture system
+    [x] @test decorator parser integration
+    [x] Coverage collection (stdlib/coverage.rs)
+
+[H3] DEBUGGER ⚠️ PROTOCOL ONLY
+    Status: PARTIAL - DAP works, VM not connected
+    
+    [x] DAP server implementation (crates/debugger/)
+    [x] Breakpoints (line-based, conditional, hit count)
+    [x] Step in/over/out (interface)
+    [x] Variable inspection (interface)
+    [x] Call stack view (interface)
+    [x] Watch expressions (debugger/watch.rs)
+    [ ] VM on_step hook
+    [ ] Stack frame exposure
+    [ ] Breakpoint triggering in execution
+
+[H4] PACKAGE REGISTRY ⚠️ LOCAL ONLY
+    Status: PARTIAL - Downloads work, no central registry
+    [x] `kitchen update` command
+    [x] `kitchen list` / `kitchen list --outdated`
+    [x] `roast.lock` lockfile generation
+    
+    Python Package Support (py: prefix):
+    [x] `kitchen add py:<package>` - Install from PyPI
+    [x] `kitchen add -r py:requirements.txt` - Python requirements
+    [x] PyPI API integration (pypi.rs)
+    [x] Managed Python venv per project (.roast/python/)
+    [ ] Transparent import of Python packages (planned)
+    [ ] Type stub generation from Python packages
+    [ ] Zero-copy NumPy array sharing
+    [ ] Pandas DataFrame interop
+
+[H5] ERROR HANDLING ✓ COMPLETED
+    Status: IMPLEMENTED
+    
+    [x] Result[T, E] as first-class type (stdlib/result.rs)
+    [x] Error chain support (stdlib/error.rs)
+    [x] Option[T] with combinators
+    [x] Stack traces with source locations
+    [x] Retry logic with exponential backoff
+    [x] ? operator syntax (hir/nodes.rs, mir/build.rs, vm TryUnwrap)
+
+================================================================================
+                        MEDIUM PRIORITY
+================================================================================
+
+[M1] PROTOCOLS/TRAITS ✓ COMPLETED
+    [x] Full protocol implementation (typer/protocols.rs)
+    [x] Default method implementations
+    [x] Associated types
+    [x] Derive macros for common protocols
+    [x] Built-in protocols (Copy, Clone, Send, Sync, Hashable, Eq, Ord, etc.)
+
+[M2] MACROS SYSTEM ✓ BASIC IMPLEMENTATION
+    [x] Declarative macros (ast/macros.rs)
+    [x] @derive macro classification
+    [x] Built-in decorator classification (@dataclass, @property, etc.)
+    [x] Macro registry
+    [ ] Hygiene (pending)
+
+[M3] STANDARD LIBRARY GAPS ✓ COMPLETED
+    [x] itertools (chain, cycle, combinations, etc.) - stdlib/itertools.rs
+    [x] functools (partial, lru_cache) - stdlib/functools.rs
+    [x] subprocess (process spawning) - stdlib/subprocess.rs
+    [x] OrderedDict, defaultdict, Counter - stdlib/collections.rs
+    [x] ChainMap, NamedTuple - stdlib/collections.rs
+    [x] CSV parser - stdlib/csv.rs
+    [x] glob - pattern matching (stdlib/glob.rs)
+    [x] tempfile - temporary files/dirs (stdlib/tempfile.rs)
+    [x] shutil - high-level file ops (stdlib/shutil.rs)
+    [x] doc - documentation generator (stdlib/doc.rs)
+    [x] XML parser (stdlib/xml.rs)
+    [x] Full timezone support (stdlib/timezone.rs)
+    [x] mmap - memory-mapped files (stdlib/mmap.rs)
+
+[M4] DATABASE DRIVERS ✓ COMPLETED
+    [x] SQLite-like in-memory database (stdlib/database.rs)
+    [x] Connection pooling
+    [x] Basic ORM (Repository pattern)
+    [x] Query builder
+    [x] Migration system
+    [ ] PostgreSQL driver (pending external lib)
+
+[M5] CRYPTOGRAPHY ✓ COMPLETED
+    [x] AES-128/CBC encryption (stdlib/crypto.rs)
+    [x] SHA-256 hashing
+    [x] HMAC-SHA256
+    [x] Secure random generator
+    [x] JWT support (HS256)
+    [x] PBKDF2 password hashing
+    [x] Base64/Hex encoding
+    [ ] RSA/ECDSA (pending external lib)
+
+================================================================================
+                        LOWER PRIORITY
+================================================================================
+
+[L1] SCIENTIFIC COMPUTING → EXTERNAL PACKAGE (roast-numpy)
+    NOTE: Will be installable via `roast add numpy`
+    [ ] NumPy-like array library
+    [ ] Broadcasting
+    [ ] Array slicing syntax
+    [ ] Linear algebra (CPU BLAS)
+    [ ] FFT
+
+[L2] WEB FRAMEWORK ✓ COMPLETED
+    [x] Flask-like routing (stdlib/web.rs)
+    [x] Template engine (simple mustache-style)
+    [x] Static file serving
+    [x] Cookie support
+    [x] WebSocket support (stdlib/web.rs)
+    [x] Session management (stdlib/web.rs)
+    [x] Flash messages
+
+[L3] LLVM BACKEND
+    [ ] LLVM IR generation
+    [ ] Optimization passes
+    [ ] PGO support
+    [ ] Cross-compilation
+
+[L4] DOCUMENTATION GENERATOR ✓ COMPLETED
+    [x] DocGenerator (stdlib/doc.rs)
+    [x] HTML generation with CSS
+    [x] Markdown to HTML conversion
+    [x] Search index generation
+    [x] roastdoc CLI command (roastc doc)
+    [ ] Cross-reference linking (partial)
+
+[L5] GPU ENHANCEMENTS
+    [ ] OpenCL full implementation
+    [ ] Metal backend (macOS)
+    [ ] Vulkan compute
+    [ ] Mixed precision (FP16/BF16)
+    [ ] TensorRT integration
+
+================================================================================
+                        COMPLETED FEATURES ✓
+================================================================================
+
+✓ Lexer and parser (Python-compatible syntax)
+✓ AST with type annotations, ownership markers
+✓ Type system with inference, generics
+✓ Borrow checker (Polonius-inspired)
+✓ MIR with ownership tracking
+✓ Bytecode VM with stack, frames, heap
+✓ Optimizer (constant folding, DCE, inlining, LICM)
+✓ Standard library (80%+)
+✓ GPU: CUDA, cuBLAS, cuDNN
+✓ GPU: Multi-GPU (NCCL)
+✓ GPU: Autograd
+✓ GPU: Memory management
+✓ GPU: NVRTC JIT compilation
+✓ Python FFI
+✓ Python migration tool
+✓ Kitchen project manager
+✓ Virtual environments
+✓ Dependency resolution (basic)
+✓ REPL
+✓ Benchmarking framework
+
+=== PHASE 10 COMPLETED ===
+✓ Cranelift Backend - Native code generation
+✓ LSP Server - Go-to-def, completion, hover, references
+✓ Async Executor - Work-stealing, spawn, channels
+✓ Testing Framework - Suites, parameterized, fixtures
+✓ Debugger (DAP) - Breakpoints, stepping, variables
+
+=== PHASE 11 COMPLETED ===
+✓ Pattern Matching - VM opcodes for match statements
+✓ Error Handling - Error chains, stack traces, retry logic
+✓ Protocols/Traits - Full protocol system with built-ins
+✓ itertools/functools - Python-style utilities
+✓ Database Drivers - In-memory DB, ORM, migrations
+✓ Cryptography - AES, SHA-256, HMAC, JWT, PBKDF2
+✓ Profiler - CPU and memory profiling
+
+=== PHASE 12 COMPLETED ===
+✓ subprocess - Process spawning, pipes, pools
+✓ collections - OrderedDict, defaultdict, Counter, ChainMap
+✓ CSV parser - Reader, writer, DictReader/Writer
+✓ Web Framework - Flask-like routing, templates, static files
+
+=== PHASE 13 COMPLETED ===
+✓ Macros System - Decorator classification, @derive, @dataclass
+✓ Async I/O - AsyncFile, AsyncTcpStream, AsyncUdpSocket
+✓ Async channels with sender/receiver
+
+=== PHASE 14 COMPLETED ===
+✓ glob module - Pattern matching
+✓ tempfile module - Temporary files and directories
+✓ shutil module - High-level file operations  
+✓ doc module - Documentation generator (HTML/CSS)
+✓ XML parser - Parse, build, and write XML
+✓ REPL improvements - Syntax highlighting, history, completions
+
+=== PHASE 15 COMPLETED ===
+✓ Web Framework - WebSocket, sessions, flash messages
+✓ heapq module - Heap operations, nlargest, nsmallest, merge
+✓ bisect module - Binary search, SortedList, SortedDict
+✓ Linter (roastlint) - E001-E002 errors, W001-W008 warnings
+✓ Signal handling - SIGINT, SIGTERM, graceful shutdown
+
+=== PHASE 16 COMPLETED ===
+✓ roastdoc CLI - Enhanced documentation generation
+✓ Timezone module - Full timezone support (stdlib/timezone.rs)
+✓ mmap module - Memory-mapped files (stdlib/mmap.rs)
+✓ Package Registry - kitchen add/remove/list/install
+✓ Python Package Support - py: prefix, PyPI integration (DOWNLOAD ONLY)
+✓ roast.lock - Lockfile generation
+
+================================================================================
+                        COMPLETED FEATURES ✓ (HONEST ASSESSMENT)
+================================================================================
+
+✓ Lexer and parser (85% Python-compatible)
+✓ AST with type annotations, ownership markers
+✓ Type system with inference, generics (basic)
+✓ Borrow checker (Polonius-inspired)
+✓ MIR with ownership tracking
+✓ Bytecode VM with stack, frames, heap
+✓ Optimizer (constant folding, DCE, inlining, LICM)
+✓ Standard library (80%+)
+✓ GPU: CUDA, cuBLAS, cuDNN
+✓ Kitchen project manager
+✓ REPL
+
+⚠️ PARTIAL/BROKEN:
+- Native Compilation - Scaffolding only, cannot call functions
+- Async/Await - Parses but cannot execute in VM
+- Debugger - Protocol complete, not connected to VM
+- Python Interop - Can download, cannot call
+- Macros - Classification only, no code generation
+- LSP - Same-file only, no cross-module
+
+================================================================================
+                        QUICK WINS (< 1 day each)
+================================================================================
+
+[x] Add `--version` flag to kitchen (already implemented via clap)
+[x] Improve error messages with source snippets (common/diagnostics.rs, cli/commands.rs)
+[x] Add `kitchen clean --all` to clean dependencies too (kitchen/main.rs)
+[x] Colorize terminal output in REPL (cli/repl.rs)
+[x] Tab completion in REPL (cli/repl.rs with rustyline)
+[x] Support `# type: ignore` comments (common/diagnostics.rs - DiagnosticSink.with_source)
+[x] Add `enumerate()` as built-in (vm/interpreter.rs)
+[x] Add `zip()` as built-in (vm/interpreter.rs)
+[ ] Add `assert_eq!`, `assert_ne!` macros
+[ ] Implement `__hash__` for built-in types
+[ ] Support `for i, x in enumerate(list)` syntax
+[ ] Cross-module go-to-definition (infrastructure exists)
+[ ] F-string evaluation (lexer recognizes, not evaluated)
+[ ] `@dataclass` code generation
+
+================================================================================
+                    HIGH PRIORITY FIXES (1-2 weeks each)
+================================================================================
+
+[P1] Add OpCode::Await to VM
+    File: crates/vm/src/interpreter.rs
+    Impact: Makes async code actually runnable
+    
+[P2] Implement Cranelift function calls
+    File: crates/codegen/src/cranelift.rs
+    Impact: Makes native compilation work
+    
+[P3] Wire debugger to VM
+    File: crates/debugger/src/vm_integration.rs + crates/vm/src/interpreter.rs
+    Impact: Enables actual debugging
+    
+[P4] Implement where clauses
+    Files: crates/parser/src/parser.rs, crates/typer/src/checker.rs
+    Impact: Proper generic constraints
+
+================================================================================
+                        PACKAGE ECOSYSTEM
+================================================================================
+
+PHILOSOPHY: Standard library stays lean. Advanced features are packages.
+
+⚠️ NOTE: py: prefix downloads packages but cannot call them yet.
+         Python interop requires FFI bridge (not implemented).
+
+STDLIB (ships with Roast):
+  - Core types, I/O, async (Rust-level), crypto basics, testing
+
+EXTERNAL PACKAGES (roast add):
+  - Data Science: numpy, pandas, scipy, matplotlib
+  - Web: requests, flask, django, fastapi  
+  - Database: sqlite3, psycopg2, redis, sqlalchemy
+  - ML/AI: torch, tensorflow
+  - CLI: click, rich, typer
+
+PACKAGE COMMANDS:
+  kitchen add pandas              # Install Roast package (local only)
+  kitchen add py:pandas           # Download Python package (cannot call yet!)
+  kitchen add -r requirements.txt # Roast requirements
+  kitchen add --dev pytest        # Dev dependency
+  kitchen remove pandas           # Uninstall
+  kitchen update                  # Update all
+
+PYTHON INTEROP (NOT WORKING):
+  - [x] Use `py:` prefix to download PyPI packages
+  - [ ] Actually call Python code (needs FFI)
+  - [ ] Type stub generation (needs FFI)
+  - [ ] Zero-copy NumPy/Pandas integration (needs FFI)
+
+================================================================================
+                 🔍 GAP ANALYSIS: RICH LIKE PYTHON, FAST LIKE RUST
+================================================================================
+Last Analyzed: December 10, 2025
+
+================================================================================
+                    PART A: "RICH LIKE PYTHON" GAPS
+================================================================================
+
+A1. PYTHON SYNTAX COMPATIBILITY (Currently ~85%)
+    ────────────────────────────────────────────
+    ✅ WORKING:
+    - Indentation-based blocks (INDENT/DEDENT tokens)
+    - All Python operators including walrus (:=), @ (matmul)
+    - List/dict/set/generator comprehensions
+    - F-strings (parsing only - see gap below)
+    - match/case statements
+    - async/await syntax (parsing only)
+    - Decorators, *args, **kwargs
+    - Multiple inheritance, MRO (C3 linearization)
+    
+    🔴 GAPS TO FIX:
+    [ ] F-string runtime evaluation - Lexer parses f-strings but expressions
+        inside {} are not evaluated at runtime (builtins.rs has format_string
+        but not wired to VM execution)
+    [ ] Walrus operator (:=) - Parsed but assignment not executed in expressions
+    [ ] `for i, x in enumerate(list)` - Tuple unpacking in for loops
+    [ ] `async for` / `async with` - Returns NotImplemented error
+    [ ] Class __slots__ support
+    [ ] @property.setter/@property.deleter chaining
+    [ ] Multiple decorators with arguments
+    [ ] Positional-only parameters (Python 3.8+ `/` syntax)
+    [ ] Keyword-only parameters after `*`
+
+A2. PYTHON STDLIB EQUIVALENTS (Currently ~70%)
+    ────────────────────────────────────────────
+    ✅ IMPLEMENTED:
+    - builtins (print, len, range, enumerate, zip, map, filter, etc.)
+    - collections (OrderedDict, defaultdict, Counter, ChainMap, deque)
+    - json (full parser/serializer)
+    - os/io (file operations, directory ops)
+    - pathlib equivalent
+    - itertools (chain, cycle, combinations, permutations)
+    - functools (partial, lru_cache)
+    - re (basic patterns)
+    - datetime + timezone
+    - csv, xml
+    - tempfile, shutil, glob
+    - heapq, bisect
+    - crypto basics
+    
+    🔴 CRITICAL MISSING MODULES:
+    [ ] logging - No logging framework (CRITICAL for production apps)
+    [ ] argparse - No argument parser (CRITICAL for CLI tools)
+    [ ] pickle/marshal - No serialization
+    [ ] ssl/tls - No secure connections (HTTP client returns error!)
+    [ ] sqlite3 - Database is memory-only, no real SQLite bindings
+    [ ] threading - Thread primitives exist but limited
+    [ ] multiprocessing - Only threads, no true multiprocessing
+    [ ] socket - TCP/UDP structures defined but limited
+    [ ] urllib/http.client - HTTP client stub returns error
+    [ ] asyncio - Executor exists but not Python-compatible API
+    [ ] typing - Handled at type system level, not runtime
+    [ ] unittest - Basic testing exists
+    [ ] inspect - No runtime introspection
+    [ ] contextlib - No context manager utilities
+    [ ] dataclasses - @dataclass decorator recognized but no code generation
+    [ ] abc - Abstract base classes parsing only
+    [ ] traceback - Limited stack trace formatting
+    [ ] copy - deepcopy/copy functions
+    [ ] weakref - No weak references
+    [ ] struct - Binary packing/unpacking
+    [ ] array - Typed arrays
+    [ ] decimal - Arbitrary precision decimals
+
+A3. PYTHON RUNTIME SEMANTICS (Currently ~80%)
+    ────────────────────────────────────────────
+    ✅ WORKING:
+    - Dynamic typing for untyped code
+    - Duck typing via protocol system
+    - Exception handling (try/except/finally)
+    - Context managers (with statement)
+    - Generators (yield)
+    - Iterators (__iter__/__next__)
+    - Magic methods (__init__, __str__, __repr__, __add__, etc.)
+    - Multiple inheritance with MRO
+    - Properties (@property)
+    - Class/static methods
+    
+    🔴 GAPS TO FIX:
+    [ ] __getattr__/__setattr__/__delattr__ - Attribute access hooks
+    [ ] __call__ - Making instances callable
+    [ ] __enter__/__exit__ for custom context managers
+    [ ] __hash__ for built-in types (dict keys require hashable values)
+    [ ] Descriptors protocol (__get__/__set__/__delete__)
+    [ ] Metaclasses (__class__, type())
+    [ ] __new__ vs __init__ distinction
+    [ ] __slots__ for memory optimization
+    [ ] __mro_entries__ for generic aliases
+    [ ] super() with no arguments (needs stack introspection)
+
+A4. REPL NOT EXECUTING CODE
+    ────────────────────────────────────────────
+    Status: 🔴 CRITICAL - Shows "execution not yet implemented"
+    File: crates/cli/src/repl.rs:469
+    
+    REPL can:
+    [x] Parse code
+    [x] Type-check code
+    [x] Show AST
+    [x] Syntax highlighting
+    [x] Tab completion
+    [x] Command history
+    
+    REPL cannot:
+    [ ] Actually execute expressions and statements
+    [ ] Show return values
+    [ ] Maintain state between inputs
+    [ ] Import modules
+    
+    FIX: Connect REPL to VM execution (or LLVM backend)
+
+A5. PYTHON INTEROP NOT WORKING
+    ────────────────────────────────────────────
+    Status: 🔴 CRITICAL - Can download packages but cannot call Python code
+    
+    What exists:
+    [x] PyPI API integration (kitchen/pypi.rs)
+    [x] `kitchen add py:<package>` downloads to .roast/python/
+    [x] CPython API structures defined (pycompat/ffi.rs)
+    
+    What's missing:
+    [ ] Actual FFI calls to libpython (PyO3 or ctypes)
+    [ ] Initialize Python interpreter
+    [ ] Import Python modules
+    [ ] Call Python functions
+    [ ] Convert Roast values <-> Python objects
+    [ ] Type stub generation from .pyi files
+    [ ] Zero-copy NumPy array sharing
+    
+    IMPACT: Cannot use ANY Python ecosystem packages (pandas, numpy, etc.)
+
+================================================================================
+                    PART B: "FAST LIKE RUST" GAPS
+================================================================================
+
+B1. NATIVE COMPILATION BROKEN
+    ────────────────────────────────────────────
+    Status: 🔴 CRITICAL - Both backends have issues
+    
+    LLVM BACKEND (crates/llvm_backend/):
+    [x] Full LLVM IR generation (3936 lines)
+    [x] Class compilation with inheritance
+    [x] Method dispatch
+    [x] Exception handling (setjmp/longjmp)
+    [ ] String concatenation causes SEGFAULT
+    [ ] Boolean printing broken
+    [ ] Class constructors not always resolved
+    [ ] For loop over list not fully supported
+    
+    CRANELIFT BACKEND (crates/codegen/src/cranelift.rs):
+    [x] Basic arithmetic and control flow
+    [x] Function compilation structure
+    [ ] Function calls - TODO comment at line 523
+    [ ] String constants - TODO at line 598
+    [ ] Power operator - TODO at line 523
+    [ ] In/NotIn operations - TODO at line 567
+    [ ] Slice operations - TODO at line 681
+    [ ] Runtime library not linked
+    
+    IMPACT: Cannot produce working native binaries = NO RUST-LIKE SPEED
+
+B2. JIT COMPILER INCOMPLETE
+    ────────────────────────────────────────────
+    Status: ⚠️ PARTIAL - Baseline works, optimizer is stub
+    
+    BASELINE JIT (crates/jit/src/baseline.rs):
+    [x] x86-64 machine code emission
+    [x] Integer arithmetic
+    [x] Comparisons and branches
+    [x] Stack-based locals
+    [ ] Function calls emit placeholder (line 594)
+    [ ] Global variables emit placeholder
+    [ ] Object operations not supported
+    
+    OPTIMIZING JIT (crates/jit/src/optimizing.rs):
+    [ ] SSA IR defined but not populated
+    [ ] Type specialization - interface only
+    [ ] Inlining - interface only
+    [ ] Escape analysis - returns empty Vec
+    [ ] LICM - interface only
+    [ ] Bounds check elimination - empty function
+    [ ] Code generation - returns empty Vec (line 380)
+    
+    IMPACT: No profile-guided optimization = slower than possible
+
+B3. GARBAGE COLLECTION LIMITED
+    ────────────────────────────────────────────
+    Status: ⚠️ PARTIAL - Reference counting only
+    
+    What exists:
+    [x] Reference counting (RoastObject with atomic refcount)
+    [x] Drop implementation for cleanup
+    
+    What's missing:
+    [ ] Cycle detection - MEMORY LEAKS with circular references!
+        (crates/runtime/src/gc.rs:collect_cycles is EMPTY)
+    [ ] Generational GC for better performance
+    [ ] Concurrent GC for low latency
+    [ ] Copy-on-write optimization
+    [ ] Object pooling for hot types
+    
+    IMPACT: Programs with cycles will leak memory forever
+
+B4. VM PERFORMANCE GAPS
+    ────────────────────────────────────────────
+    Current: fib(40) ~5s (Target: <1s)
+    
+    What exists:
+    [x] Stack-based bytecode interpreter
+    [x] Basic optimizations in MIR
+    [x] JIT tier-up infrastructure
+    
+    What's missing:
+    [ ] Inline caching for method dispatch
+    [ ] Polymorphic inline caches (PICs)
+    [ ] Hidden classes / shape optimization
+    [ ] NaN boxing for value representation
+    [ ] Direct threading for opcode dispatch
+    [ ] Computed goto for hot paths
+    [ ] Profile-guided deoptimization
+    [ ] On-stack replacement (OSR)
+    
+    IMPACT: 5x slower than target performance
+
+B5. GPU BACKEND MOSTLY STUBBED
+    ────────────────────────────────────────────
+    Status: ⚠️ SCAFFOLDING - Many "not implemented" errors
+    
+    File: crates/gpu/src/
+    
+    What works:
+    [x] CUDA device detection (via nvidia-smi)
+    [x] PTX kernel compilation (NVRTC)
+    [x] Basic kernel launch structure
+    
+    What's stubbed:
+    [ ] Memory allocation - "not implemented" (memory.rs:285)
+    [ ] Memory copy - "not implemented"
+    [ ] scatter/gather/replicate - "not implemented" (multi_gpu.rs:772-787)
+    [ ] NCCL multi-GPU - TODO (multi_gpu.rs:793)
+    [ ] Kernel body generation - TODO (kernel.rs:213)
+    [ ] sum_dim, mean_dim - "not implemented" (ops.rs:207,212)
+    [ ] Batch matrix multiply - "not implemented" (ops.rs:266)
+    [ ] Unified memory - "not implemented" (memory.rs:285)
+    
+    IMPACT: Cannot actually run GPU computations despite interface
+
+================================================================================
+                    PART C: TOOLING & DX GAPS
+================================================================================
+
+C1. DEBUGGER NOT CONNECTED
+    ────────────────────────────────────────────
+    Status: 🔴 Protocol complete, VM not integrated
+    
+    What exists:
+    [x] Full DAP protocol implementation
+    [x] Breakpoint data structures
+    [x] Watch expression evaluator
+    [x] Variable inspection interfaces
+    
+    What's missing:
+    [ ] VM on_step callback hook
+    [ ] Bytecode-to-source line mapping during execution
+    [ ] Stack frame exposure to debugger
+    [ ] Actual breakpoint triggering
+    [ ] Step over/into/out execution
+    
+    IMPACT: Cannot debug Roast programs
+
+C2. LSP SEMANTIC ANALYSIS LIMITED
+    ────────────────────────────────────────────
+    Status: ⚠️ Works within files, not across modules
+    
+    What works:
+    [x] Diagnostics (parse/type errors)
+    [x] Completions (builtins, keywords)
+    [x] Hover information
+    [x] Document symbols
+    [x] Signature help
+    [x] Inlay hints
+    
+    What's limited:
+    [ ] Go to definition - same file only, cross-module infra exists
+    [ ] Find references - text-based, not semantic
+    [ ] Rename - text-based, doesn't understand scope
+    [ ] No workspace-wide analysis
+    [ ] No code actions (quick fixes)
+    [ ] No semantic tokens (enhanced highlighting)
+    [ ] No call hierarchy
+    
+    IMPACT: Poor IDE experience for multi-file projects
+
+C3. PACKAGE MANAGER SCAFFOLDING
+    ────────────────────────────────────────────
+    Status: ⚠️ Config parsing only, no real resolution
+    
+    What exists:
+    [x] roast.toml parsing
+    [x] Dependency data structures
+    [x] kitchen CLI commands
+    
+    What's missing:
+    [ ] No registry client - https://registry.roast-lang.org doesn't exist
+    [ ] Version resolution - returns string as-is, no semver solving
+    [ ] No transitive dependency resolution
+    [ ] No dependency downloading (except PyPI)
+    [ ] No caching
+    [ ] No lockfile verification
+    
+    IMPACT: Cannot share packages with community
+
+================================================================================
+                    PRIORITY ROADMAP TO "RICH & FAST"
+================================================================================
+
+PHASE 1: MAKE IT WORK (4-6 weeks)
+─────────────────────────────────
+[P0] Fix REPL execution - Connect to VM/LLVM
+[P0] Fix LLVM string operations - Remove segfault
+[P0] Fix GC cycle detection - Prevent memory leaks
+[P0] Implement F-string runtime evaluation
+[P1] Connect debugger to VM
+[P1] Implement async for/with in VM
+
+PHASE 2: MAKE IT FAST (6-8 weeks)  
+─────────────────────────────────
+[P0] Complete Cranelift function calls
+[P0] Link runtime library to native code
+[P1] Implement JIT optimizing compiler
+[P1] Add inline caching for method dispatch
+[P2] Implement hidden classes optimization
+[P2] Add NaN boxing to value representation
+
+PHASE 3: MAKE IT RICH (8-12 weeks)
+─────────────────────────────────
+[P0] Implement CPython FFI (PyO3)
+[P0] Add logging module
+[P0] Add argparse module
+[P1] Implement real sqlite3 bindings
+[P1] Add SSL/TLS support
+[P1] Complete HTTP client
+[P2] Add typing module runtime support
+[P2] Add dataclasses code generation
+
+PHASE 4: ECOSYSTEM (Ongoing)
+─────────────────────────────────
+[ ] Launch package registry
+[ ] Implement semantic LSP analysis
+[ ] Create VS Code extension
+[ ] Complete GPU memory operations
+[ ] Add OpenCL/Metal backends
+
+================================================================================
+                        METRICS & TARGETS
+================================================================================
+
+Performance Targets:
+- Fibonacci(40): < 1s (currently: bytecode ~5s, native broken)
+- Matrix 1000x1000: < 0.1s (currently: no array library)
+- Startup time: < 10ms (currently: ~20ms)
+- Binary size: < 5MB (currently: native broken)
+
+Python Compatibility Targets:
+- Syntax: 95% → 99%
+- Semantics: 80% → 95%
+- Stdlib: 70% → 90%
+
+Rust Performance Targets:
+- Native code: 80%+ of Rust speed
+- JIT code: 60%+ of Rust speed
+- VM code: 30%+ of Rust speed (current: ~15%)
+
+================================================================================
+                        NOTES
+================================================================================
+
+Performance Targets:
+- Fibonacci(40): < 1s (currently: bytecode ~5s)
+- Matrix 1000x1000: < 0.1s (currently: no array library)
+- Startup time: < 10ms (currently: ~20ms)
+- Binary size: < 5MB (currently: native broken)
+
+Python Compatibility:
+- Syntax: 95% (missing some edge cases)
+- Semantics: 80% (static typing changes behavior)
+- Stdlib: 70% (major modules covered)
+
+Rust Inspiration:
+- Ownership: Adapted for Python-like ergonomics
+- Borrow checker: Less strict than Rust
+- Performance: Targeting 80%+ of Rust speed
+- Safety: Compile-time memory safety for typed code
+
+================================================================================
+

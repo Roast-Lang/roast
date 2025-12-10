@@ -1,0 +1,23 @@
+# Simple inheritance test
+
+class Animal:
+    def __init__(self, name: str):
+        self.name: str = name
+
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        self.name = name
+        self.breed: str = "Unknown"
+
+    def speak(self) -> str:
+        return "Woof!"
+
+def main():
+    dog = Dog("Buddy")
+    print(dog.name)
+    print(dog.breed)
+    print(dog.speak())
+    print("Inheritance test passed!")

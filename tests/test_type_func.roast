@@ -1,0 +1,7 @@
+# Test type() function
+def main():
+    x: int = 42
+    print(type(x))
+    print("Done!")
+
+main()

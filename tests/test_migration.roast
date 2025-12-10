@@ -1,0 +1,91 @@
+# Migration test file
+# This file was migrated from Python to Roast
+
+# Original Python (before migration):
+# x = 42
+# y = "hello"
+# def add(a, b):
+#     return a + b
+
+# After migration with type annotations:
+x: int = 42
+y: str = "hello"
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+# Test the migrated code
+def test_migrated_variables():
+    assert x == 42
+    assert y == "hello"
+
+def test_migrated_function():
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+
+# More complex migration examples
+
+# Original Python:
+# class Person:
+#     def __init__(self, name, age):
+#         self.name = name
+#         self.age = age
+
+# After migration:
+class Person:
+    name: str
+    age: int
+    
+    def __init__(self, name: str, age: int) -> None:
+        self.name = name
+        self.age = age
+    
+    def greet(self) -> str:
+        return f"Hello, I'm {self.name}!"
+
+def test_migrated_class():
+    p = Person("Alice", 30)
+    assert p.name == "Alice"
+    assert p.age == 30
+    assert p.greet() == "Hello, I'm Alice!"
+
+# Original Python with Python 2 idioms:
+# print "hello"
+# xrange(10)
+# raw_input("Enter: ")
+
+# After migration (Python 3 / Roast compatible):
+print("hello")
+nums = list(range(10))
+# input("Enter: ")  # Interactive, skipped in tests
+
+def test_python2_migration():
+    # range instead of xrange
+    r = list(range(5))
+    assert r == [0, 1, 2, 3, 4]
+    
+    # True division
+    assert 7 / 2 == 3.5
+    assert 7 // 2 == 3
+
+# Original Python with type hints (already migrated):
+# def process(items: List[int]) -> Dict[str, int]:
+#     return {"sum": sum(items), "count": len(items)}
+
+def process(items: list[int]) -> dict[str, int]:
+    return {"sum": sum(items), "count": len(items)}
+
+def test_typed_function():
+    result = process([1, 2, 3, 4, 5])
+    assert result["sum"] == 15
+    assert result["count"] == 5
+
+# Entry point
+if __name__ == "__main__":
+    test_migrated_variables()
+    test_migrated_function()
+    test_migrated_class()
+    test_python2_migration()
+    test_typed_function()
+    print("All migration tests passed!")
+

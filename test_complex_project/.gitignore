@@ -1,0 +1,18 @@
+# Build artifacts
+/target/
+*.rbc
+
+# Python cache (for compatibility)
+*.pyc
+__pycache__/
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

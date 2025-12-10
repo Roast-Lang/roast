@@ -1,0 +1,13 @@
+# Incremental test
+def test_string_repeat():
+    sep: str = "=" * 50
+    print(sep)
+    print("Hello")
+    print(sep)
+
+def main():
+    print("Test: String repeat")
+    test_string_repeat()
+    print("Done!")
+
+main()

@@ -1,0 +1,37 @@
+# Test encapsulation with private attributes
+
+class BankAccount:
+    def __init__(self, initial_balance: int):
+        self.__balance = initial_balance  # Private attribute
+        self._account_id = 12345  # Protected attribute (convention)
+
+    def deposit(self, amount: int):
+        self.__balance = self.__balance + amount
+
+    def withdraw(self, amount: int) -> int:
+        if amount <= self.__balance:
+            self.__balance = self.__balance - amount
+            return amount
+        return 0
+
+    def get_balance(self) -> int:
+        return self.__balance
+
+def main():
+    acc = BankAccount(100)
+
+    # Test private access through methods
+    b1 = acc.get_balance()
+    print(b1)  # Should print 100
+
+    acc.deposit(50)
+    b2 = acc.get_balance()
+    print(b2)  # Should print 150
+
+    withdrawn = acc.withdraw(30)
+    print(withdrawn)  # Should print 30
+
+    b3 = acc.get_balance()
+    print(b3)  # Should print 120
+
+    print("Encapsulation test passed!")

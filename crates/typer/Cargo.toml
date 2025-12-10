@@ -1,0 +1,18 @@
+[package]
+name = "roast-typer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Type checker and inference engine for Roast"
+
+[dependencies]
+roast-common.workspace = true
+roast-ast.workspace = true
+thiserror.workspace = true
+indexmap.workspace = true
+rustc-hash.workspace = true
+petgraph.workspace = true
+id-arena.workspace = true
+string-interner.workspace = true
+

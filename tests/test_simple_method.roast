@@ -1,0 +1,12 @@
+class Dog:
+    def __init__(self, name: str):
+        self.name = name
+
+    def bark(self) -> str:
+        return "Woof!"
+
+def main():
+    dog = Dog("Rex")
+    result = dog.bark()
+    print(result)
+    print("Done!")

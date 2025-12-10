@@ -1,0 +1,45 @@
+# Test simple OOP features
+
+class Animal:
+    def __init__(self, name: str):
+        self.name = name
+
+    def speak(self) -> str:
+        return "Some sound"
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        self.name = name
+
+    def speak(self) -> str:
+        return "Woof!"
+
+class Cat(Animal):
+    def __init__(self, name: str):
+        self.name = name
+
+    def speak(self) -> str:
+        return "Meow!"
+
+def main():
+    # Test basic class
+    animal = Animal("Generic")
+    name1 = animal.name
+    print(name1)
+    s1 = animal.speak()
+    print(s1)
+
+    # Test inheritance
+    dog = Dog("Rex")
+    name2 = dog.name
+    print(name2)
+    s2 = dog.speak()
+    print(s2)
+
+    cat = Cat("Whiskers")
+    name3 = cat.name
+    print(name3)
+    s3 = cat.speak()
+    print(s3)
+
+    print("OOP test passed!")

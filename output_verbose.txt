@@ -1,0 +1,1220 @@
+warning: variable does not need to be mutable
+  --> crates/common/src/interner.rs:23:13
+   |
+23 | ...et mut interner = ...
+   |       ----^^^^^^^^
+   |       |
+   |       help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: `roast-common` (lib) generated 1 warning (run `cargo fix --lib -p roast-common` to apply 1 suggestion)
+warning: unused import: `Ident`
+ --> crates/ast/src/macros.rs:5:40
+  |
+5 | ...d, Ident, K...
+  |       ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `roast-ast` (lib) generated 1 warning (run `cargo fix --lib -p roast-ast` to apply 1 suggestion)
+warning: unused import: `roast_common::Symbol`
+ --> crates/typer/src/builtins.rs:4:5
+  |
+4 | use roast_common::Symb...
+  |     ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `roast_common::Symbol`
+ --> crates/typer/src/ownership.rs:7:5
+  |
+7 | use roast_common::Symb...
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> crates/typer/src/ownership.rs:9:5
+  |
+9 | use std::sync::A...
+  |     ^^^^^^^^^^^^^^
+
+warning: unused import: `roast_common::prelude::*`
+  --> crates/typer/src/lib.rs:23:5
+   |
+23 | use roast_common::prelude:...
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unreachable pattern
+  --> crates/typer/src/infer.rs:67:9
+   |
+44 | ...   (t, Type::Optional(inner)) => unify(ctx, ...
+   |       -------------------------- matches all the relevant values
+...
+67 | ...   (Type::Optional(a), Type::Optional(b)) =>...
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
+   |
+   = note: `#[warn(unreachable_patterns)]` on by default
+
+warning: unused variable: `cls`
+   --> crates/typer/src/ownership.rs:312:25
+    |
+312 | ...ss(cls) =...
+    |       ^^^ help: if this is intentional, prefix it with an underscore: `_cls`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `ty`
+   --> crates/typer/src/exhaustiveness.rs:127:29
+    |
+127 | ...ss(ty: &...
+    |       ^^ help: if this is intentional, prefix it with an underscore: `_ty`
+
+warning: type `Row` is more private than the item `Matrix::push`
+   --> crates/typer/src/exhaustiveness.rs:108:5
+    |
+108 |     pub fn push(&mut self, row: Row...
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method `Matrix::push` is reachable at visibility `pub`
+    |
+note: but type `Row` is only usable at visibility `pub(self)`
+   --> crates/typer/src/exhaustiveness.rs:91:1
+    |
+91  | struct Row {
+    | ^^^^^^^^^^
+    = note: `#[warn(private_interfaces)]` on by default
+
+warning: unused import: `Symbol`
+ --> crates/parser/src/parser.rs:5:76
+  |
+5 | ...n, Symbol};
+  |       ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: variable `seen_double_star` is assigned to, but never used
+   --> crates/parser/src/parser.rs:344:17
+    |
+344 | ...ut seen_double_star = ...
+    |       ^^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_seen_double_star` instead
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: value assigned to `seen_double_star` is never read
+   --> crates/parser/src/parser.rs:361:17
+    |
+361 | ...   seen_double_star = ...
+    |       ^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` on by default
+
+warning: unused variable: `kw`
+  --> crates/parser/src/token.rs:22:30
+   |
+22 | ...f, kw: &...
+   |       ^^ help: if this is intentional, prefix it with an underscore: `_kw`
+
+warning: field `source` is never read
+  --> crates/parser/src/lexer.rs:12:5
+   |
+11 | pub struct Lexer<'s...
+   |            ----- field in this struct
+12 |     source: &'src s...
+   |     ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: method `at_any` is never used
+  --> crates/parser/src/parser.rs:82:8
+   |
+45 | impl<'a> Parser<'a...
+   | ------------------- method in this implementation
+...
+82 |     fn at_any(&self, k...
+   |        ^^^^^^
+
+warning: `roast-typer` (lib) generated 8 warnings (run `cargo fix --lib -p roast-typer` to apply 4 suggestions)
+warning: `roast-parser` (lib) generated 6 warnings (run `cargo fix --lib -p roast-parser` to apply 1 suggestion)
+warning: unused import: `Symbol`
+ --> crates/hir/src/build.rs:6:52
+  |
+6 | ...n, Symbol};
+  |       ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `roast_common::prelude::*`
+  --> crates/hir/src/lib.rs:11:5
+   |
+11 | use roast_common::prelude:...
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `roast-hir` (lib) generated 2 warnings (run `cargo fix --lib -p roast-hir` to apply 2 suggestions)
+warning: unused import: `id_arena::Id`
+ --> crates/mir/src/nodes.rs:3:5
+  |
+3 | use id_arena::...
+  |     ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `local`
+   --> crates/mir/src/build.rs:107:21
+    |
+107 | ...et local = ...
+    |       ^^^^^ help: if this is intentional, prefix it with an underscore: `_local`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `then_bb`
+   --> crates/mir/src/build.rs:122:21
+    |
+122 | ...et then_bb = ...
+    |       ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_then_bb`
+
+warning: unused variable: `else_bb`
+   --> crates/mir/src/build.rs:126:25
+    |
+126 | ...et else_bb = ...
+    |       ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_else_bb`
+
+warning: `roast-mir` (lib) generated 4 warnings (run `cargo fix --lib -p roast-mir` to apply 1 suggestion)
+warning: unused import: `roast_common::Symbol`
+ --> crates/codegen/src/bytecode.rs:6:5
+  |
+6 | use roast_common::Symb...
+  |     ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `CodegenError`
+ --> crates/codegen/src/emit.rs:5:28
+  |
+5 | ...r, CodegenError, C...
+  |       ^^^^^^^^^^^^
+
+warning: unused import: `Path`
+ --> crates/codegen/src/linker.rs:6:17
+  |
+6 | ...::{Path, P...
+  |       ^^^^
+
+warning: field `config` is never read
+  --> crates/codegen/src/emit.rs:11:5
+   |
+10 | pub struct CodeEmitte...
+   |            ----------- field in this struct
+11 |     config: TargetConf...
+   |     ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: unused import: `FxHashMap`
+ --> crates/optimizer/src/loop_opt.rs:4:18
+  |
+4 | ...::{FxHashMap, F...
+  |       ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `body`
+  --> crates/optimizer/src/loop_opt.rs:54:5
+   |
+54 |     body: &...
+   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: field `post_dominators` is never read
+  --> crates/optimizer/src/analysis.rs:12:5
+   |
+7  | pub struct CfgAnalysis<'a...
+   |            ----------- field in this struct
+...
+12 |     post_dominators: FxHa...
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: fields `init` and `step` are never read
+   --> crates/optimizer/src/loop_opt.rs:269:5
+    |
+267 | struct InductionVariabl...
+    |        ----------------- fields in this struct
+268 |     local: LocalId,
+269 |     init: MirConstant,
+    |     ^^^^
+270 |     step: MirConstant,
+    |     ^^^^
+    |
+    = note: `InductionVariable` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: unused imports: `DiGraph` and `NodeIndex`
+ --> crates/borrowck/src/dataflow.rs:6:23
+  |
+6 | ...::{DiGraph, NodeInde...
+  |       ^^^^^^^  ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `std::hash::Hash`
+  --> crates/borrowck/src/dataflow.rs:10:5
+   |
+10 | use std::hash::Ha...
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `PlaceId`
+ --> crates/borrowck/src/moves.rs:6:28
+  |
+6 | ...e, PlaceId};
+  |       ^^^^^^^
+
+warning: unused import: `bitflags::bitflags`
+ --> crates/borrowck/src/regions.rs:7:5
+  |
+7 | use bitflags::bitfla...
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `ControlFlowGraph`, `LivenessAnalysis`, `StatementRhs`, `Statement`, and `self`
+ --> crates/borrowck/src/checker.rs:3:23
+  |
+3 | ...::{self, ControlFlowGraph, LivenessAnalysis, Statement, StatementRh...
+  |       ^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^  ^^^^^^^^^^^^
+
+warning: unused imports: `AllFacts` and `OutputFacts`
+ --> crates/borrowck/src/checker.rs:5:20
+  |
+5 | ...::{AllFacts, FactGenerator, OutputFact...
+  |       ^^^^^^^^                 ^^^^^^^^^^^
+
+warning: unused import: `LifetimeId`
+ --> crates/borrowck/src/checker.rs:6:40
+  |
+6 | ...t, LifetimeI...
+  |       ^^^^^^^^^^
+
+warning: unused import: `MoveError`
+ --> crates/borrowck/src/checker.rs:8:42
+  |
+8 | ...a, MoveErro...
+  |       ^^^^^^^^^
+
+warning: unused imports: `PlaceElem` and `PlaceSet`
+ --> crates/borrowck/src/checker.rs:9:28
+  |
+9 | ...e, PlaceElem, PlaceId, PlaceSe...
+  |       ^^^^^^^^^           ^^^^^^^^
+
+warning: unused imports: `ConstraintKind`, `ConstraintOrigin`, and `RegionId`
+  --> crates/borrowck/src/checker.rs:10:22
+   |
+10 | ...::{ConstraintKind, ConstraintOrigin, RegionId, R...
+   |       ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^
+
+warning: unused imports: `Loan` and `Location`
+ --> crates/borrowck/src/diagnostics.rs:3:20
+  |
+3 | ...::{Loan, LoanKind, Locatio...
+  |       ^^^^            ^^^^^^^^
+
+warning: unused import: `DiagnosticKind`
+ --> crates/borrowck/src/diagnostics.rs:7:32
+  |
+7 | ...c, DiagnosticKind, S...
+  |       ^^^^^^^^^^^^^^
+
+warning: unused import: `roast_common::prelude::*`
+  --> crates/borrowck/src/lib.rs:33:5
+   |
+33 | use roast_common::prelude:...
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `idx`
+   --> crates/borrowck/src/places.rs:115:34
+    |
+115 | ...ld(idx, S...
+    |       ^^^ help: if this is intentional, prefix it with an underscore: `_idx`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `body`
+   --> crates/borrowck/src/checker.rs:156:78
+    |
+156 | ...n, body: &...
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: unused variable: `location`
+   --> crates/borrowck/src/checker.rs:284:51
+    |
+284 | ...e, location: L...
+    |       ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_location`
+
+warning: unused variable: `location`
+   --> crates/borrowck/src/checker.rs:311:70
+    |
+311 | ...e, location: L...
+    |       ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_location`
+
+warning: field `interner` is never read
+  --> crates/borrowck/src/checker.rs:31:5
+   |
+17 | pub struct BorrowChecker<'a...
+   |            ------------- field in this struct
+...
+31 |     interner: &'a Intern...
+   |     ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: `roast-codegen` (lib) generated 4 warnings (run `cargo fix --lib -p roast-codegen` to apply 3 suggestions)
+warning: `roast-optimizer` (lib) generated 4 warnings (run `cargo fix --lib -p roast-optimizer` to apply 1 suggestion)
+warning: `roast-borrowck` (lib) generated 18 warnings (run `cargo fix --lib -p roast-borrowck` to apply 13 suggestions)
+warning: unused import: `std::cell::RefCell`
+ --> crates/runtime/src/executor.rs:5:5
+  |
+5 | use std::cell::RefCe...
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: field `roots` is never read
+  --> crates/runtime/src/gc.rs:73:5
+   |
+72 | pub struct CycleCollecto...
+   |            -------------- field in this struct
+73 |     roots: Mutex<Vec<*const ...
+   |     ^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: `roast-runtime` (lib) generated 2 warnings (run `cargo fix --lib -p roast-runtime` to apply 1 suggestion)
+warning: unused import: `FrameState`
+ --> crates/vm/src/interpreter.rs:3:49
+  |
+3 | ...r, FrameStat...
+  |       ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `HeapId`
+ --> crates/vm/src/interpreter.rs:4:25
+  |
+4 | ...p, HeapId};
+  |       ^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+ --> crates/vm/src/heap.rs:5:5
+  |
+5 | use std::cell::RefCe...
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::rc::Rc`
+ --> crates/vm/src/heap.rs:6:5
+  |
+6 | use std::rc::...
+  |     ^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> crates/vm/src/builtins.rs:4:5
+  |
+4 | use std::sync::A...
+  |     ^^^^^^^^^^^^^^
+
+warning: unused variable: `frame`
+   --> crates/vm/src/interpreter.rs:169:32
+    |
+169 | ...me(frame) =...
+    |       ^^^^^ help: if this is intentional, prefix it with an underscore: `_frame`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `code`
+   --> crates/vm/src/interpreter.rs:883:28
+    |
+883 | ...de(code) =...
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_code`
+
+warning: unused variable: `s`
+    --> crates/vm/src/interpreter.rs:1034:24
+     |
+1034 | ...tr(s) =...
+     |       ^ help: if this is intentional, prefix it with an underscore: `_s`
+
+warning: value assigned to `type_char` is never read
+   --> crates/vm/src/builtins.rs:325:17
+    |
+325 | ...ut type_char = ...
+    |       ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` on by default
+
+warning: field `heap` is never read
+  --> crates/vm/src/interpreter.rs:88:5
+   |
+76 | pub struct V...
+   |            -- field in this struct
+...
+88 |     heap: He...
+   |     ^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: field `duration_ms` is never read
+   --> crates/vm/src/async_rt.rs:182:5
+    |
+181 | pub struct Slee...
+    |            ----- field in this struct
+182 |     duration_ms: u...
+    |     ^^^^^^^^^^^
+
+warning: field `inner` is never read
+   --> crates/vm/src/async_rt.rs:211:5
+    |
+210 | pub struct Channel<T...
+    |            ------- field in this struct
+211 |     inner: Arc<Mutex<...
+    |     ^^^^^
+
+warning: field `send_wakers` is never read
+   --> crates/vm/src/async_rt.rs:217:5
+    |
+214 | struct ChannelInner<T...
+    |        ------------ field in this struct
+...
+217 |     send_wakers: Vec<W...
+    |     ^^^^^^^^^^^
+
+warning: unused imports: `BufReader` and `BufWriter`
+ --> crates/stdlib/src/fs.rs:6:34
+  |
+6 | ...e, BufReader, BufWrite...
+  |       ^^^^^^^^^  ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `BufReader`
+ --> crates/stdlib/src/http.rs:6:43
+  |
+6 | ...d, BufReade...
+  |       ^^^^^^^^^
+
+warning: unused imports: `Arc` and `AtomicUsize`
+ --> crates/stdlib/src/sync.rs:6:5
+  |
+6 |     Arc, Mutex as StdMutex, RwLock as StdRwLo...
+  |     ^^^
+7 |     atomic::{AtomicBool, AtomicI64, AtomicUsize, O...
+  |                                     ^^^^^^^^^^^
+
+warning: unused import: `std::cell::UnsafeCell`
+  --> crates/stdlib/src/sync.rs:10:5
+   |
+10 | use std::cell::UnsafeCe...
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::cmp::Ordering`
+ --> crates/stdlib/src/heap.rs:5:5
+  |
+5 | use std::cmp::Orderi...
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> crates/stdlib/src/itertools.rs:5:5
+  |
+5 | use std::collections::HashM...
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Peekable`
+ --> crates/stdlib/src/itertools.rs:7:23
+  |
+7 | ...f, Peekabl...
+  |       ^^^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+ --> crates/stdlib/src/functools.rs:5:5
+  |
+5 | use std::cell::RefCe...
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::rc::Rc`
+ --> crates/stdlib/src/functools.rs:8:5
+  |
+8 | use std::rc::...
+  |     ^^^^^^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+ --> crates/stdlib/src/profiler.rs:5:5
+  |
+5 | use std::cell::RefCe...
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `AtomicUsize`
+ --> crates/stdlib/src/profiler.rs:7:36
+  |
+7 | ...4, AtomicUsize, O...
+  |       ^^^^^^^^^^^
+
+warning: unused import: `Arc`
+ --> crates/stdlib/src/profiler.rs:8:17
+  |
+8 | ...::{Arc, M...
+  |       ^^^
+
+warning: unused import: `std::path::Path`
+ --> crates/stdlib/src/database.rs:6:5
+  |
+6 | use std::path::Pa...
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `ExitStatus`
+ --> crates/stdlib/src/subprocess.rs:9:74
+  |
+9 | ...d, ExitStatus, S...
+  |       ^^^^^^^^^^
+
+warning: unused imports: `Arc` and `Mutex`
+  --> crates/stdlib/src/subprocess.rs:10:17
+   |
+10 | ...::{Arc, Mute...
+   |       ^^^  ^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> crates/stdlib/src/web.rs:9:5
+  |
+9 | use std::sync::A...
+  |     ^^^^^^^^^^^^^^
+
+warning: unused imports: `Duration` and `Instant`
+   --> crates/stdlib/src/web.rs:793:17
+    |
+793 | ...::{Duration, Instan...
+    |       ^^^^^^^^  ^^^^^^^
+
+warning: unused import: `Metadata`
+ --> crates/stdlib/src/shutil.rs:5:27
+  |
+5 | ...e, Metadat...
+  |       ^^^^^^^^
+
+warning: unused import: `Path`
+ --> crates/stdlib/src/doc.rs:8:17
+  |
+8 | ...::{Path, P...
+  |       ^^^^
+
+warning: unused import: `Read`
+ --> crates/stdlib/src/xml.rs:6:15
+  |
+6 | ...::{Read, W...
+  |       ^^^^
+
+warning: unused import: `std::cmp::Ordering`
+ --> crates/stdlib/src/heapq.rs:5:5
+  |
+5 | use std::cmp::Orderi...
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::mem`
+   --> crates/stdlib/src/signal.rs:268:13
+    |
+268 | ...se std::m...
+    |       ^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> crates/stdlib/src/timezone.rs:5:5
+  |
+5 | use std::collections::HashM...
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Duration`
+ --> crates/stdlib/src/timezone.rs:6:17
+  |
+6 | ...::{Duration, S...
+  |       ^^^^^^^^
+
+warning: unused variable: `fut2`
+   --> crates/stdlib/src/async_utils.rs:186:48
+    |
+186 | ...1, fut2: F...
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_fut2`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `future`
+   --> crates/stdlib/src/async_io.rs:360:13
+    |
+360 | ...ut future = ...
+    |       ^^^^^^ help: if this is intentional, prefix it with an underscore: `_future`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/async_io.rs:360:9
+    |
+360 | ...et mut future = ...
+    |       ----^^^^^^
+    |       |
+    |       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: unused import: `Read`
+ --> crates/stdlib/src/http.rs:6:21
+  |
+6 | ...f, Read, W...
+  |       ^^^^
+
+warning: unused import: `Write`
+ --> crates/stdlib/src/http.rs:6:27
+  |
+6 | ...d, Write, B...
+  |       ^^^^^
+
+warning: unused import: `BufRead`
+ --> crates/stdlib/src/http.rs:6:34
+  |
+6 | ...e, BufRead, B...
+  |       ^^^^^^^
+
+warning: unused import: `Write`
+ --> crates/stdlib/src/xml.rs:6:21
+  |
+6 | ...d, Write};
+  |       ^^^^^
+
+warning: unused variable: `t`
+  --> crates/stdlib/src/collections.rs:80:33
+   |
+80 | ...le(t) => {
+   |       ^ help: if this is intentional, prefix it with an underscore: `_t`
+
+warning: unused variable: `request`
+   --> crates/stdlib/src/http.rs:280:24
+    |
+280 | ...f, request: R...
+    |       ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
+
+warning: variable does not need to be mutable
+  --> crates/stdlib/src/heap.rs:24:21
+   |
+24 | ...ec(mut vec: V...
+   |       ----^^^
+   |       |
+   |       help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/heap.rs:144:21
+    |
+144 | ...ec(mut vec: V...
+    |       ----^^^
+    |       |
+    |       help: remove this `mut`
+
+warning: unused variable: `leap`
+   --> crates/stdlib/src/time.rs:197:9
+    |
+197 | ...et leap = ...
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_leap`
+
+warning: unused variable: `e`
+  --> crates/stdlib/src/testing.rs:70:18
+   |
+70 | ...rr(e), t...
+   |       ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/fmt.rs:191:9
+    |
+191 | ...et mut s = ...
+    |       ----^
+    |       |
+    |       help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/itertools.rs:241:13
+    |
+241 | ...et mut remaining: V...
+    |       ----^^^^^^^^^
+    |       |
+    |       help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/itertools.rs:429:9
+    |
+429 | ...et mut result = ...
+    |       ----^^^^^^
+    |       |
+    |       help: remove this `mut`
+
+warning: field `id` is never read
+   --> crates/stdlib/src/thread.rs:193:5
+    |
+192 | struct Worke...
+    |        ------ field in this struct
+193 |     id: usi...
+    |     ^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: fields `future` and `deadline` are never read
+   --> crates/stdlib/src/async_utils.rs:224:5
+    |
+223 | pub struct Timeout<F...
+    |            ------- fields in this struct
+224 |     future: F,
+    |     ^^^^^^
+225 |     deadline: std::ti...
+    |     ^^^^^^^^
+
+warning: fields `func` and `args` are never read
+  --> crates/stdlib/src/functools.rs:46:5
+   |
+45 | pub struct Partial<F,...
+   |            ------- fields in this struct
+46 |     func: F,
+   |     ^^^^
+47 |     args: A,
+   |     ^^^^
+
+warning: field `interval` is never read
+   --> crates/stdlib/src/profiler.rs:480:5
+    |
+474 | pub struct SamplingProfile...
+    |            ---------------- field in this struct
+...
+480 |     interval: Duration,
+    |     ^^^^^^^^
+
+warning: field `args` is never read
+   --> crates/stdlib/src/subprocess.rs:100:5
+    |
+98  | pub struct Pope...
+    |            ----- field in this struct
+99  |     child: Chi...
+100 |     args: Vec<Strin...
+    |     ^^^^
+
+warning: field `middleware` is never read
+   --> crates/stdlib/src/web.rs:388:5
+    |
+386 | pub struct Ap...
+    |            --- field in this struct
+387 |     router: Rout...
+388 |     middleware: V...
+    |     ^^^^^^^^^^
+
+warning: function `encode` is never used
+   --> crates/stdlib/src/web.rs:260:12
+    |
+260 | ...fn encode(s:...
+    |       ^^^^^^
+
+warning: fields `buf`, `pos`, and `cap` are never read
+   --> crates/stdlib/src/async_io.rs:473:5
+    |
+471 | pub struct BufReader<R...
+    |            --------- fields in this struct
+472 |     inner: R,
+473 |     buf: Vec<u8>,
+    |     ^^^
+474 |     pos: usize,
+    |     ^^^
+475 |     cap: usize,
+    |     ^^^
+
+warning: fields `reader` and `buf` are never read
+   --> crates/stdlib/src/async_io.rs:567:5
+    |
+566 | pub struct Lines<R...
+    |            ----- fields in this struct
+567 |     reader: R,
+    |     ^^^^^^
+568 |     buf: String,
+    |     ^^^
+
+warning: field `flag` is never read
+   --> crates/stdlib/src/signal.rs:354:5
+    |
+353 | pub struct Ctrl...
+    |            ----- field in this struct
+354 |     flag: Arc<Atomi...
+    |     ^^^^
+
+warning: field `should_shutdown` is never read
+   --> crates/stdlib/src/signal.rs:417:5
+    |
+416 | pub struct GracefulShutdow...
+    |            ---------------- field in this struct
+417 |     should_shutdown: Arc<Atomi...
+    |     ^^^^^^^^^^^^^^^
+
+warning: `roast-vm` (lib) generated 13 warnings (run `cargo fix --lib -p roast-vm` to apply 5 suggestions)
+warning: `roast-stdlib` (lib) generated 51 warnings (run `cargo fix --lib -p roast-stdlib` to apply 30 suggestions)
+warning: unused import: `PyException`
+ --> crates/pycompat/src/builtins.rs:4:36
+  |
+4 | ...y, PyExceptio...
+  |       ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `PyCallable`
+ --> crates/pycompat/src/decorators.rs:6:29
+  |
+6 | ...e, PyCallable, P...
+  |       ^^^^^^^^^^
+
+warning: unused import: `std::collections::VecDeque`
+ --> crates/pycompat/src/stdlib.rs:9:5
+  |
+9 | use std::collections::VecDeq...
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `PySlice`
+ --> crates/pycompat/src/interop.rs:6:58
+  |
+6 | ...e, PySlice};
+  |       ^^^^^^^
+
+warning: unused variable: `code`
+  --> crates/pycompat/src/bridge.rs:83:28
+   |
+83 | ...f, code: &...
+   |       ^^^^ help: if this is intentional, prefix it with an underscore: `_code`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `code`
+  --> crates/pycompat/src/bridge.rs:94:28
+   |
+94 | ...f, code: &...
+   |       ^^^^ help: if this is intentional, prefix it with an underscore: `_code`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/modules.rs:181:47
+    |
+181 | ..., |args| {
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/modules.rs:185:48
+    |
+185 | ..., |args| {
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/modules.rs:188:49
+    |
+188 | ..., |args| {
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/builtins.rs:202:17
+    |
+202 | ...ct(args: V...
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/ffi.rs:245:9
+    |
+245 | ...   args: V...
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/stdlib.rs:351:36
+    |
+351 | ..., |args| {
+    |       ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: variable does not need to be mutable
+   --> crates/pycompat/src/migrate.rs:121:13
+    |
+121 | ...et mut warnings = ...
+    |       ----^^^^^^^^
+    |       |
+    |       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: field `path` is never read
+   --> crates/pycompat/src/ffi.rs:104:5
+    |
+101 | pub struct Librar...
+    |            ------- field in this struct
+...
+104 |     path: String,
+    |     ^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: fields `py_incref`, `py_decref`, and `py_run_string` are never read
+   --> crates/pycompat/src/ffi.rs:282:9
+    |
+279 | ...ub struct CPythonAP...
+    |              ---------- fields in this struct
+...
+282 | ...   py_incref: Option<ex...
+    |       ^^^^^^^^^
+283 | ...   py_decref: Option<ex...
+    |       ^^^^^^^^^
+284 | ...   py_run_string: Optio...
+    |       ^^^^^^^^^^^^^
+
+warning: field `context` is never read
+   --> crates/pycompat/src/interop.rs:241:5
+    |
+240 | pub struct Importe...
+    |            -------- field in this struct
+241 |     context: InteropCo...
+    |     ^^^^^^^
+
+warning: `roast-pycompat` (lib) generated 16 warnings (run `cargo fix --lib -p roast-pycompat` to apply 5 suggestions)
+warning: unused variable: `emitter`
+  --> crates/cli/src/commands.rs:90:17
+   |
+90 | ...ut emitter = ...
+   |       ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_emitter`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: variable does not need to be mutable
+  --> crates/cli/src/commands.rs:90:13
+   |
+90 | ...et mut emitter = ...
+   |       ----^^^^^^^
+   |       |
+   |       help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `opt_level`
+   --> crates/cli/src/commands.rs:129:42
+    |
+129 | ...], opt_level: u...
+    |       ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_opt_level`
+
+warning: unused variable: `parallel`
+   --> crates/cli/src/commands.rs:359:50
+    |
+359 | ...l, parallel: b...
+    |       ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_parallel`
+
+warning: unused variable: `parse_result`
+    --> crates/cli/src/commands.rs:1389:9
+     |
+1389 | ...et parse_result = ...
+     |       ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_parse_result`
+
+warning: fields `warmup_iters`, `measure_iters`, `min_time`, `max_time`, and `confidence` are never read
+  --> crates/cli/src/bench.rs:10:9
+   |
+8  | ...truct BenchConfi...
+   |          ----------- fields in this struct
+9  | ...// Warmup iteratio...
+10 | ...ub warmup_iters: u...
+   |       ^^^^^^^^^^^^
+11 | ...// Measurement itera...
+12 | ...ub measure_iters: u...
+   |       ^^^^^^^^^^^^^
+13 | ...// Minimum time for ...
+14 | ...ub min_time: Durati...
+   |       ^^^^^^^^
+15 | ...// Maximum time for ...
+16 | ...ub max_time: Durati...
+   |       ^^^^^^^^
+17 | ...// Confidence level ...
+18 | ...ub confidence: f...
+   |       ^^^^^^^^^^
+   |
+   = note: `BenchConfig` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
+warning: multiple fields are never read
+  --> crates/cli/src/bench.rs:36:9
+   |
+35 | ...truct BenchResul...
+   |          ----------- fields in this struct
+36 | ...ub name: String,
+   |       ^^^^
+37 | ...ub samples: Vec<Dura...
+   |       ^^^^^^^
+38 | ...ub mean: Durati...
+   |       ^^^^
+39 | ...ub median: Durati...
+   |       ^^^^^^
+40 | ...ub std_dev: Durati...
+   |       ^^^^^^^
+41 | ...ub min: Duration,
+   |       ^^^
+42 | ...ub max: Duration,
+   |       ^^^
+43 | ...ub iterations: u...
+   |       ^^^^^^^^^^
+44 | ...ub throughput: Optio...
+   |       ^^^^^^^^^^
+   |
+   = note: `BenchResult` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: associated items `from_samples`, `with_throughput`, and `format` are never used
+   --> crates/cli/src/bench.rs:49:12
+    |
+47  | impl BenchResult {
+    | ---------------- associated items in this implementation
+48  |     /// Calculate from sampl...
+49  |     pub fn from_samples(name:...
+    |            ^^^^^^^^^^^^
+...
+101 |     pub fn with_throughput(mu...
+    |            ^^^^^^^^^^^^^^^
+...
+107 |     pub fn format(&self) -> S...
+    |            ^^^^^^
+
+warning: variants `Bytes`, `Elements`, and `Custom` are never constructed
+   --> crates/cli/src/bench.rs:144:5
+    |
+143 | pub enum Throughpu...
+    |          ---------- variants in this enum
+144 |     Bytes(u64),
+    |     ^^^^^
+145 |     Elements(u64),
+    |     ^^^^^^^^
+146 |     Custom(f64, Strin...
+    |     ^^^^^^
+    |
+    = note: `Throughput` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: methods `value` and `unit` are never used
+   --> crates/cli/src/bench.rs:150:12
+    |
+149 | impl Throughpu...
+    | --------------- methods in this implementation
+150 |     pub fn value(&s...
+    |            ^^^^^
+...
+158 |     pub fn unit(&se...
+    |            ^^^^
+
+warning: fields `config` and `results` are never read
+   --> crates/cli/src/bench.rs:169:5
+    |
+168 | pub struct Benche...
+    |            ------- fields in this struct
+169 |     config: BenchConf...
+    |     ^^^^^^
+170 |     results: Vec<Benc...
+    |     ^^^^^^^
+
+warning: methods `bench`, `bench_with_setup`, `results`, and `print_report` are never used
+   --> crates/cli/src/bench.rs:182:12
+    |
+173 | impl Bencher {
+    | ------------ methods in this implementation
+...
+182 |     pub fn bench<F>(&mut self,...
+    |            ^^^^^
+...
+217 |     pub fn bench_with_setup<S,...
+    |            ^^^^^^^^^^^^^^^^
+...
+250 |     pub fn results(&self) -> &...
+    |            ^^^^^^^
+...
+255 |     pub fn print_report(&self...
+    |            ^^^^^^^^^^^^
+
+warning: function `compare` is never used
+   --> crates/cli/src/bench.rs:275:8
+    |
+275 | ...fn compare(ba...
+    |       ^^^^^^^
+
+warning: struct `Comparison` is never constructed
+   --> crates/cli/src/bench.rs:301:12
+    |
+301 | ...ct Compariso...
+    |       ^^^^^^^^^^
+    |
+    = note: `Comparison` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: method `format` is never used
+   --> crates/cli/src/bench.rs:310:12
+    |
+309 | impl Comparison {
+    | --------------- method in this implementation
+310 |     pub fn format(&s...
+    |            ^^^^^^
+
+warning: variants `Improvement`, `Regression`, and `NoChange` are never constructed
+   --> crates/cli/src/bench.rs:333:5
+    |
+332 | pub enum ChangeKin...
+    |          ---------- variants in this enum
+333 |     Improvement,
+    |     ^^^^^^^^^^^
+334 |     Regression,
+    |     ^^^^^^^^^^
+335 |     NoChange,
+    |     ^^^^^^^^
+    |
+    = note: `ChangeKind` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: function `format_duration` is never used
+   --> crates/cli/src/bench.rs:338:4
+    |
+338 | fn format_duration(d:...
+    |    ^^^^^^^^^^^^^^^
+
+warning: function `profile` is never used
+   --> crates/cli/src/bench.rs:352:8
+    |
+352 | ...fn profile<F,...
+    |       ^^^^^^^
+
+warning: fields `timings` and `current` are never read
+   --> crates/cli/src/bench.rs:367:5
+    |
+366 | pub struct Profile...
+    |            -------- fields in this struct
+367 |     timings: HashMap<S...
+    |     ^^^^^^^
+368 |     current: Option<(S...
+    |     ^^^^^^^
+
+warning: methods `start`, `stop`, `time`, `summary`, and `print_summary` are never used
+   --> crates/cli/src/bench.rs:380:12
+    |
+371 | impl Profiler {
+    | ------------- methods in this implementation
+...
+380 |     pub fn start(&mut self,...
+    |            ^^^^^
+...
+385 |     pub fn stop(&mut self...
+    |            ^^^^
+...
+393 |     pub fn time<F, T>(&mut ...
+    |            ^^^^
+...
+404 |     pub fn summary(&self) -...
+    |            ^^^^^^^
+...
+423 |     pub fn print_summary(&s...
+    |            ^^^^^^^^^^^^^
+
+warning: struct `ProfileSummary` is never constructed
+   --> crates/cli/src/bench.rs:450:12
+    |
+450 | ...ct ProfileSummar...
+    |       ^^^^^^^^^^^^^^
+    |
+    = note: `ProfileSummary` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: `roast-cli` (bin "roastc") generated 21 warnings (run `cargo fix --bin "roastc"` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running `target/debug/roastc test test_decorator --show-output --verbose`
+  Running tests...
+  test test_decorator ... FAILED
+    compilation failed
+
+test result: FAILED. 0 passed; 1 failed; 8 skipped
+error: 1 test(s) failed

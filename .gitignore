@@ -1,0 +1,35 @@
+# Build artifacts
+/target
+*.pyc
+__pycache__/
+*.roastc
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Package manager
+/Cargo.lock
+/roast.lock
+
+# Documentation
+/docs/build/
+
+# Test artifacts
+*.profraw
+*.profdata
+coverage/
+
+test/*

@@ -181,17 +181,34 @@ impl<'a> TypeChecker<'a> {
                     self.ctx.define(binding_name, Type::Any);
                 }
             }
-            StmtKind::ImportFrom { module: _, names, level: _ } => {
-                // For `from module import a, b, c`:
+            StmtKind::ImportFrom { module, names, level: _ } => {
+                // For `from module import a, b, c` or `from module import *`:
                 // Define each imported name in scope
                 for alias in names {
-                    let binding_name = if let Some(asname) = &alias.asname {
-                        asname.name
+                    let name_str = self.interner.resolve(alias.name.name).unwrap_or("");
+                    
+                    if name_str == "*" {
+                        // Star import: expand to all module exports
+                        if let Some(mod_path) = module {
+                            let mod_name = self.interner.resolve(mod_path.name).unwrap_or("");
+                            if let Some(exports) = self.ctx.lookup_module_exports(mod_name) {
+                                // Clone to avoid borrow issues
+                                let exports: Vec<_> = exports.clone();
+                                for (sym, ty) in exports {
+                                    self.ctx.define(sym, ty);
+                                }
+                            }
+                        }
                     } else {
-                        alias.name.name
-                    };
-                    // Define as Any type since we don't have full module resolution yet
-                    self.ctx.define(binding_name, Type::Any);
+                        // Normal import
+                        let binding_name = if let Some(asname) = &alias.asname {
+                            asname.name
+                        } else {
+                            alias.name.name
+                        };
+                        // Define as Any type since we don't have full module resolution yet
+                        self.ctx.define(binding_name, Type::Any);
+                    }
                 }
             }
             _ => {}
@@ -947,7 +964,50 @@ impl<'a> TypeChecker<'a> {
                 }
                 // TODO: Handle other sequence types
             }
-            // TODO: Implement other pattern kinds
+            PatternKind::MatchClass { cls, patterns, kwd_attrs: _, kwd_patterns: _ } => {
+                // Handle Some(value) and None patterns for Optional types
+                if let ExprKind::Name { id, .. } = &cls.kind {
+                    let cls_name = self.interner.resolve(id.name).unwrap_or("");
+                    
+                    if cls_name == "Some" {
+                        // Some(value) pattern - match against Optional[T]
+                        if let Type::Optional(inner) = subject_type {
+                            // The inner pattern should match the inner type T
+                            if let Some(first_pattern) = patterns.first() {
+                                self.check_pattern(first_pattern, inner);
+                            }
+                        } else {
+                            self.diagnostics.report(
+                                Diagnostic::error(format!(
+                                    "Some pattern requires Optional type, got {}",
+                                    subject_type
+                                ))
+                                .with_span(pattern.span),
+                            );
+                        }
+                    } else if cls_name == "None" {
+                        // None pattern - valid for any Optional type
+                        if !matches!(subject_type, Type::Optional(_) | Type::NoneType) {
+                            self.diagnostics.report(
+                                Diagnostic::error(format!(
+                                    "None pattern requires Optional type, got {}",
+                                    subject_type
+                                ))
+                                .with_span(pattern.span),
+                            );
+                        }
+                    } else {
+                        // Other class patterns - basic handling
+                        for p in patterns {
+                            self.check_pattern(p, &Type::Any);
+                        }
+                    }
+                }
+            }
+            // Handle singleton None pattern (not MatchClass)
+            PatternKind::MatchSingleton { value: _ } | PatternKind::MatchValue { value: _ } if matches!(subject_type, Type::Optional(_)) => {
+                // None literal matching Optional - always valid
+            }
             _ => {}
         }
     }
@@ -1022,6 +1082,19 @@ impl<'a> TypeChecker<'a> {
                 args,
                 keywords,
             } => {
+                // Special handling for Some() constructor - return Optional[T] based on arg type
+                if let ExprKind::Name { id, .. } = &func.kind {
+                    if self.interner.resolve(id.name) == Some("Some") && args.len() == 1 {
+                        let arg_type = self.check_expr(&args[0]);
+                        return Type::optional(arg_type);
+                    }
+                    // Special handling for rc() constructor - return rc[T] based on arg type
+                    if self.interner.resolve(id.name) == Some("rc") && args.len() == 1 {
+                        let arg_type = self.check_expr(&args[0]);
+                        return Type::rc(arg_type);
+                    }
+                }
+                
                 let func_type = self.check_expr(func);
                 self.check_call(&func_type, args, keywords, expr.span)
             }
@@ -1136,8 +1209,18 @@ impl<'a> TypeChecker<'a> {
                     );
                 }
                 let awaited = self.check_expr(value);
-                // Would unwrap coroutine/awaitable type here
-                awaited
+                let resolved = self.ctx.resolve(&awaited);
+                
+                // Unwrap the async type to get the actual return type
+                match &resolved {
+                    // Async callable (async function call result): extract return type
+                    Type::Callable { returns, is_async: true, .. } => {
+                        (**returns).clone()
+                    }
+                    // Already a non-async type - just return it
+                    // This handles cases like awaiting a value that's already resolved
+                    _ => resolved.clone()
+                }
             }
 
             ExprKind::Yield { value } => {
@@ -1268,6 +1351,16 @@ impl<'a> TypeChecker<'a> {
                 BinOp::Add if matches!(&right, Type::Str) => return Type::Str,
                 BinOp::Mult if right.is_integer() => return Type::Str,
                 _ => {}
+            }
+        }
+
+        // Mutable string reference operations: &mut str += str
+        if let Type::Ref { inner, mutable: true } = &left {
+            if matches!(inner.as_ref(), Type::Str) && op == BinOp::Add {
+                if matches!(&right, Type::Str) {
+                    // &mut str += str returns the mutable reference for chaining
+                    return left.clone();
+                }
             }
         }
 
@@ -1577,6 +1670,7 @@ impl<'a> TypeChecker<'a> {
                 let name_str = self.interner.resolve(name.name);
                 match name_str {
                     Some("int") => Type::Int,
+                    Some("bint") => Type::BigInt,
                     Some("float") => Type::Float,
                     Some("str") => Type::Str,
                     Some("bytes") => Type::Bytes,
@@ -1631,7 +1725,8 @@ impl<'a> TypeChecker<'a> {
                                     Type::Error
                                 }
                             },
-                            Some("Optional") => Type::optional(arg),
+                            Some("Optional") | Some("Option") => Type::optional(arg),
+                            Some("rc") => Type::rc(arg),
                             _ => Type::Generic {
                                 base: std::sync::Arc::new(base),
                                 args: vec![arg],

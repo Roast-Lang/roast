@@ -1,10 +1,19 @@
 # Fibonacci test - larger number
+# Iterative version: O(n) time complexity
 def fib(n: int) -> int:
     if n <= 1:
         return n
-    return fib(n - 1) + fib(n - 2)
+    a: int = 0
+    b: int = 1
+    i: int = 2
+    while i <= n:
+        temp: int = a + b
+        a = b
+        b = temp
+        i = i + 1
+    return b
 
 def main() -> int:
-    result: int = fib(40)
+    result: int = fib(90)
     print(result)
     return 0

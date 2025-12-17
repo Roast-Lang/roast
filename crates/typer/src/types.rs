@@ -34,6 +34,9 @@ pub enum Type {
     Int64,
     Int128,
 
+    /// Arbitrary-precision integer (BigInt).
+    BigInt,
+
     /// Unsigned integer types.
     UInt,
     UInt8,
@@ -116,6 +119,9 @@ pub enum Type {
     /// Owned type (Roast extension).
     Owned(Arc<Type>),
 
+    /// Reference-counted type (shared ownership).
+    Rc(Arc<Type>),
+
     /// Any type (escape hatch for dynamic typing).
     Any,
 
@@ -137,6 +143,7 @@ impl Type {
                 | Type::Int32
                 | Type::Int64
                 | Type::Int128
+                | Type::BigInt
                 | Type::UInt
                 | Type::UInt8
                 | Type::UInt16
@@ -162,6 +169,7 @@ impl Type {
                 | Type::Int32
                 | Type::Int64
                 | Type::Int128
+                | Type::BigInt
                 | Type::UInt
                 | Type::UInt8
                 | Type::UInt16
@@ -229,6 +237,11 @@ impl Type {
         Type::Optional(Arc::new(inner))
     }
 
+    /// Creates a reference-counted type.
+    pub fn rc(inner: Type) -> Type {
+        Type::Rc(Arc::new(inner))
+    }
+
     /// Creates a union type.
     pub fn union(types: Vec<Type>) -> Type {
         if types.len() == 1 {
@@ -268,6 +281,7 @@ impl fmt::Display for Type {
             Type::Int32 => write!(f, "i32"),
             Type::Int64 => write!(f, "i64"),
             Type::Int128 => write!(f, "i128"),
+            Type::BigInt => write!(f, "bint"),
             Type::UInt => write!(f, "uint"),
             Type::UInt8 => write!(f, "u8"),
             Type::UInt16 => write!(f, "u16"),
@@ -297,6 +311,7 @@ impl fmt::Display for Type {
             }
             Type::Slice => write!(f, "slice"),
             Type::Optional(inner) => write!(f, "{}?", inner),
+            Type::Rc(inner) => write!(f, "rc[{}]", inner),
             Type::Union(types) => {
                 for (i, ty) in types.iter().enumerate() {
                     if i > 0 {

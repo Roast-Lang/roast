@@ -433,6 +433,7 @@ mod tests {
                     terminator: MirTerminator::Return(None),
                 }
             ],
+            is_async: false,
             span: Span::dummy(),
         }
     }

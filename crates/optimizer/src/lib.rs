@@ -119,7 +119,7 @@ impl OptimizerConfig {
                 level,
                 inline_threshold: 50,
                 max_inline_depth: 2,
-                enable_dead_code_elimination: true,
+                enable_dead_code_elimination: false,  // Disabled: DCE has a bug
                 enable_constant_folding: true,
                 enable_copy_propagation: true,
                 enable_cse: false,
@@ -137,7 +137,7 @@ impl OptimizerConfig {
                 level,
                 inline_threshold: 100,
                 max_inline_depth: 4,
-                enable_dead_code_elimination: true,
+                enable_dead_code_elimination: false,  // Disabled: DCE has a bug
                 enable_constant_folding: true,
                 enable_copy_propagation: true,
                 enable_cse: true,
@@ -155,7 +155,7 @@ impl OptimizerConfig {
                 level,
                 inline_threshold: 300,
                 max_inline_depth: 8,
-                enable_dead_code_elimination: true,
+                enable_dead_code_elimination: false,  // Disabled: DCE has a bug
                 enable_constant_folding: true,
                 enable_copy_propagation: true,
                 enable_cse: true,
@@ -173,7 +173,7 @@ impl OptimizerConfig {
                 level,
                 inline_threshold: 20,
                 max_inline_depth: 1,
-                enable_dead_code_elimination: true,
+                enable_dead_code_elimination: false,  // Disabled: DCE has a bug
                 enable_constant_folding: true,
                 enable_copy_propagation: true,
                 enable_cse: true,

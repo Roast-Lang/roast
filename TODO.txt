@@ -1,7 +1,7 @@
 # Roast Compiler TODO
 
 ## Test Results Summary
-- **44 PASS / 8 FAIL** (as of latest test run)
+- **54 PASS / 4 FAIL** (as of latest test run)
 
 ## Fixed Issues
 - ✅ Default function arguments (greet("World") now correctly uses default greeting="Hello")
@@ -20,21 +20,28 @@
   - Added TypeExprKind::Owned parsing in parse_type_primary()
   - Added `borrow T` type annotation support
   - Fixed is_subtype() to handle Owned types as compatible with inner type
+- ✅ Async/await in VM now works correctly
+  - Fixed parser to include call expressions in await (was only parsing primary)
+  - Propagated is_async flag from HIR → MIR → VM function creation
+  - Added empty frames check in VM to prevent underflow panic
+- ✅ `&mut str += str` now type-checks correctly
+  - Added Type::Ref handling in check_binary_op for mutable string references
 
 ## Remaining Test Failures (Feature Gaps)
 
 ### 1. test_ownership.roast - Advanced Ownership Features
 - `owned` type annotation NOW WORKS
+- `&mut str += str` type-checks (but runtime mutation needs more work)
 - Still needs:
-  - `&mut str` += operator support
   - `rc[T]` reference-counted type
   - `Option[T]` and `Some()` pattern matching
 
 ### 2. test_async.roast - Async/Module Support  
-- `asyncio.sleep()` module access not supported
-- `asyncio.gather()`, `asyncio.Queue`, etc. not available
-- Error: "unexpected token: expected expression, found ."
-- Requires module import infrastructure
+- Basic async/await works in VM (test_async_simple.roast passes!)
+- Advanced features not supported:
+  - `asyncio.Lock`, `asyncio.gather()`, `asyncio.Queue`
+  - `async with` context manager
+- Requires module import infrastructure for full asyncio support
 
 ### 3. test_pycompat.roast - Module Imports
 - Various import-related issues

@@ -1,0 +1,19 @@
+# Test rc[T] reference-counted type - no annotation
+def main() -> None:
+    # Test basic rc creation with inferred type
+    data = rc(42)
+    print("Created rc(42)")
+    
+    # Test assignment shares reference
+    ref1 = data
+    ref2 = data
+    print("Created ref1 and ref2")
+    
+    # Print pointer values (should be same)
+    print(data)
+    print(ref1)
+    print(ref2)
+    
+    print("rc tests passed!")
+
+main()

@@ -89,6 +89,7 @@ declare i1 @roast_isinstance(i8*, i8*) nounwind
 ; Class operations
 declare i8* @roast_class_new(i8*, i8*, i64) nounwind
 declare i8* @roast_class_getmethod(i8*, i8*) nounwind
+declare void @roast_class_add_method(i8*, i8*, i64) nounwind
 
 ; Closure operations
 declare i8* @roast_closure_new(i8*, i64, i8*) nounwind
@@ -144,6 +145,14 @@ declare void @roast_coroutine_yield(i8*, i64) nounwind
 declare i1 @roast_coroutine_done(i8*) nounwind
 declare i8* @roast_task_new(i8*) nounwind
 declare void @roast_await(i8*) nounwind
+
+; BigInt operations (arbitrary precision integers)
+declare i8* @roast_bigint_from_i64(i64) nounwind
+declare i8* @roast_bigint_add(i8*, i8*) nounwind
+declare i8* @roast_bigint_sub(i8*, i8*) nounwind
+declare i8* @roast_bigint_mul(i8*, i8*) nounwind
+declare i8* @roast_bigint_to_str(i8*) nounwind
+declare void @roast_bigint_print(i8*) nounwind
 
 ; Debug
 declare void @roast_debug_print(i8*) nounwind

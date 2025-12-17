@@ -1,0 +1,27 @@
+# Simple async test without asyncio module imports
+# Tests core await mechanics using asyncio_run builtin
+
+async def greet() -> str:
+    return "Hello from async!"
+
+async def add_async(a: int, b: int) -> int:
+    return a + b
+
+async def test_main() -> None:
+    # Test basic await
+    result = await greet()
+    print(result)
+    assert result == "Hello from async!"
+    
+    # Test await with arguments
+    sum_result = await add_async(3, 4)
+    print(sum_result)
+    assert sum_result == 7
+    
+    print("Simple async test passed!")
+
+# Entry point - using standard main() wrapper
+def main() -> None:
+    asyncio_run(test_main())
+
+main()

@@ -140,6 +140,7 @@ impl<'a> MirBuilder<'a> {
             return_ty: func.return_type.clone(),
             locals: std::mem::take(&mut self.locals),
             blocks: std::mem::take(&mut self.blocks),
+            is_async: func.is_async,
             span: func.span,
         }
     }
@@ -809,6 +810,8 @@ impl<'a> MirBuilder<'a> {
             Literal(i128),         // Integer literal to compare
             BoolLiteral(bool),     // Boolean literal
             StringLiteral(String), // String literal
+            NonePattern,           // None pattern (value == 0)
+            SomePattern,           // Some(x) pattern (value != 0)
             Wildcard,              // Matches anything (_) or binding
         }
 
@@ -818,9 +821,24 @@ impl<'a> MirBuilder<'a> {
                     HirLiteral::Int(v) => PatternDispatch::Literal(*v),
                     HirLiteral::Bool(b) => PatternDispatch::BoolLiteral(*b),
                     HirLiteral::Str(s) => PatternDispatch::StringLiteral(s.clone()),
+                    HirLiteral::None => PatternDispatch::NonePattern, // None literal = NonePattern
                     _ => PatternDispatch::Wildcard,
                 },
                 HirPatternKind::Wildcard | HirPatternKind::Binding(_) => PatternDispatch::Wildcard,
+                HirPatternKind::Struct { ty, .. } => {
+                    // Check if this is a Some or None class pattern
+                    if let Type::Class(cls) = ty {
+                        if cls.name == "Some" {
+                            PatternDispatch::SomePattern
+                        } else if cls.name == "None" {
+                            PatternDispatch::NonePattern
+                        } else {
+                            PatternDispatch::Wildcard
+                        }
+                    } else {
+                        PatternDispatch::Wildcard
+                    }
+                }
                 _ => PatternDispatch::Wildcard,
             }
         }).collect();
@@ -864,12 +882,14 @@ impl<'a> MirBuilder<'a> {
             }
         }
 
-        // Build comparison blocks for literal patterns
+        // Build comparison blocks for literal and Option patterns
         let mut check_blocks: Vec<(BlockId, usize)> = Vec::new(); // (check_block, arm_index)
 
         for (i, pk) in pattern_kinds.iter().enumerate() {
             match pk {
-                PatternDispatch::Literal(_) | PatternDispatch::BoolLiteral(_) | PatternDispatch::StringLiteral(_) => {
+                PatternDispatch::Literal(_) | PatternDispatch::BoolLiteral(_) | 
+                PatternDispatch::StringLiteral(_) | PatternDispatch::NonePattern |
+                PatternDispatch::SomePattern => {
                     let check_bb = self.new_block();
                     check_blocks.push((check_bb, i));
                 }
@@ -927,6 +947,34 @@ impl<'a> MirBuilder<'a> {
                                 MirBinOp::Eq,
                                 MirOperand::Copy(MirPlace::local(subject_local)),
                                 MirOperand::Constant(MirConstant::Str(val.clone())),
+                            ),
+                        },
+                        span: roast_common::Span::default(),
+                    });
+                }
+                PatternDispatch::NonePattern => {
+                    // None pattern: check if subject == 0 (tagged pointer repr)
+                    self.push_stmt(MirStmt {
+                        kind: MirStmtKind::Assign {
+                            place: MirPlace::local(cmp_result),
+                            value: MirRvalue::BinaryOp(
+                                MirBinOp::Eq,
+                                MirOperand::Copy(MirPlace::local(subject_local)),
+                                MirOperand::Constant(MirConstant::Int(0)),
+                            ),
+                        },
+                        span: roast_common::Span::default(),
+                    });
+                }
+                PatternDispatch::SomePattern => {
+                    // Some pattern: check if subject != 0 (tagged pointer repr)
+                    self.push_stmt(MirStmt {
+                        kind: MirStmtKind::Assign {
+                            place: MirPlace::local(cmp_result),
+                            value: MirRvalue::BinaryOp(
+                                MirBinOp::Ne,
+                                MirOperand::Copy(MirPlace::local(subject_local)),
+                                MirOperand::Constant(MirConstant::Int(0)),
                             ),
                         },
                         span: roast_common::Span::default(),
@@ -991,20 +1039,36 @@ impl<'a> MirBuilder<'a> {
                     self.bind_pattern_vars(p, elem_local);
                 }
             }
-            HirPatternKind::Struct { fields, .. } => {
-                for (i, (_, p)) in fields.iter().enumerate() {
-                    let field_local = self.new_temp(p.ty.clone());
-                    self.push_stmt(MirStmt {
-                        kind: MirStmtKind::Assign {
-                            place: MirPlace::local(field_local),
-                            value: MirRvalue::Use(MirOperand::Copy(MirPlace {
-                                local: subject_local,
-                                projections: smallvec![MirProjection::Field(i as u32)],
-                            })),
-                        },
-                        span: p.span,
-                    });
-                    self.bind_pattern_vars(p, field_local);
+            HirPatternKind::Struct { ty, fields } => {
+                // Check if this is a Some pattern - special handling for tagged pointer repr
+                let is_some_pattern = if let Type::Class(cls) = ty {
+                    cls.name == "Some"
+                } else {
+                    false
+                };
+                
+                if is_some_pattern {
+                    // For Some(value): in tagged pointer repr, the value IS the subject
+                    // Bind inner pattern to subject directly
+                    for (_, p) in fields.iter() {
+                        self.bind_pattern_vars(p, subject_local);
+                    }
+                } else {
+                    // Regular struct pattern - use field projections
+                    for (i, (_, p)) in fields.iter().enumerate() {
+                        let field_local = self.new_temp(p.ty.clone());
+                        self.push_stmt(MirStmt {
+                            kind: MirStmtKind::Assign {
+                                place: MirPlace::local(field_local),
+                                value: MirRvalue::Use(MirOperand::Copy(MirPlace {
+                                    local: subject_local,
+                                    projections: smallvec![MirProjection::Field(i as u32)],
+                                })),
+                            },
+                            span: p.span,
+                        });
+                        self.bind_pattern_vars(p, field_local);
+                    }
                 }
             }
             HirPatternKind::Or(patterns) => {
@@ -1630,6 +1694,7 @@ impl<'a> MirBuilder<'a> {
                     locals: lambda_builder.locals,
                     blocks: lambda_builder.blocks,
                     return_ty: Type::Unknown,
+                    is_async: false,
                     span: expr.span,
                 };
 

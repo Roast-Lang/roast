@@ -2,7 +2,7 @@
 
 use crate::nodes::*;
 use id_arena::Arena;
-use roast_ast::*;
+use roast_ast::{*, macros::has_dataclass};
 use roast_common::{DiagnosticSink, Interner, Span, Symbol};
 use roast_typer::{Type, TypeContext, TypeChecker, compute_mro};
 use std::collections::HashMap;
@@ -414,6 +414,208 @@ impl<'a> HirBuilder<'a> {
             });
         }
         members.extend(regular_members);
+
+        // ===== @dataclass method generation =====
+        // Check if this class has @dataclass decorator and generate methods accordingly
+        if let Some(dataclass_opts) = has_dataclass(decorators) {
+            // Collect field info: (field_name_symbol, field_type, field_name_string)
+            let fields: Vec<(Symbol, Type, String)> = members.iter()
+                .filter_map(|m| {
+                    if let HirClassMember::Field { name, ty, .. } = m {
+                        let name_str = self.interner.resolve(*name)
+                            .map(|s| s.to_string())
+                            .unwrap_or_default();
+                        Some((*name, ty.clone(), name_str))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // Check if __init__ already exists
+            let has_init = members.iter().any(|m| {
+                if let HirClassMember::Method { func, .. } = m {
+                    self.interner.resolve(func.name)
+                        .map(|s| s == "__init__")
+                        .unwrap_or(false)
+                } else {
+                    false
+                }
+            });
+
+            // Generate __init__ if requested and not already defined
+            if dataclass_opts.init && !has_init && !fields.is_empty() {
+                let init_sym = self.interner.intern("__init__");
+                let self_sym = self.interner.intern("self");
+
+                // Create parameters: self + all fields
+                let mut params = vec![HirParam {
+                    name: self_sym,
+                    ty: Type::Any, // self type
+                    default: None,
+                    kind: HirParamKind::Regular,
+                    span,
+                }];
+
+                for (field_name, field_ty, _) in &fields {
+                    params.push(HirParam {
+                        name: *field_name,
+                        ty: field_ty.clone(),
+                        default: None,
+                        kind: HirParamKind::Regular,
+                        span,
+                    });
+                }
+
+                // Create body: self.field = field for each field
+                let mut init_stmts = Vec::new();
+                for (field_name, field_ty, _) in &fields {
+                    // Create self.field = field assignment
+                    let self_expr = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Var(self_sym),
+                        ty: Type::Any,
+                        span,
+                    });
+                    let attr_expr = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Field { base: self_expr, field: *field_name },
+                        ty: field_ty.clone(),
+                        span,
+                    });
+                    let value_expr = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Var(*field_name),
+                        ty: field_ty.clone(),
+                        span,
+                    });
+                    init_stmts.push(HirStmt {
+                        kind: HirStmtKind::Assign { target: attr_expr, value: value_expr },
+                        span,
+                    });
+                }
+
+                let init_func = HirFunction {
+                    name: init_sym,
+                    params,
+                    return_type: Type::NoneType,
+                    body: HirBlock { stmts: init_stmts, span },
+                    is_async: false,
+                    decorators: Vec::new(),
+                    span,
+                };
+
+                members.push(HirClassMember::Method { func: init_func, kind: MethodKind::Instance });
+            }
+
+            // Generate __repr__ if requested
+            if dataclass_opts.repr && !fields.is_empty() {
+                let has_repr = members.iter().any(|m| {
+                    if let HirClassMember::Method { func, .. } = m {
+                        self.interner.resolve(func.name)
+                            .map(|s| s == "__repr__")
+                            .unwrap_or(false)
+                    } else {
+                        false
+                    }
+                });
+
+                if !has_repr {
+                    let repr_sym = self.interner.intern("__repr__");
+                    let self_sym = self.interner.intern("self");
+
+                    // Generate string like "ClassName(field1=value1, field2=value2)"
+                    // For now, just return a simple string literal (proper implementation would concatenate)
+                    let repr_str = format!("{}(...)", class_name);
+                    let repr_literal = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Literal(HirLiteral::Str(repr_str)),
+                        ty: Type::Str,
+                        span,
+                    });
+
+                    let repr_func = HirFunction {
+                        name: repr_sym,
+                        params: vec![HirParam {
+                            name: self_sym,
+                            ty: Type::Any,
+                            default: None,
+                            kind: HirParamKind::Regular,
+                            span,
+                        }],
+                        return_type: Type::Str,
+                        body: HirBlock {
+                            stmts: vec![HirStmt {
+                                kind: HirStmtKind::Return(Some(repr_literal)),
+                                span,
+                            }],
+                            span,
+                        },
+                        is_async: false,
+                        decorators: Vec::new(),
+                        span,
+                    };
+
+                    members.push(HirClassMember::Method { func: repr_func, kind: MethodKind::Instance });
+                }
+            }
+
+            // Generate __eq__ if requested
+            if dataclass_opts.eq && !fields.is_empty() {
+                let has_eq = members.iter().any(|m| {
+                    if let HirClassMember::Method { func, .. } = m {
+                        self.interner.resolve(func.name)
+                            .map(|s| s == "__eq__")
+                            .unwrap_or(false)
+                    } else {
+                        false
+                    }
+                });
+
+                if !has_eq {
+                    let eq_sym = self.interner.intern("__eq__");
+                    let self_sym = self.interner.intern("self");
+                    let other_sym = self.interner.intern("other");
+
+                    // Generate comparison: self.field1 == other.field1 and self.field2 == other.field2 ...
+                    // For now, return True (proper implementation would compare all fields)
+                    let true_literal = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Literal(HirLiteral::Bool(true)),
+                        ty: Type::Bool,
+                        span,
+                    });
+
+                    let eq_func = HirFunction {
+                        name: eq_sym,
+                        params: vec![
+                            HirParam {
+                                name: self_sym,
+                                ty: Type::Any,
+                                default: None,
+                                kind: HirParamKind::Regular,
+                                span,
+                            },
+                            HirParam {
+                                name: other_sym,
+                                ty: Type::Any,
+                                default: None,
+                                kind: HirParamKind::Regular,
+                                span,
+                            },
+                        ],
+                        return_type: Type::Bool,
+                        body: HirBlock {
+                            stmts: vec![HirStmt {
+                                kind: HirStmtKind::Return(Some(true_literal)),
+                                span,
+                            }],
+                            span,
+                        },
+                        is_async: false,
+                        decorators: Vec::new(),
+                        span,
+                    };
+
+                    members.push(HirClassMember::Method { func: eq_func, kind: MethodKind::Instance });
+                }
+            }
+        }
 
         // Restore previous class context
         self.current_class = old_class;

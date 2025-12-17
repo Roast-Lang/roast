@@ -13,6 +13,7 @@ pub struct MirBody {
     pub return_ty: Type,
     pub locals: Vec<MirLocal>,
     pub blocks: Vec<MirBlock>,
+    pub is_async: bool,
     pub span: Span,
 }
 

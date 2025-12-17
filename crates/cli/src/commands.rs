@@ -15,6 +15,7 @@ use roast_llvm_backend::{LlvmCodeGen, LlvmConfig};
 use roast_hir::build::HirBuilder;
 use roast_mir::build::MirBuilder;
 use roast_borrowck::BorrowChecker;
+use roast_optimizer::{Optimizer, OptLevel as MirOptLevel};
 use roast_ast::{StmtKind, ExprKind};
 use roast_runtime::Value;
 use std::sync::Arc;
@@ -170,9 +171,10 @@ pub fn run(file: &Path, args: &[String], _opt_level: u32, debug: bool) -> Result
                 let mut bytecode_builder = roast_codegen::BytecodeBuilder::with_interner(&func.name.to_string(), &interner);
                 let bytecode = bytecode_builder.compile(&mir_body);
 
-                // Clone Symbol to u32 representation for later use
+                // Clone Symbol to u32 representation for later use; include is_async flag
                 let name_raw = func.name.as_raw();
-                modules.push((name_raw, Arc::new(bytecode)));
+                let is_async = mir_body.is_async;
+                modules.push((name_raw, Arc::new(bytecode), is_async));
             }
         }
         modules
@@ -202,7 +204,7 @@ pub fn run(file: &Path, args: &[String], _opt_level: u32, debug: bool) -> Result
     vm.set_global("sys_argv", roast_runtime::Value::List(std::sync::Arc::new(std::sync::Mutex::new(args_list))));
 
     // First, store all functions as globals so they can call each other
-    for (name_raw, bytecode) in &bytecode_modules {
+    for (name_raw, bytecode, is_async) in &bytecode_modules {
         let name_sym = roast_common::Symbol::from_raw(*name_raw);
         let name_str = interner.resolve(name_sym).unwrap_or("?");
 
@@ -210,13 +212,13 @@ pub fn run(file: &Path, args: &[String], _opt_level: u32, debug: bool) -> Result
             name: name_str.to_string(),
             arity: bytecode.num_params as usize,
             code: bytecode.clone(),
-            is_async: false,
+            is_async: *is_async,
         };
         vm.set_global(name_str, roast_runtime::Value::Function(std::sync::Arc::new(func)));
     }
 
     // Find and execute main function or __main__ block
-    for (name_raw, bytecode) in &bytecode_modules {
+    for (name_raw, bytecode, _is_async) in &bytecode_modules {
         // Resolve the raw symbol to a string
         let name_sym = roast_common::Symbol::from_raw(*name_raw);
         let name_str = interner.resolve(name_sym).unwrap_or("?");
@@ -1814,6 +1816,49 @@ fn get_column_at_offset(source: &str, offset: usize) -> usize {
     offset - line_start
 }
 
+/// Collect import module names from an AST module.
+/// Returns a list of module names (e.g., "test_modules.helpers")
+fn collect_imports(module: &roast_ast::Module, interner: &Interner) -> Vec<String> {
+    let mut imports = Vec::new();
+    for stmt in &module.body {
+        match &stmt.kind {
+            // Handle "from module import names"
+            StmtKind::ImportFrom { module: Some(mod_ident), .. } => {
+                if let Some(name) = interner.resolve(mod_ident.name) {
+                    imports.push(name.to_string());
+                }
+            }
+            // Handle "import module" or "import module as alias"
+            StmtKind::Import { names } => {
+                for alias in names {
+                    if let Some(name) = interner.resolve(alias.name.name) {
+                        imports.push(name.to_string());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    imports
+}
+
+/// Resolve a module name to a file path.
+/// e.g., "test_modules.helpers" -> "{base_dir}/test_modules/helpers.roast"
+fn resolve_module_path(module_name: &str, base_path: &Path) -> Option<std::path::PathBuf> {
+    // Convert dots to path separators
+    let rel_path = format!("{}.roast", module_name.replace('.', "/"));
+    
+    // Look relative to the base file's directory
+    if let Some(parent) = base_path.parent() {
+        let module_path = parent.join(&rel_path);
+        if module_path.exists() {
+            return Some(module_path);
+        }
+    }
+    
+    None
+}
+
 pub fn build_native(
     path: &Path,
     output: Option<&Path>,
@@ -1852,6 +1897,51 @@ pub fn build_llvm(
     let module = parse_module(&source, &path.to_string_lossy(), &interner, &mut diagnostics)?;
 
     let mut type_ctx = TypeContext::with_builtins(&interner);
+    
+    // Pre-collect module exports for star imports (from x import *)
+    for stmt in &module.body {
+        if let roast_ast::StmtKind::ImportFrom { module: Some(mod_path), names, .. } = &stmt.kind {
+            // Check if this is a star import
+            let has_star = names.iter().any(|alias| {
+                interner.resolve(alias.name.name).map(|s| s == "*").unwrap_or(false)
+            });
+            
+            if has_star {
+                let mod_name = interner.resolve(mod_path.name).unwrap_or("");
+                if let Some(import_path) = resolve_module_path(mod_name, path) {
+                    // Parse the imported module to collect exports
+                    if let Ok(import_source) = fs::read_to_string(&import_path) {
+                        let mut import_diagnostics = DiagnosticSink::with_source(&import_source);
+                        if let Ok(import_module) = parse_module(&import_source, &import_path.to_string_lossy(), &interner, &mut import_diagnostics) {
+                            // Collect all top-level function and class definitions as exports
+                            let mut exports: Vec<(roast_common::Symbol, roast_typer::Type)> = Vec::new();
+                            for import_stmt in &import_module.body {
+                                match &import_stmt.kind {
+                                    roast_ast::StmtKind::FunctionDef { name, .. } => {
+                                        exports.push((name.name, roast_typer::Type::Any));
+                                    }
+                                    roast_ast::StmtKind::ClassDef { name, .. } => {
+                                        exports.push((name.name, roast_typer::Type::Any));
+                                    }
+                                    roast_ast::StmtKind::Assign { targets, .. } => {
+                                        // Also export top-level variable assignments (like PI = 3.14)
+                                        for target in targets {
+                                            if let roast_ast::ExprKind::Name { id, .. } = &target.kind {
+                                                exports.push((id.name, roast_typer::Type::Any));
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            type_ctx.register_module_exports(mod_name, exports);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     let mut checker = TypeChecker::new(&mut type_ctx, &interner, &mut diagnostics);
     checker.check_module(&module);
 
@@ -1859,9 +1949,6 @@ pub fn build_llvm(
         report_diagnostics(&diagnostics, &source, path);
         bail!("compilation failed");
     }
-
-    let mut hir_builder = HirBuilder::new(&interner, &mut type_ctx, &mut diagnostics);
-    let hir_module = hir_builder.build_module(&module);
 
     let config = LlvmConfig {
         opt_level,
@@ -1876,91 +1963,199 @@ pub fn build_llvm(
         }
     }
 
-    let mut entry_point = None;
+    let mut entry_point: Option<String> = None;
     let mut entry_point_void = false;
     let mut function_count = 0;
     let mut all_borrow_errors: Vec<String> = Vec::new();
-    for item in &hir_module.items {
-        match item {
-            roast_hir::HirItem::Function(func) => {
-                function_count += 1;
-                let func_name_str = interner.resolve(func.name).unwrap_or_default();
-                let mangled_name = format!("roast_fn_{}", func.name.as_raw());
+    
+    // Helper closure to compile a module's functions and classes
+    let mut compile_module = |
+        hir_builder: &HirBuilder,
+        hir_module: &roast_hir::HirModule,
+        codegen: &mut LlvmCodeGen,
+        interner: &Interner,
+        entry_point: &mut Option<String>,
+        entry_point_void: &mut bool,
+        function_count: &mut usize,
+        all_borrow_errors: &mut Vec<String>,
+        opt_level: u32,
+    | -> Result<()> {
+        for item in &hir_module.items {
+            match item {
+                roast_hir::HirItem::Function(func) => {
+                    *function_count += 1;
+                    let func_name_str = interner.resolve(func.name).unwrap_or_default();
+                    let mangled_name = format!("roast_fn_{}", func.name.as_raw());
 
-                if func_name_str == "__module_init__" {
-                    entry_point = Some(mangled_name.clone());
-                    entry_point_void = matches!(func.return_type, roast_typer::Type::NoneType);
-                } else if func_name_str == "main" && entry_point.is_none() {
-                    entry_point = Some(mangled_name.clone());
-                    entry_point_void = matches!(func.return_type, roast_typer::Type::NoneType);
-                }
-
-                let mut mir_builder = MirBuilder::new(hir_builder.expr_arena());
-                let mir_body = mir_builder.build_function(func);
-
-                // Run borrow checker on MIR (using a separate diagnostics sink)
-                let mut borrow_diagnostics = DiagnosticSink::new();
-                let mut borrow_checker = BorrowChecker::new(&interner, &mut borrow_diagnostics);
-                let borrow_errors = borrow_checker.check_body(&mir_body);
-                if !borrow_errors.is_empty() {
-                    for err in &borrow_errors {
-                        eprintln!("{} in function '{}': {}", "Borrow error".red(), func_name_str, err);
+                    if func_name_str == "__module_init__" {
+                        *entry_point = Some(mangled_name.clone());
+                        *entry_point_void = matches!(func.return_type, roast_typer::Type::NoneType);
+                    } else if func_name_str == "main" && entry_point.is_none() {
+                        *entry_point = Some(mangled_name.clone());
+                        *entry_point_void = matches!(func.return_type, roast_typer::Type::NoneType);
                     }
-                    all_borrow_errors.extend(borrow_errors.iter().map(|e| format!("function '{}': {}", func_name_str, e)));
-                }
 
-                codegen.compile_function(&mir_body, None)
-                    .map_err(|e| anyhow::anyhow!("LLVM codegen error: {}", e))?;
-            }
-            roast_hir::HirItem::Class(cls) => {
-                let class_name = interner.resolve(cls.name).unwrap_or_default();
-                
-                // Register the class so class globals (@.class.X) are generated in IR
-                codegen.register_class(class_name, cls.mro.clone());
-                
-                let mut init_sym_id: Option<u32> = None;
-                let mut init_num_params: usize = 0;
-                
-                for member in &cls.members {
-                    if let roast_hir::HirClassMember::Method { func, .. } = member {
-                        function_count += 1;
-                        let mut mir_builder = MirBuilder::new(hir_builder.expr_arena());
-                        mir_builder.set_class_context(Some(class_name.to_string()), cls.mro.clone());
-                        let mir_body = mir_builder.build_function(func);
-                        
-                        // Check if this is __init__ method
-                        let method_name_str = interner.resolve(func.name).unwrap_or_default();
-                        if method_name_str == "__init__" {
-                            init_sym_id = Some(func.name.as_raw());
-                            // Subtract 1 for self parameter
-                            init_num_params = func.params.len().saturating_sub(1);
+                    let mut mir_builder = MirBuilder::new(hir_builder.expr_arena());
+                    let mut mir_body = mir_builder.build_function(func);
+
+                    // Optimize MIR before codegen based on opt_level
+                    let mir_opt_level = match opt_level {
+                        0 => MirOptLevel::None,
+                        1 => MirOptLevel::Less,
+                        2 => MirOptLevel::Default,
+                        _ => MirOptLevel::Aggressive,
+                    };
+                    let mut optimizer = Optimizer::for_level(mir_opt_level);
+                    optimizer.optimize(&mut mir_body);
+
+                    // Run borrow checker on MIR (using a separate diagnostics sink)
+                    let mut borrow_diagnostics = DiagnosticSink::new();
+                    let mut borrow_checker = BorrowChecker::new(interner, &mut borrow_diagnostics);
+                    let borrow_errors = borrow_checker.check_body(&mir_body);
+                    if !borrow_errors.is_empty() {
+                        for err in &borrow_errors {
+                            eprintln!("{} in function '{}': {}", "Borrow error".red(), func_name_str, err);
                         }
+                        all_borrow_errors.extend(borrow_errors.iter().map(|e| format!("function '{}': {}", func_name_str, e)));
+                    }
 
-                        // Run borrow checker on MIR (using a separate diagnostics sink)
-                        let mut borrow_diagnostics = DiagnosticSink::new();
-                        let mut borrow_checker = BorrowChecker::new(&interner, &mut borrow_diagnostics);
-                        let borrow_errors = borrow_checker.check_body(&mir_body);
-                        if !borrow_errors.is_empty() {
-                            for err in &borrow_errors {
-                                eprintln!("{} in method '{}.{}': {}", "Borrow error".red(), class_name, method_name_str, err);
+                    codegen.compile_function(&mir_body, None)
+                        .map_err(|e| anyhow::anyhow!("LLVM codegen error: {}", e))?;
+                }
+                roast_hir::HirItem::Class(cls) => {
+                    let class_name = interner.resolve(cls.name).unwrap_or_default();
+                    
+                    // Register the class so class globals (@.class.X) are generated in IR
+                    codegen.register_class(class_name, cls.mro.clone());
+                    
+                    let mut init_sym_id: Option<u32> = None;
+                    let mut init_num_params: usize = 0;
+                    
+                    for member in &cls.members {
+                        if let roast_hir::HirClassMember::Method { func, .. } = member {
+                            *function_count += 1;
+                            let mut mir_builder = MirBuilder::new(hir_builder.expr_arena());
+                            mir_builder.set_class_context(Some(class_name.to_string()), cls.mro.clone());
+                            let mut mir_body = mir_builder.build_function(func);
+                            
+                            // Optimize MIR before codegen based on opt_level
+                            let mir_opt_level = match opt_level {
+                                0 => MirOptLevel::None,
+                                1 => MirOptLevel::Less,
+                                2 => MirOptLevel::Default,
+                                _ => MirOptLevel::Aggressive,
+                            };
+                            let mut optimizer = Optimizer::for_level(mir_opt_level);
+                            optimizer.optimize(&mut mir_body);
+                            
+                            // Check if this is __init__ method
+                            let method_name_str = interner.resolve(func.name).unwrap_or_default();
+                            if method_name_str == "__init__" {
+                                init_sym_id = Some(func.name.as_raw());
+                                // Subtract 1 for self parameter
+                                init_num_params = func.params.len().saturating_sub(1);
                             }
-                            all_borrow_errors.extend(borrow_errors.iter().map(|e| format!("method '{}.{}': {}", class_name, method_name_str, e)));
-                        }
 
-                        codegen.compile_function(&mir_body, Some(class_name))
-                            .map_err(|e| anyhow::anyhow!("LLVM codegen error: {}", e))?;
+                            // Run borrow checker on MIR (using a separate diagnostics sink)
+                            let mut borrow_diagnostics = DiagnosticSink::new();
+                            let mut borrow_checker = BorrowChecker::new(interner, &mut borrow_diagnostics);
+                            let borrow_errors = borrow_checker.check_body(&mir_body);
+                            if !borrow_errors.is_empty() {
+                                for err in &borrow_errors {
+                                    eprintln!("{} in method '{}.{}': {}", "Borrow error".red(), class_name, method_name_str, err);
+                                }
+                                all_borrow_errors.extend(borrow_errors.iter().map(|e| format!("method '{}.{}': {}", class_name, method_name_str, e)));
+                            }
+
+                            codegen.compile_function(&mir_body, Some(class_name))
+                                .map_err(|e| anyhow::anyhow!("LLVM codegen error: {}", e))?;
+                            
+                            // Register the method for direct dispatch lookup
+                            codegen.register_class_method(class_name, func.name.as_raw(), method_name_str);
+                        }
+                    }
+                    
+                    // Generate class constructor wrapper that allocates object and calls __init__
+                    if let Some(init_id) = init_sym_id {
+                        let class_sym_id = cls.name.as_raw();
+                        codegen.generate_class_constructor(class_sym_id, init_id, init_num_params, class_name)
+                            .map_err(|e| anyhow::anyhow!("Failed to generate class constructor: {}", e))?;
                     }
                 }
-                
-                // Generate class constructor wrapper that allocates object and calls __init__
-                if let Some(init_id) = init_sym_id {
-                    let class_sym_id = cls.name.as_raw();
-                    codegen.generate_class_constructor(class_sym_id, init_id, init_num_params, class_name)
-                        .map_err(|e| anyhow::anyhow!("Failed to generate class constructor: {}", e))?;
+                _ => {}
+            }
+        }
+        Ok(())
+    };
+    
+    // ===== Compile imported modules FIRST =====
+    // This ensures that imported class methods are registered before main module is compiled,
+    // enabling direct dispatch for imported class methods.
+    let import_names = collect_imports(&module, &interner);
+    for import_name in &import_names {
+        if let Some(import_path) = resolve_module_path(import_name, path) {
+            // Parse the imported module
+            let import_source = match fs::read_to_string(&import_path) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("{} Failed to read import '{}': {}", "warning:".yellow(), import_name, e);
+                    continue;
+                }
+            };
+            
+            let mut import_diagnostics = DiagnosticSink::with_source(&import_source);
+            let import_module = match parse_module(&import_source, &import_path.to_string_lossy(), &interner, &mut import_diagnostics) {
+                Ok(m) => m,
+                Err(e) => {
+                    eprintln!("{} Failed to parse import '{}': {}", "warning:".yellow(), import_name, e);
+                    continue;
+                }
+            };
+            
+            // Type check the imported module
+            {
+                let mut import_checker = TypeChecker::new(&mut type_ctx, &interner, &mut import_diagnostics);
+                import_checker.check_module(&import_module);
+            }
+            
+            if import_diagnostics.has_errors() {
+                report_diagnostics(&import_diagnostics, &import_source, &import_path);
+                bail!("compilation failed in imported module '{}'", import_name);
+            }
+            
+            // Re-register symbols after parsing import (new symbols like attr names were added)
+            for i in 0..interner.len() {
+                let sym = roast_common::Symbol::from_raw(i as u32);
+                if let Some(name) = interner.resolve(sym) {
+                    codegen.register_symbol(i as u32, name);
                 }
             }
-            _ => {}
+            
+            // Build HIR and compile
+            let mut import_hir_builder = HirBuilder::new(&interner, &mut type_ctx, &mut import_diagnostics);
+            let import_hir_module = import_hir_builder.build_module(&import_module);
+            
+            // We don't want imported modules to set the entry point
+            let mut _unused_entry: Option<String> = None;
+            let mut _unused_void = false;
+            compile_module(
+                &import_hir_builder, &import_hir_module, &mut codegen, &interner,
+                &mut _unused_entry, &mut _unused_void, &mut function_count,
+                &mut all_borrow_errors, opt_level,
+            )?;
         }
+    }
+    
+    // ===== Compile main module AFTER imports =====
+    {
+        let mut hir_builder = HirBuilder::new(&interner, &mut type_ctx, &mut diagnostics);
+        let hir_module = hir_builder.build_module(&module);
+        
+        compile_module(
+            &hir_builder, &hir_module, &mut codegen, &interner,
+            &mut entry_point, &mut entry_point_void, &mut function_count,
+            &mut all_borrow_errors, opt_level,
+        )?;
     }
 
     // Check for borrow errors - fail compilation if any were found

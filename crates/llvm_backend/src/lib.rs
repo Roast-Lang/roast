@@ -30,7 +30,9 @@ fn is_builtin(name: &str) -> bool {
         "max" | "sum" | "sorted" | "reversed" | "enumerate" | "zip" |
         "map" | "filter" | "input" | "ord" | "chr" | "repr" | "hash" |
         "id" | "isinstance" | "issubclass" | "hasattr" | "getattr" | "setattr" |
-        "all" | "any" | "pow" | "super"
+        "all" | "any" | "pow" | "super" | "bint" | "Some" | "rc" |
+        // Async builtins
+        "asyncio_run" | "asyncio_sleep"
     )
 }
 
@@ -246,6 +248,8 @@ pub struct ClassInfo {
     pub methods: std::collections::HashSet<u32>,
     /// Method names defined in this class (for magic method lookups)
     pub method_names: std::collections::HashSet<String>,
+    /// Map of method name to symbol ID for generating roast_class_add_method calls
+    pub method_syms: HashMap<String, u32>,
     /// Method Resolution Order - list of class names for inheritance lookup
     pub mro: Vec<String>,
     /// Class variables (name -> (type tag, initial value as i64))
@@ -562,6 +566,15 @@ impl LlvmCodeGen {
         info.mro = mro;
     }
 
+    /// Register that a method is defined in a class (by symbol ID and name).
+    /// This enables direct dispatch for imported class methods.
+    pub fn register_class_method(&mut self, class_name: &str, method_sym: u32, method_name: &str) {
+        let info = self.class_info.entry(class_name.to_string()).or_default();
+        info.methods.insert(method_sym);
+        info.method_names.insert(method_name.to_string());
+        info.method_syms.insert(method_name.to_string(), method_sym);
+    }
+
     /// Compile a MIR function to LLVM IR.
     /// If class_prefix is provided, the function name will be prefixed with the class name.
     pub fn compile_function(&mut self, body: &MirBody, class_prefix: Option<&str>) -> LlvmResult<()> {
@@ -747,6 +760,30 @@ entry:
         if self.class_info.values().any(|i| !i.class_variables.is_empty()) {
             ir.push('\n');
         }
+        
+        // Method name string constants for dynamic dispatch registration
+        for (class_name, info) in &self.class_info {
+            for (method_name, method_sym) in &info.method_syms {
+                // Only add if not already in strings (i.e., we'll use @.methodname.X.Y)
+                if !self.strings.contains_key(method_name) {
+                    let escaped = method_name.chars().map(|c| {
+                        match c {
+                            '\\' => "\\5C".to_string(),
+                            '"' => "\\22".to_string(),
+                            c if c.is_ascii() && !c.is_control() => c.to_string(),
+                            c => format!("\\{:02X}", c as u8),
+                        }
+                    }).collect::<String>();
+                    ir.push_str(&format!(
+                        "@.methodname.{}.{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"\n",
+                        class_name, method_sym, method_name.len() + 1, escaped
+                    ));
+                }
+            }
+        }
+        if self.class_info.values().any(|i| !i.method_syms.is_empty()) {
+            ir.push('\n');
+        }
 
         // External declarations - C standard library
         ir.push_str("; C standard library\n");
@@ -874,6 +911,16 @@ entry:
         ir.push_str("declare i64 @roast_tuple_len(i8*) nounwind\n");
         ir.push('\n');
 
+        // BigInt operations (arbitrary precision integers)
+        ir.push_str("; BigInt operations\n");
+        ir.push_str("declare i8* @roast_bigint_from_i64(i64) nounwind\n");
+        ir.push_str("declare i8* @roast_bigint_add(i8*, i8*) nounwind\n");
+        ir.push_str("declare i8* @roast_bigint_sub(i8*, i8*) nounwind\n");
+        ir.push_str("declare i8* @roast_bigint_mul(i8*, i8*) nounwind\n");
+        ir.push_str("declare i8* @roast_bigint_to_str(i8*) nounwind\n");
+        ir.push_str("declare void @roast_bigint_print(i8*) nounwind\n");
+        ir.push('\n');
+
         // Iterator operations
         ir.push_str("; Iterator operations\n");
         ir.push_str("declare i8* @roast_iter_new(i8*) nounwind\n");
@@ -885,12 +932,14 @@ entry:
         ir.push_str("; Object operations\n");
         ir.push_str("declare i8* @roast_object_new(i8*) nounwind\n");
         ir.push_str("declare i8* @roast_class_new(i8*, i8*) nounwind\n");
+        ir.push_str("declare void @roast_class_add_method(i8*, i8*, i64) nounwind\n");
         ir.push_str("declare i64 @roast_object_getattr(i8*, i8*) nounwind\n");
         ir.push_str("declare i64 @roast_object_getattr_auto(i8*, i8*, i64) nounwind\n");
         ir.push_str("declare void @roast_object_setattr(i8*, i8*, i64) nounwind\n");
         ir.push_str("declare i1 @roast_object_hasattr(i8*, i8*) nounwind\n");
         ir.push_str("declare i64 @roast_object_call_method0(i64, i8*) nounwind\n");
         ir.push_str("declare i64 @roast_object_call_method1(i64, i8*, i64) nounwind\n");
+        ir.push_str("declare i64 @roast_object_call_method2(i64, i8*, i64, i64) nounwind\n");
         ir.push('\n');
 
         // Dunder method operations
@@ -931,6 +980,11 @@ entry:
         // Async operations
         ir.push_str("; Async operations\n");
         ir.push_str("declare i64 @roast_await(i8*) nounwind\n");
+        ir.push_str("declare i64 @roast_asyncio_run(i64) nounwind\n");
+        ir.push_str("declare i64 @roast_asyncio_sleep(double) nounwind\n");
+        ir.push_str("; Reference counting\n");
+        ir.push_str("declare i64 @roast_rc_create(i64) nounwind\n");
+        ir.push_str("declare i64 @roast_rc_get(i64) nounwind\n");
         ir.push('\n');
 
         // Error handling with setjmp/longjmp
@@ -1071,6 +1125,31 @@ entry:
                     "  store i8* %class.{}, i8** @.class.{}\n",
                     class_name, class_name
                 ));
+                
+                // Register methods with the class for dynamic dispatch
+                if let Some(info) = self.class_info.get(class_name) {
+                    for (method_name, method_sym) in &info.method_syms {
+                        // Look up existing string constant or use inline
+                        let method_str_len = method_name.len() + 1;
+                        let method_str_ref = if let Some(&id) = self.strings.get(method_name) {
+                            format!("@.str.{}", id)
+                        } else {
+                            // Generate inline string constant
+                            let escaped = method_name.replace("\\", "\\5C").replace("\"", "\\22");
+                            format!("@.methodname.{}.{}", class_name, method_sym)
+                        };
+                        
+                        // Get function pointer as i64
+                        ir.push_str(&format!(
+                            "  %method_ptr.{}.{} = ptrtoint i64 (i64, ...)* @roast_fn_{}_{} to i64\n",
+                            class_name, method_sym, class_name, method_sym
+                        ));
+                        ir.push_str(&format!(
+                            "  call void @roast_class_add_method(i8* %class.{}, i8* getelementptr ([{} x i8], [{} x i8]* {}, i32 0, i32 0), i64 %method_ptr.{}.{})\n",
+                            class_name, method_str_len, method_str_len, method_str_ref, class_name, method_sym
+                        ));
+                    }
+                }
             }
 
             ir.push_str("  ret void\n");
@@ -1325,8 +1404,8 @@ impl<'a> FunctionGen<'a> {
             // This is conservative: we might leak some memory but won't crash
             Type::Any | Type::Unknown | Type::Error | Type::Never => true,
             
-            // Collections and strings need deallocation
-            Type::List(_) | Type::Dict(_, _) | Type::Set(_) | Type::Str | Type::Bytes => false,
+            // Collections, strings, and BigInt need deallocation
+            Type::List(_) | Type::Dict(_, _) | Type::Set(_) | Type::Str | Type::Bytes | Type::BigInt => false,
             
             // Class instances need deallocation
             Type::Class(_) => false,
@@ -1742,8 +1821,23 @@ impl<'a> FunctionGen<'a> {
                 } else {
                     let val = self.generate_rvalue(value)?;
                     let ptr = self.get_place_ptr(place);
-                    let ty = Self::type_to_llvm(&self.get_place_type(place));
+                    let place_ty = self.get_place_type(place);
+                    let ty = Self::type_to_llvm(&place_ty);
                     self.ir.push_str(&format!("  store {} {}, {}* {}\n", ty, val, ty, ptr));
+                    
+                    // For non-Copy types (lists, strings, objects), we need to increment the
+                    // reference count when assigning. This way when both the source and destination
+                    // go out of scope and get decref'd, the refcount will be correct.
+                    // Skip this for new allocations (constants, aggregates) which already have refcount=1.
+                    let needs_incref = !self.is_copy_type(&place_ty) && match value {
+                        MirRvalue::Use(MirOperand::Copy(_)) | MirRvalue::Use(MirOperand::Move(_)) => true,
+                        _ => false,
+                    };
+                    if needs_incref {
+                        let ptr_val = self.fresh_value();
+                        self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr_val, val));
+                        self.ir.push_str(&format!("  call void @roast_incref(i8* {})\n", ptr_val));
+                    }
                 }
             }
             MirStmtKind::StorageLive(_) => {
@@ -2152,6 +2246,46 @@ impl<'a> FunctionGen<'a> {
                 }
                 _ => {
                     // Unsupported string operation, fall through to integer
+                }
+            }
+        }
+
+        // BigInt operations (arbitrary precision arithmetic)
+        let is_bigint = matches!(lhs_ty, Type::BigInt) || matches!(rhs_ty, Type::BigInt);
+        if is_bigint {
+            match op {
+                MirBinOp::Add => {
+                    let l_ptr = self.fresh_value();
+                    let r_ptr = self.fresh_value();
+                    let add_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", r_ptr, r));
+                    self.ir.push_str(&format!("  {} = call i8* @roast_bigint_add(i8* {}, i8* {})\n", add_result, l_ptr, r_ptr));
+                    self.ir.push_str(&format!("  {} = ptrtoint i8* {} to i64\n", result, add_result));
+                    return Ok(result);
+                }
+                MirBinOp::Sub => {
+                    let l_ptr = self.fresh_value();
+                    let r_ptr = self.fresh_value();
+                    let sub_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", r_ptr, r));
+                    self.ir.push_str(&format!("  {} = call i8* @roast_bigint_sub(i8* {}, i8* {})\n", sub_result, l_ptr, r_ptr));
+                    self.ir.push_str(&format!("  {} = ptrtoint i8* {} to i64\n", result, sub_result));
+                    return Ok(result);
+                }
+                MirBinOp::Mul => {
+                    let l_ptr = self.fresh_value();
+                    let r_ptr = self.fresh_value();
+                    let mul_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", r_ptr, r));
+                    self.ir.push_str(&format!("  {} = call i8* @roast_bigint_mul(i8* {}, i8* {})\n", mul_result, l_ptr, r_ptr));
+                    self.ir.push_str(&format!("  {} = ptrtoint i8* {} to i64\n", result, mul_result));
+                    return Ok(result);
+                }
+                _ => {
+                    // Unsupported BigInt operation, fall through to integer (for now)
                 }
             }
         }
@@ -3311,6 +3445,14 @@ impl<'a> FunctionGen<'a> {
                                 } else if name == "print" && args.len() > 1 {
                                     // Multi-argument print - handle specially
                                     "@@multi_print@@".to_string()
+                                } else if name == "print" && args.len() == 1 {
+                                    // Single-argument print - check if it's a BigInt
+                                    let arg_ty = self.operand_type(&args[0]);
+                                    if matches!(arg_ty, Type::BigInt) {
+                                        "@@bigint_print@@".to_string()
+                                    } else {
+                                        format!("@roast_{}", name)
+                                    }
                                 } else if name == "str" && args.len() == 1 {
                                     // Check if argument is a float - use roast_float_to_str
                                     let arg_ty = self.operand_type(&args[0]);
@@ -3329,6 +3471,16 @@ impl<'a> FunctionGen<'a> {
                                     } else {
                                         format!("@roast_{}", name)
                                     }
+                                } else if name == "bint" && args.len() == 1 {
+                                    // BigInt constructor - call roast_bigint_from_i64
+                                    "@@bint_from_i64@@".to_string() // Special marker
+                                } else if name == "Some" && args.len() == 1 {
+                                    // Some() constructor - just pass through the value
+                                    // In tagged pointer representation: None=0, Some(x)=x
+                                    "@@some@@".to_string() // Special marker
+                                } else if name == "rc" && args.len() == 1 {
+                                    // rc() constructor - create reference-counted wrapper
+                                    "@@rc@@".to_string() // Special marker
                                 } else {
                                     format!("@roast_{}", name)
                                 }
@@ -3879,6 +4031,12 @@ impl<'a> FunctionGen<'a> {
                                     // Use roast_print_int for integers (no newline)
                                     self.ir.push_str(&format!("  call void @roast_print_int(i64 {})\n", arg_val));
                                 }
+                                Type::BigInt => {
+                                    // BigInt is a pointer - convert i64 back to i8* and call bigint_print
+                                    let ptr = self.fresh_value();
+                                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, arg_val));
+                                    self.ir.push_str(&format!("  call void @roast_bigint_print(i8* {})\n", ptr));
+                                }
                                 _ => {
                                     // Default to roast_print for other values (might add newline)
                                     self.ir.push_str(&format!("  call i64 @roast_print(i64 {})\n", arg_val));
@@ -3889,6 +4047,46 @@ impl<'a> FunctionGen<'a> {
                         self.ir.push_str("  call void @roast_print_newline()\n");
                         // Result is 0 (None)
                         self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
+                    } else if func_name == "@@bint_from_i64@@" {
+                        // Special handling for bint(int_value) - BigInt constructor
+                        let int_val = self.generate_operand_as_i64(&args[0])?;
+                        let bigint_ptr = self.fresh_value();
+                        self.ir.push_str(&format!(
+                            "  {} = call i8* @roast_bigint_from_i64(i64 {})\n",
+                            bigint_ptr, int_val
+                        ));
+                        // Convert BigInt pointer to i64 for uniform value representation
+                        self.ir.push_str(&format!(
+                            "  {} = ptrtoint i8* {} to i64\n",
+                            result, bigint_ptr
+                        ));
+                    } else if func_name == "@@bigint_print@@" {
+                        // Special handling for print(bint) - BigInt print with newline
+                        let int_val = self.generate_operand_as_i64(&args[0])?;
+                        let bigint_ptr = self.fresh_value();
+                        self.ir.push_str(&format!(
+                            "  {} = inttoptr i64 {} to i8*\n",
+                            bigint_ptr, int_val
+                        ));
+                        self.ir.push_str(&format!(
+                            "  call void @roast_bigint_print(i8* {})\n",
+                            bigint_ptr
+                        ));
+                        // Result is 0 (None)
+                        self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
+                    } else if func_name == "@@some@@" {
+                        // Some() constructor - just pass through the value
+                        // Tagged pointer representation: None = 0, Some(x) = x
+                        let val = self.generate_operand_as_i64(&args[0])?;
+                        self.ir.push_str(&format!("  {} = add i64 {}, 0\n", result, val));
+                    } else if func_name == "@@rc@@" {
+                        // rc() constructor - create reference-counted wrapper
+                        let val = self.generate_operand_as_i64(&args[0])?;
+                        // Call runtime function to create rc wrapper
+                        self.ir.push_str(&format!(
+                            "  {} = call i64 @roast_rc_create(i64 {})\n",
+                            result, val
+                        ));
                     } else {
                         let args_str = arg_vals.iter().map(|a| format!("i64 {}", a)).collect::<Vec<_>>().join(", ");
                         self.ir.push_str(&format!("  {} = call i64 {}({})\n", result, func_name, args_str));
@@ -4056,8 +4254,18 @@ impl<'a> FunctionGen<'a> {
                                 result, receiver_val, method_ptr, arg1
                             ));
                         }
+                        2 => {
+                            // Dynamic dispatch for 2-arg method calls
+                            let arg1 = self.generate_operand_as_i64(&args[0])?;
+                            let arg2 = self.generate_operand_as_i64(&args[1])?;
+                            self.ir.push_str(&format!(
+                                "  {} = call i64 @roast_object_call_method2(i64 {}, i8* {}, i64 {}, i64 {})\n",
+                                result, receiver_val, method_ptr, arg1, arg2
+                            ));
+                        }
                         _ => {
-                            // Fall back to static dispatch with non-prefixed name
+                            // Fall back to static dispatch for 3+ args (rare case)
+                            // This path should ideally never be taken for imported classes
                             let func_name = format!("@roast_fn_{}", method.as_raw());
                             let mut arg_vals = vec![receiver_val.clone()];
                             for arg in args {

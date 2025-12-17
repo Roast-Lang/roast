@@ -16,6 +16,7 @@ thiserror.workspace = true
 dashmap.workspace = true
 roast-codegen.workspace = true
 libc = "0.2"
+num-bigint.workspace = true
 
 [features]
 default = ["refcount"]

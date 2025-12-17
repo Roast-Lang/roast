@@ -1,0 +1,18 @@
+# Test Option[T] pattern matching with Some/None
+def process_option(opt: Option[str]) -> str:
+    match opt:
+        case Some(value):
+            return f"Got: {value}"
+        case None:
+            return "Nothing"
+
+def main() -> None:
+    # Test Some pattern
+    some_val: Option[str] = Some("hello")
+    result1 = process_option(some_val)
+    print(result1)
+    assert result1 == "Got: hello"
+    
+    print("Option pattern matching tests passed!")
+
+main()

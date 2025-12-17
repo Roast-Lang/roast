@@ -1,0 +1,21 @@
+# Test local vars after if-return
+def test_func(n: int) -> int:
+    if n <= 1:
+        return n
+    # Variables declared after early return
+    a: int = 0
+    b: int = 1
+    print("After if: a=")
+    print(a)
+    print("b=")
+    print(b)
+    return a + b
+
+def main() -> int:
+    print("test_func(0):")
+    print(test_func(0))
+    print("test_func(1):")
+    print(test_func(1))
+    print("test_func(5):")
+    print(test_func(5))
+    return 0

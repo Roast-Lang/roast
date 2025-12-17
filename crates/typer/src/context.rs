@@ -22,6 +22,10 @@ pub struct TypeContext {
     /// Persistent map of expression types, keyed by span.
     /// This survives scope popping and is used by HIR builder.
     expr_types: FxHashMap<Span, Type>,
+    
+    /// Module exports for star imports: module_name -> list of (exported_name, type)
+    /// Populated before type checking, used to expand `from x import *`
+    module_exports: FxHashMap<String, Vec<(Symbol, Type)>>,
 }
 
 impl TypeContext {
@@ -33,6 +37,7 @@ impl TypeContext {
             named_types: FxHashMap::default(),
             scopes: vec![FxHashMap::default()],
             expr_types: FxHashMap::default(),
+            module_exports: FxHashMap::default(),
         }
     }
 
@@ -189,6 +194,17 @@ impl TypeContext {
     pub fn lookup_expr_type(&self, span: Span) -> Option<&Type> {
         self.expr_types.get(&span)
     }
+
+    /// Registers the exported names from a module for star imports.
+    pub fn register_module_exports(&mut self, module_name: &str, exports: Vec<(Symbol, Type)>) {
+        self.module_exports.insert(module_name.to_string(), exports);
+    }
+
+    /// Looks up the exported names from a module for star imports.
+    pub fn lookup_module_exports(&self, module_name: &str) -> Option<&Vec<(Symbol, Type)>> {
+        self.module_exports.get(module_name)
+    }
+
 
     /// Checks if two types are equal (after resolution).
     pub fn types_equal(&self, a: &Type, b: &Type) -> bool {

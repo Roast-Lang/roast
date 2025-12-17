@@ -75,6 +75,9 @@ pub fn register_builtins(ctx: &mut crate::context::TypeContext, interner: &roast
         ("assert_eq", assert_eq_type()),
         ("assert_ne", assert_ne_type()),
         ("super", super_type()),
+        ("bint", bint_constructor_type()),
+        ("Some", some_constructor_type()),
+        ("rc", rc_constructor_type()),
         // Exception types
         ("Exception", exception_type()),
         ("ValueError", exception_type()),
@@ -184,6 +187,53 @@ pub fn int_constructor_type() -> Type {
         is_async: false,
     }
 }
+
+/// Constructor for bint (BigInt) type
+pub fn bint_constructor_type() -> Type {
+    Type::Callable {
+        params: vec![FuncParam {
+            name: None,
+            ty: Type::Int,  // Takes an int and converts to BigInt
+            default: false,
+            kind: ParamKind::Regular,
+        }],
+        returns: Arc::new(Type::BigInt),
+        is_async: false,
+    }
+}
+
+/// Constructor for Some(value) -> Optional[T]
+/// Wraps a value in an Optional type (like Rust's Some)
+pub fn some_constructor_type() -> Type {
+    Type::Callable {
+        params: vec![FuncParam {
+            name: None,
+            ty: Type::Any,  // Takes any value T
+            default: false,
+            kind: ParamKind::Regular,
+        }],
+        // Returns Optional[Any] - the actual type is inferred from usage
+        returns: Arc::new(Type::Optional(Arc::new(Type::Any))),
+        is_async: false,
+    }
+}
+
+/// Constructor for rc(value) -> rc[T]
+/// Wraps a value in a reference-counted container (shared ownership)
+pub fn rc_constructor_type() -> Type {
+    Type::Callable {
+        params: vec![FuncParam {
+            name: None,
+            ty: Type::Any,  // Takes any value T
+            default: false,
+            kind: ParamKind::Regular,
+        }],
+        // Returns rc[Any] - the actual type is inferred from usage
+        returns: Arc::new(Type::Rc(Arc::new(Type::Any))),
+        is_async: false,
+    }
+}
+
 
 pub fn float_constructor_type() -> Type {
     Type::Callable {

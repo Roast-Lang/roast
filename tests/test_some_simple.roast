@@ -1,0 +1,16 @@
+# Test Some() constructor
+def main() -> None:
+    # Test Some() wrapping a value
+    x: int = 42
+    opt = Some(x)
+    print("Created Some(42)")
+    print(opt)
+    
+    # Test Some with string
+    s = Some("hello")
+    print("Created Some(hello)")
+    print(s)
+    
+    print("Some tests passed!")
+
+main()

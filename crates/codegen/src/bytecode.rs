@@ -96,6 +96,7 @@ pub enum OpCode {
     Yield = 0xA3,
     YieldFrom = 0xA4,
     MakeFunction = 0xA9,   // followed by u16 const index (code), u16 name index, u8 arity
+    MakeFunctionAsync = 0xAA, // Same as MakeFunction but creates async function
 
     // Async operations
     Await = 0xA5,          // Await an awaitable object (coroutine, future, etc.)
@@ -199,7 +200,7 @@ impl OpCode {
             OpCode::LoadInt => 9,   // 1 + 8 bytes for i64
             OpCode::LoadFloat => 9, // 1 + 8 bytes for f64
 
-            OpCode::MakeFunction => 6, // 1 + 2 (code const) + 2 (name const) + 1 (arity)
+            OpCode::MakeFunction | OpCode::MakeFunctionAsync => 6, // 1 + 2 (code const) + 2 (name const) + 1 (arity)
         }
     }
 }

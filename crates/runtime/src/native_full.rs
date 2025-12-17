@@ -16,6 +16,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_double, c_int, c_long, c_void};
 use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use num_bigint::BigInt as NumBigInt;
 
 // ============================================================================
 // Type Tags and Value Representation
@@ -43,6 +44,7 @@ pub enum TypeTag {
     Bytes = 15,
     Super = 16,
     Property = 17,
+    BigInt = 18,
 }
 
 /// Object header for all heap-allocated values
@@ -117,6 +119,7 @@ pub extern "C" fn roast_decref(ptr: *mut c_void) {
                 TypeTag::Set => roast_set_free_internal(ptr as *mut RoastSet),
                 TypeTag::Tuple => roast_tuple_free_internal(ptr as *mut RoastTuple),
                 TypeTag::Object => roast_object_free_internal(ptr as *mut RoastObject),
+                TypeTag::BigInt => roast_bigint_free(ptr as *mut RoastBigInt),
                 _ => {}
             }
         }
@@ -904,6 +907,110 @@ fn roast_str_free(s: *mut RoastString) {
         }
         let layout = Layout::new::<RoastString>();
         dealloc(s as *mut u8, layout);
+    }
+}
+
+// ============================================================================
+// BigInt Operations (arbitrary precision integers)
+// ============================================================================
+
+#[repr(C)]
+pub struct RoastBigInt {
+    header: ObjectHeader,
+    value: *mut NumBigInt,
+}
+
+#[no_mangle]
+pub extern "C" fn roast_bigint_from_i64(value: c_long) -> *mut RoastBigInt {
+    unsafe {
+        let layout = Layout::new::<RoastBigInt>();
+        let ptr = alloc(layout) as *mut RoastBigInt;
+        (*ptr).header = ObjectHeader::new(TypeTag::BigInt);
+        let bigint = Box::new(NumBigInt::from(value));
+        (*ptr).value = Box::into_raw(bigint);
+        ptr
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roast_bigint_add(a: *const RoastBigInt, b: *const RoastBigInt) -> *mut RoastBigInt {
+    if a.is_null() || b.is_null() { return roast_bigint_from_i64(0); }
+    unsafe {
+        let a_val = &*(*a).value;
+        let b_val = &*(*b).value;
+        let result = a_val + b_val;
+        
+        let layout = Layout::new::<RoastBigInt>();
+        let ptr = alloc(layout) as *mut RoastBigInt;
+        (*ptr).header = ObjectHeader::new(TypeTag::BigInt);
+        (*ptr).value = Box::into_raw(Box::new(result));
+        ptr
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roast_bigint_sub(a: *const RoastBigInt, b: *const RoastBigInt) -> *mut RoastBigInt {
+    if a.is_null() || b.is_null() { return roast_bigint_from_i64(0); }
+    unsafe {
+        let a_val = &*(*a).value;
+        let b_val = &*(*b).value;
+        let result = a_val - b_val;
+        
+        let layout = Layout::new::<RoastBigInt>();
+        let ptr = alloc(layout) as *mut RoastBigInt;
+        (*ptr).header = ObjectHeader::new(TypeTag::BigInt);
+        (*ptr).value = Box::into_raw(Box::new(result));
+        ptr
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roast_bigint_mul(a: *const RoastBigInt, b: *const RoastBigInt) -> *mut RoastBigInt {
+    if a.is_null() || b.is_null() { return roast_bigint_from_i64(0); }
+    unsafe {
+        let a_val = &*(*a).value;
+        let b_val = &*(*b).value;
+        let result = a_val * b_val;
+        
+        let layout = Layout::new::<RoastBigInt>();
+        let ptr = alloc(layout) as *mut RoastBigInt;
+        (*ptr).header = ObjectHeader::new(TypeTag::BigInt);
+        (*ptr).value = Box::into_raw(Box::new(result));
+        ptr
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roast_bigint_to_str(b: *const RoastBigInt) -> *mut RoastString {
+    if b.is_null() { return roast_str_new(ptr::null(), 0); }
+    unsafe {
+        let val = &*(*b).value;
+        let s = val.to_string();
+        let cstr = CString::new(s).unwrap();
+        roast_str_from_cstr(cstr.as_ptr())
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roast_bigint_print(b: *const RoastBigInt) {
+    if b.is_null() { 
+        println!("0");
+        return; 
+    }
+    unsafe {
+        let val = &*(*b).value;
+        println!("{}", val);
+    }
+}
+
+fn roast_bigint_free(b: *mut RoastBigInt) {
+    if b.is_null() { return; }
+    unsafe {
+        if !(*b).value.is_null() {
+            drop(Box::from_raw((*b).value));
+        }
+        let layout = Layout::new::<RoastBigInt>();
+        dealloc(b as *mut u8, layout);
     }
 }
 
@@ -2086,6 +2193,74 @@ pub extern "C" fn roast_object_call_method1(obj: c_long, method_name: *const c_c
     }
 }
 
+/// Call a method on an object with 2 arguments (plus self)
+#[no_mangle]
+pub extern "C" fn roast_object_call_method2(obj: c_long, method_name: *const c_char, arg1: c_long, arg2: c_long) -> c_long {
+    if obj == 0 || method_name.is_null() {
+        return 0;
+    }
+
+    unsafe {
+        let ptr = obj as *const ObjectHeader;
+        let refcount = (*ptr).refcount.load(std::sync::atomic::Ordering::Relaxed);
+        if refcount == 0 || refcount > 10000 {
+            return 0;
+        }
+
+        // Handle super proxy - look up method in parent class and call with original object
+        if (*ptr).type_tag == TypeTag::Super {
+            let sup = obj as *const RoastSuper;
+            let method_hash = roast_hash_cstr(method_name);
+            let mut current_class = (*sup).start_class;
+
+            // Walk up the MRO starting from parent
+            while !current_class.is_null() {
+                if let Some(&method) = (*(*current_class).methods).get(&method_hash) {
+                    // Call method with the ORIGINAL object (not the super proxy)
+                    let original_obj = (*sup).obj as c_long;
+                    let method_fn: extern "C" fn(c_long, c_long, c_long) -> c_long = std::mem::transmute(method as usize);
+                    return method_fn(original_obj, arg1, arg2);
+                }
+                current_class = (*current_class).parent;
+            }
+            return 0;
+        }
+
+        if (*ptr).type_tag != TypeTag::Object {
+            return 0;
+        }
+
+        let obj_ptr = obj as *const RoastObject;
+        let method_hash = roast_hash_cstr(method_name);
+
+        // First check instance attributes
+        if let Some(&method) = (*(*obj_ptr).attrs).get(&method_hash) {
+            let method_fn: extern "C" fn(c_long, c_long, c_long) -> c_long = std::mem::transmute(method as usize);
+            return method_fn(obj, arg1, arg2);
+        }
+
+        // Then check class methods
+        if !(*obj_ptr).class.is_null() {
+            if let Some(&method) = (*(*(*obj_ptr).class).methods).get(&method_hash) {
+                let method_fn: extern "C" fn(c_long, c_long, c_long) -> c_long = std::mem::transmute(method as usize);
+                return method_fn(obj, arg1, arg2);
+            }
+
+            // Walk up the MRO
+            let mut current = (*(*obj_ptr).class).parent;
+            while !current.is_null() {
+                if let Some(&method) = (*(*current).methods).get(&method_hash) {
+                    let method_fn: extern "C" fn(c_long, c_long, c_long) -> c_long = std::mem::transmute(method as usize);
+                    return method_fn(obj, arg1, arg2);
+                }
+                current = (*current).parent;
+            }
+        }
+
+        0
+    }
+}
+
 fn roast_object_free_internal(obj: *mut RoastObject) {
     if obj.is_null() { return; }
     unsafe {
@@ -2109,6 +2284,22 @@ pub extern "C" fn roast_class_new(name: *const c_char, parent: *mut RoastClass) 
         (*ptr).parent = parent;
 
         ptr
+    }
+}
+
+/// Add a method to a class's method table for dynamic dispatch.
+/// method_name is a C string for the method name (e.g., "increment")
+/// method_ptr is the function pointer to the method
+#[no_mangle]
+pub extern "C" fn roast_class_add_method(class: *mut RoastClass, method_name: *const c_char, method_ptr: c_long) {
+    if class.is_null() || method_name.is_null() {
+        return;
+    }
+    unsafe {
+        let method_hash = roast_hash_cstr(method_name);
+        if !(*class).methods.is_null() {
+            (*(*class).methods).insert(method_hash, method_ptr);
+        }
     }
 }
 
@@ -3046,6 +3237,28 @@ pub extern "C" fn roast_print_roast_str(s: *const RoastString) {
 }
 
 // ============================================================================
+// Async Operations
+// ============================================================================
+
+/// asyncio_run(coro) - Execute a coroutine/async function to completion
+/// For now, this is a simple placeholder that just returns the value.
+/// In a real implementation, this would spin up an event loop.
+#[no_mangle]
+pub extern "C" fn roast_asyncio_run(coro: c_long) -> c_long {
+    // For now, just return the coroutine value
+    // The actual execution happens at the VM level
+    coro
+}
+
+/// asyncio_sleep(seconds) - Sleep for the given number of seconds
+/// This is a blocking implementation for now.
+#[no_mangle]
+pub extern "C" fn roast_asyncio_sleep(seconds: c_double) -> c_long {
+    std::thread::sleep(std::time::Duration::from_secs_f64(seconds));
+    0 // Return None
+}
+
+// ============================================================================
 // Math Operations
 // ============================================================================
 
@@ -3569,13 +3782,57 @@ pub extern "C" fn roast_bool(value: c_long) -> c_long {
 }
 
 // ============================================================================
-// Async (Stub - for future implementation)
+// Async (Synchronous execution - async functions run sequentially)
 // ============================================================================
 
 #[no_mangle]
-pub extern "C" fn roast_await(_future: *mut c_void) -> c_long {
-    // Stub for async - will need proper coroutine support
-    0
+pub extern "C" fn roast_await(future: *mut c_void) -> c_long {
+    // In the LLVM backend, async functions execute synchronously and return
+    // their result directly. The "future" parameter is actually already the
+    // computed result value. We just need to pass it through.
+    //
+    // This provides Python-like async semantics in a single-threaded context:
+    // - async functions work but execute sequentially
+    // - await returns the function's result
+    //
+    // For true async parallelism, would need proper coroutine scheduling.
+    future as c_long
+}
+
+// ============================================================================
+// Reference Counting
+// ============================================================================
+
+/// Reference-counted wrapper for shared ownership
+/// In this simple implementation, the rc wrapper just holds the value.
+/// Assignment (ref1 = ref2) shares the same rc pointer.
+#[repr(C)]
+pub struct RoastRc {
+    /// The wrapped value
+    value: c_long,
+    /// Reference count (for future use with proper memory management)
+    refcount: std::sync::atomic::AtomicUsize,
+}
+
+/// Create a new reference-counted value
+#[no_mangle]
+pub extern "C" fn roast_rc_create(value: c_long) -> c_long {
+    let rc_box = Box::new(RoastRc {
+        value,
+        refcount: std::sync::atomic::AtomicUsize::new(1),
+    });
+    // Return pointer to rc wrapper as i64
+    Box::into_raw(rc_box) as c_long
+}
+
+/// Get the value from a reference-counted wrapper
+#[no_mangle]
+pub extern "C" fn roast_rc_get(rc_ptr: c_long) -> c_long {
+    if rc_ptr == 0 {
+        return 0;
+    }
+    let rc = unsafe { &*(rc_ptr as *const RoastRc) };
+    rc.value
 }
 
 // ============================================================================

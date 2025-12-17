@@ -108,7 +108,30 @@ let result = self.builder.ins().iconst(types::I64, 0);
 
 ---
 
+### ✅ Issue 5: Module Imports - Class Method Dispatch (FIXED)
+
+**Problem**: Imported class methods returned wrong values (always 0).
+
+**Root Cause**: When calling methods on imported classes, the compiler used dynamic dispatch (`roast_object_call_method0`) which looked up the class's method table - but this table was empty because methods weren't registered at runtime.
+
+**Fix Implemented**:
+
+- [x] Added `roast_class_add_method` runtime function (`native_full.rs`)
+- [x] Added LLVM IR declaration for `roast_class_add_method`
+- [x] Added `method_syms` tracking in `ClassInfo` (`lib.rs`)
+- [x] Generate `@.methodname.X.Y` string constants for method names
+- [x] Generate registration calls in `roast_init_classes`
+- [x] Symbol re-registration after parsing imported modules
+
+**Still Needed**:
+
+- [ ] `import x as y` - Module namespace object support
+- [ ] `from x import *` - Star imports in type checker
+
+---
+
 ## 🚨 CRITICAL MISSING FEATURES
+
 
 ### 1. Native Compilation (HIGH PRIORITY) ⚠️ SCAFFOLDING ONLY
 

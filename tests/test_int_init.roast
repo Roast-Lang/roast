@@ -1,0 +1,12 @@
+# Simple integer initialization test
+def main() -> int:
+    a: int = 0
+    b: int = 1
+    print("a:")
+    print(a)
+    print("b:")
+    print(b)
+    c: int = a + b
+    print("c (a+b):")
+    print(c)
+    return 0

@@ -1,0 +1,17 @@
+# Test function with parameter and local int vars
+def test_func(n: int) -> int:
+    print("n is:")
+    print(n)
+    a: int = 0
+    b: int = 1
+    print("a is:")
+    print(a)
+    print("b is:")
+    print(b)
+    return a + b
+
+def main() -> int:
+    r: int = test_func(5)
+    print("result:")
+    print(r)
+    return 0

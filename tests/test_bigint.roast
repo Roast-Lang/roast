@@ -1,0 +1,21 @@
+# Test BigInt (bint) type for arbitrary precision integers
+
+def fib_big(n: int) -> bint:
+    if n <= 1:
+        return bint(n)
+    a: bint = bint(0)
+    b: bint = bint(1)
+    i: int = 2
+    while i <= n:
+        temp: bint = a + b
+        a = b
+        b = temp
+        i = i + 1
+    return b
+
+def main() -> int:
+    print("Testing BigInt (bint) type...")
+    print("fib(100) = ")
+    result: bint = fib_big(100)
+    print(result)
+    return 0

@@ -1,0 +1,5 @@
+# Minimal BigInt test - just create and print
+def main() -> int:
+    a: bint = bint(42)
+    print(a)
+    return 0

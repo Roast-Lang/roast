@@ -178,6 +178,9 @@ impl VM {
         self.builtins.insert("hasattr".into(), builtin_hasattr);
         self.builtins.insert("getattr".into(), builtin_getattr);
         self.builtins.insert("setattr".into(), builtin_setattr);
+        // Async builtins
+        self.builtins.insert("asyncio_run".into(), builtin_asyncio_run);
+        self.builtins.insert("asyncio_sleep".into(), builtin_asyncio_sleep);
     }
 
     /// Sets the debug hook.
@@ -306,6 +309,11 @@ impl VM {
             // Check recursion limit
             if self.frames.len() > self.config.max_call_depth {
                 return Err(VMError::RecursionLimit);
+            }
+
+            // Check if we're done (no more frames)
+            if self.frames.is_empty() {
+                return Ok(Value::None);
             }
 
             // Get current frame
@@ -1168,6 +1176,11 @@ impl VM {
                 return Err(VMError::RecursionLimit);
             }
 
+            // Check if we're done (no more frames)
+            if self.frames.is_empty() {
+                return Ok(Value::None);
+            }
+
             let frame_idx = self.frames.len() - 1;
 
             // Check if we're done
@@ -2015,4 +2028,37 @@ fn builtin_getattr(vm: &mut VM, args: Vec<Value>) -> VMResult<Value> {
 
 fn builtin_setattr(_vm: &mut VM, _args: Vec<Value>) -> VMResult<Value> {
     Err(VMError::NotImplemented("setattr()".into()))
+}
+
+/// asyncio_run(coro) - Execute a coroutine to completion
+fn builtin_asyncio_run(vm: &mut VM, args: Vec<Value>) -> VMResult<Value> {
+    if args.len() != 1 {
+        return Err(VMError::TypeError("asyncio_run() takes exactly 1 argument".into()));
+    }
+    match &args[0] {
+        Value::Coroutine(coro) => {
+            // Execute the coroutine to completion
+            vm.run_coroutine(coro.clone())
+        }
+        other => {
+            // If not a coroutine, just return the value
+            // (allows calling asyncio_run on non-async functions for compatibility)
+            Ok(other.clone())
+        }
+    }
+}
+
+/// asyncio_sleep(seconds) - Sleep for a given number of seconds (placeholder)
+fn builtin_asyncio_sleep(_vm: &mut VM, args: Vec<Value>) -> VMResult<Value> {
+    if args.is_empty() {
+        return Err(VMError::TypeError("asyncio_sleep() requires 1 argument".into()));
+    }
+    let seconds = match &args[0] {
+        Value::Int(n) => *n as f64,
+        Value::Float(f) => *f,
+        _ => return Err(VMError::TypeError("sleep() argument must be a number".into())),
+    };
+    // Actually sleep (blocking for now - will be async later)
+    std::thread::sleep(std::time::Duration::from_secs_f64(seconds));
+    Ok(Value::None)
 }

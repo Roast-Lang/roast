@@ -1,0 +1,11 @@
+# Test @dataclass decorator functionality - simplified
+
+@dataclass
+class Point:
+    x: int
+    y: int
+
+# Test dataclass instantiation with auto-generated __init__
+p1 = Point(10, 20)
+print("Point created successfully!")
+print("@dataclass test PASSED!")

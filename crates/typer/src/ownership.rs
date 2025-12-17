@@ -205,6 +205,23 @@ impl OwnershipAnalyzer {
                 }
             }
 
+            // Reference-counted types are Copy (just copying the pointer)
+            // This enables shared ownership: ref1 = ref2 = data
+            Type::Rc(inner) => {
+                info.traits.insert(TypeTrait::Copy);
+                info.traits.insert(TypeTrait::Clone);
+                info.traits.insert(TypeTrait::Sized);
+                
+                // Inherit Send/Sync from inner type
+                let inner_info = self.analyze(inner);
+                if inner_info.is_send() {
+                    info.traits.insert(TypeTrait::Send);
+                }
+                if inner_info.is_sync() {
+                    info.traits.insert(TypeTrait::Sync);
+                }
+            }
+
             // Collections need drop
             Type::List(elem) => {
                 let elem_info = self.analyze(elem);

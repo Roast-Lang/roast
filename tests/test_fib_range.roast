@@ -1,0 +1,33 @@
+# Test to find where fib overflow happens
+def fib(n: int) -> int:
+    if n <= 1:
+        return n
+    a: int = 0
+    b: int = 1
+    i: int = 2
+    while i <= n:
+        temp: int = a + b
+        a = b
+        b = temp
+        i = i + 1
+    return b
+
+def main() -> int:
+    # Test various values to see where it breaks
+    print("fib(10):")
+    print(fib(10))  # 55
+    print("fib(20):")
+    print(fib(20))  # 6765
+    print("fib(40):")
+    print(fib(40))  # 102334155
+    print("fib(50):")
+    print(fib(50))  # 12586269025
+    print("fib(60):")
+    print(fib(60))  # 1548008755920
+    print("fib(70):")
+    print(fib(70))  # 190392490709135
+    print("fib(80):")
+    print(fib(80))  # 23416728348467685
+    print("fib(90):")
+    print(fib(90))  # 2880067194370816120
+    return 0

@@ -1803,7 +1803,9 @@ impl<'a> Parser<'a> {
         // Handle await
         if matches!(self.peek(), TokenKind::Await) {
             self.advance();
-            let value = self.parse_primary()?;
+            // Parse the awaited expression including calls, subscripts, attributes
+            // e.g., `await get_value()` should parse the whole `get_value()` call
+            let value = self.parse_unary_postfix()?;
             return Ok(Expr::new(
                 ExprKind::Await {
                     value: Box::new(value),

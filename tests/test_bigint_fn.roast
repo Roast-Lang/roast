@@ -1,0 +1,8 @@
+# Test BigInt return type from function
+def make_big(x: int) -> bint:
+    return bint(x)
+
+def main() -> int:
+    # Test direct return from function (should have bint return type)
+    print(make_big(42))
+    return 0

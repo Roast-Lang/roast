@@ -1,0 +1,17 @@
+# Test local class method to isolate import issue
+class Counter:
+    def __init__(self, start: int):
+        self.value = start
+
+    def increment(self) -> int:
+        self.value = self.value + 1
+        return self.value
+
+c = Counter(0)
+r1 = c.increment()
+print("First increment:", r1)
+print("Expected: 1")
+
+r2 = c.increment()
+print("Second increment:", r2)
+print("Expected: 2")

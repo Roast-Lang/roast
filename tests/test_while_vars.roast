@@ -1,0 +1,28 @@
+# Test while loop similar to fib
+def test_while(n: int) -> int:
+    if n <= 1:
+        return n
+    a: int = 0
+    b: int = 1
+    i: int = 2
+    print("Before while:")
+    print(a)
+    print(b)
+    print(i)
+    while i <= n:
+        print("Loop i:")
+        print(i)
+        temp: int = a + b
+        a = b
+        b = temp
+        i = i + 1
+    print("After while:")
+    print(b)
+    return b
+
+def main() -> int:
+    print("test_while(5):")
+    result: int = test_while(5)
+    print("final result:")
+    print(result)
+    return 0

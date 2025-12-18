@@ -1,0 +1,29 @@
+# Build artifacts (Roast's "cooked" directory - like Rust's "target")
+/cooked/
+*.rbc
+
+# Virtual environment
+/.venv/
+/.kitchen/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local configuration
+.env
+.env.local
+
+# Cache
+__pycache__/
+*.pyc
+.roast_cache/

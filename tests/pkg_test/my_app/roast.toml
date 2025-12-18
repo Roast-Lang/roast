@@ -1,0 +1,72 @@
+default-features = []
+
+[package]
+name = "my_app"
+version = "0.1.0"
+edition = "2024"
+authors = []
+description = "A Roast application"
+license = "MIT"
+keywords = []
+categories = []
+readme = "README.md"
+entry = "src/main.roast"
+roast-version = ">=0.1.0"
+include = []
+exclude = []
+
+[dependencies]
+"py:requests" = "*"
+my-lib = "*"
+
+[dev-dependencies]
+roast-test = "0.1"
+
+[build-dependencies]
+
+[optional-dependencies]
+
+[features]
+
+[scripts]
+test = "kitchen test"
+format = "kitchen fmt"
+lint = "kitchen check"
+
+[build]
+target_dir = ""
+include_paths = []
+library_paths = []
+
+[build.gpu]
+enabled = false
+cuda_archs = []
+opencl_platforms = []
+
+[profile.dev]
+opt_level = "0"
+debug = true
+lto = false
+panic = "unwind"
+incremental = true
+
+[profile.release]
+opt_level = "0"
+debug = true
+lto = false
+panic = "unwind"
+incremental = true
+
+[profile.test]
+opt_level = "0"
+debug = true
+lto = false
+panic = "unwind"
+incremental = true
+
+[profile.bench]
+opt_level = "0"
+debug = true
+lto = false
+panic = "unwind"
+incremental = true

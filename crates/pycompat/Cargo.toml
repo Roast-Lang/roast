@@ -6,6 +6,10 @@ authors.workspace = true
 license.workspace = true
 description = "Python compatibility layer for Roast"
 
+[features]
+default = []
+python-ffi = ["pyo3"]
+
 [dependencies]
 roast-common.workspace = true
 roast-runtime.workspace = true
@@ -15,3 +19,5 @@ thiserror.workspace = true
 rustc-hash.workspace = true
 walkdir.workspace = true
 
+# Optional: Python FFI via PyO3
+pyo3 = { version = "0.22", features = ["auto-initialize"], optional = true }

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec roastc run "/home/swadhin/lang/roast/examples/web_fetcher/src/main.roast" "$@"

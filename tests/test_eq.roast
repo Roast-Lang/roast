@@ -1,0 +1,19 @@
+@dataclass
+class Point:
+    x: int
+    y: int
+
+p1 = Point(10, 20)
+p2 = Point(10, 20)
+p3 = Point(10, 30)
+
+# Test equality with direct method call
+result1 = p1.__eq__(p2)
+print("p1.__eq__(p2) (should be 1):")
+print(result1)
+
+result2 = p1.__eq__(p3)
+print("p1.__eq__(p3) (should be 0):")
+print(result2)
+
+print("Equality test PASSED!")

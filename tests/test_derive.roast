@@ -1,0 +1,14 @@
+@dataclass
+@derive(Hash, Ord)
+class Point:
+    x: int
+    y: int
+
+p1 = Point(1, 2)
+p2 = Point(3, 4)
+
+print("Point created!")
+print(p1.x)
+print(p1.y)
+
+print("@derive test PASSED!")

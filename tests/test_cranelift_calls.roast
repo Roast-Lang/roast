@@ -1,0 +1,41 @@
+def add(x: int, y: int) -> int:
+    return x + y
+
+def multiply(x: int, y: int) -> int:
+    return x * y
+
+def compute(a: int, b: int, c: int) -> int:
+    # Test forward and backward function calls
+    sum = add(a, b)
+    product = multiply(sum, c)
+    return product
+
+# Test recursive function
+def factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+# Test mutual recursion (forward call)
+def is_even(n: int) -> int:
+    if n == 0:
+        return 1
+    return is_odd(n - 1)
+
+def is_odd(n: int) -> int:
+    if n == 0:
+        return 0
+    return is_even(n - 1)
+
+# Main - test all
+print("Testing Cranelift function calls...")
+result = compute(2, 3, 4)
+print(result)  # Should be (2+3)*4 = 20
+
+fact5 = factorial(5)
+print(fact5)  # Should be 120
+
+even_check = is_even(4)
+print(even_check)  # Should be 1 (true)
+
+print("Cranelift test complete!")

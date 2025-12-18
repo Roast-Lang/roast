@@ -6,6 +6,63 @@ use roast_ast::*;
 use roast_common::{Diagnostic, DiagnosticSink, Interner, Span};
 use std::sync::Arc;
 
+/// Computes the Levenshtein edit distance between two strings.
+fn levenshtein_distance(a: &str, b: &str) -> usize {
+    let a_len = a.chars().count();
+    let b_len = b.chars().count();
+    
+    if a_len == 0 { return b_len; }
+    if b_len == 0 { return a_len; }
+    
+    let a_chars: Vec<char> = a.chars().collect();
+    let b_chars: Vec<char> = b.chars().collect();
+    
+    let mut prev_row: Vec<usize> = (0..=b_len).collect();
+    let mut curr_row: Vec<usize> = vec![0; b_len + 1];
+    
+    for i in 1..=a_len {
+        curr_row[0] = i;
+        for j in 1..=b_len {
+            let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
+            curr_row[j] = std::cmp::min(
+                std::cmp::min(prev_row[j] + 1, curr_row[j - 1] + 1),
+                prev_row[j - 1] + cost,
+            );
+        }
+        std::mem::swap(&mut prev_row, &mut curr_row);
+    }
+    prev_row[b_len]
+}
+
+/// Finds the most similar name from a list of candidates.
+/// Returns Some(name) if a close match is found, None otherwise.
+fn find_similar_name<'a>(target: &str, candidates: impl Iterator<Item = &'a str>) -> Option<String> {
+    let target_len = target.len();
+    let mut best_match: Option<(String, usize)> = None;
+    
+    for candidate in candidates {
+        // Skip if lengths are too different
+        let len_diff = (candidate.len() as i32 - target_len as i32).unsigned_abs() as usize;
+        if len_diff > 3 { continue; }
+        
+        let distance = levenshtein_distance(target, candidate);
+        
+        // Only suggest if distance is small relative to length
+        let max_distance = std::cmp::max(2, target_len / 3);
+        if distance <= max_distance {
+            if let Some((_, best_dist)) = &best_match {
+                if distance < *best_dist {
+                    best_match = Some((candidate.to_string(), distance));
+                }
+            } else {
+                best_match = Some((candidate.to_string(), distance));
+            }
+        }
+    }
+    
+    best_match.map(|(name, _)| name)
+}
+
 /// The type checker.
 pub struct TypeChecker<'a> {
     ctx: &'a mut TypeContext,
@@ -165,25 +222,67 @@ impl<'a> TypeChecker<'a> {
                 // We define the alias (or the module name if no alias) in scope as Any type
                 // (proper module resolution would need more infrastructure)
                 for alias in names {
+                    let name_str = self.interner.resolve(alias.name.name).unwrap_or("");
+                    
+                    // Check for py: prefix (Python FFI import)
+                    let (is_python_import, clean_module_name) = if name_str.starts_with("py:") {
+                        (true, &name_str[3..])
+                    } else if name_str.starts_with("python:") {
+                        (true, &name_str[7..])
+                    } else {
+                        (false, name_str)
+                    };
+                    
                     let binding_name = if let Some(asname) = &alias.asname {
                         asname.name
                     } else {
                         // For `import a.b.c` without alias, bind the first component "a"
                         // Python semantics: `import a.b` binds `a` (not `a.b`)
-                        let name_str = self.interner.resolve(alias.name.name).unwrap_or("");
-                        if let Some(first) = name_str.split('.').next() {
+                        // For py:numpy, bind "numpy" (not "py")
+                        if is_python_import {
+                            // For py:numpy, bind the Python module name
+                            if let Some(first) = clean_module_name.split('.').next() {
+                                self.interner.intern(first)
+                            } else {
+                                self.interner.intern(clean_module_name)
+                            }
+                        } else if let Some(first) = name_str.split('.').next() {
                             self.interner.intern(first)
                         } else {
                             alias.name.name
                         }
                     };
-                    // Define as Any type since we don't have full module resolution yet
+                    
+                    // Python modules get a special PyModule type marker (currently Any)
+                    // TODO: In the future, this could be Type::PyModule(module_name)
                     self.ctx.define(binding_name, Type::Any);
+                    
+                    // Python FFI imports are marked and will be handled at runtime
+                    // via PythonBridge in the VM
+                    let _ = is_python_import; // Mark as used
                 }
             }
             StmtKind::ImportFrom { module, names, level: _ } => {
                 // For `from module import a, b, c` or `from module import *`:
                 // Define each imported name in scope
+                
+                // Check if this is a Python FFI import (from py:pandas import ...)
+                let (is_python_import, clean_module_name) = if let Some(mod_path) = module {
+                    let mod_name = self.interner.resolve(mod_path.name).unwrap_or("");
+                    if mod_name.starts_with("py:") {
+                        (true, mod_name[3..].to_string())
+                    } else if mod_name.starts_with("python:") {
+                        (true, mod_name[7..].to_string())
+                    } else {
+                        (false, mod_name.to_string())
+                    }
+                } else {
+                    (false, String::new())
+                };
+                
+                // Python FFI imports from py: modules are handled at runtime via PythonBridge
+                let _ = (&is_python_import, &clean_module_name); // Mark as used
+                
                 for alias in names {
                     let name_str = self.interner.resolve(alias.name.name).unwrap_or("");
                     
@@ -191,7 +290,13 @@ impl<'a> TypeChecker<'a> {
                         // Star import: expand to all module exports
                         if let Some(mod_path) = module {
                             let mod_name = self.interner.resolve(mod_path.name).unwrap_or("");
-                            if let Some(exports) = self.ctx.lookup_module_exports(mod_name) {
+                            
+                            // For Python modules, we can't enumerate exports at compile time
+                            // They will be resolved at runtime via PythonBridge
+                            if is_python_import {
+                                // Python star imports are resolved at runtime
+                                // For now, we don't define any names (they'll be Any at runtime)
+                            } else if let Some(exports) = self.ctx.lookup_module_exports(mod_name) {
                                 // Clone to avoid borrow issues
                                 let exports: Vec<_> = exports.clone();
                                 for (sym, ty) in exports {
@@ -206,7 +311,7 @@ impl<'a> TypeChecker<'a> {
                         } else {
                             alias.name.name
                         };
-                        // Define as Any type since we don't have full module resolution yet
+                        // Python modules get Any type - actual resolution at runtime
                         self.ctx.define(binding_name, Type::Any);
                     }
                 }
@@ -232,9 +337,10 @@ impl<'a> TypeChecker<'a> {
                 name,
                 bases,
                 body,
+                decorators,
                 ..
             } => {
-                self.check_class_def(name, bases, body, stmt.span);
+                self.check_class_def(name, bases, body, decorators, stmt.span);
             }
             StmtKind::Return { value } => {
                 self.check_return(value.as_deref(), stmt.span);
@@ -454,6 +560,7 @@ impl<'a> TypeChecker<'a> {
         name: &Ident,
         bases: &[Expr],
         body: &[Stmt],
+        decorators: &[Decorator],
         _span: Span,
     ) {
         // Resolve base classes
@@ -468,6 +575,121 @@ impl<'a> TypeChecker<'a> {
             members: Vec::new(),
             methods: Vec::new(),
         };
+
+        // Check for @dataclass decorator to add auto-generated method signatures
+        let is_dataclass = decorators.iter().any(|d| {
+            if let ExprKind::Name { id, .. } = &d.name.kind {
+                self.interner.resolve(id.name) == Some("dataclass")
+            } else {
+                false
+            }
+        });
+
+        // Check for @derive decorator to add auto-generated method signatures
+        let mut derive_protocols: Vec<String> = Vec::new();
+        for d in decorators {
+            if let ExprKind::Name { id, .. } = &d.name.kind {
+                if self.interner.resolve(id.name) == Some("derive") {
+                    for arg in &d.arguments {
+                        if let ExprKind::Name { id: proto_id, .. } = &arg.kind {
+                            if let Some(proto_name) = self.interner.resolve(proto_id.name) {
+                                derive_protocols.push(proto_name.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add dataclass-generated methods
+        if is_dataclass {
+            // __init__ - will be added from body scan if present, or auto-added
+            // __repr__ -> str
+            let repr_type = Type::callable(
+                vec![FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular }],
+                Type::Str,
+                false,
+            );
+            class_type.methods.push(("__repr__".to_string(), repr_type));
+
+            // __eq__ -> bool
+            let eq_type = Type::callable(
+                vec![
+                    FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular },
+                    FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular },
+                ],
+                Type::Bool,
+                false,
+            );
+            class_type.methods.push(("__eq__".to_string(), eq_type));
+        }
+
+        // Add derive-generated methods
+        for protocol in &derive_protocols {
+            match protocol.as_str() {
+                "Hash" => {
+                    let hash_type = Type::callable(
+                        vec![FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular }],
+                        Type::Int,
+                        false,
+                    );
+                    class_type.methods.push(("__hash__".to_string(), hash_type));
+                }
+                "Ord" => {
+                    let cmp_params = vec![
+                        FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular },
+                        FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular },
+                    ];
+                    let cmp_type = Type::callable(cmp_params.clone(), Type::Bool, false);
+                    class_type.methods.push(("__lt__".to_string(), cmp_type.clone()));
+                    class_type.methods.push(("__le__".to_string(), cmp_type.clone()));
+                    class_type.methods.push(("__gt__".to_string(), cmp_type.clone()));
+                    class_type.methods.push(("__ge__".to_string(), cmp_type));
+                }
+                "Eq" => {
+                    // Eq is usually covered by dataclass, but add if explicitly derived
+                    if !is_dataclass {
+                        let eq_type = Type::callable(
+                            vec![
+                                FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular },
+                                FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular },
+                            ],
+                            Type::Bool,
+                            false,
+                        );
+                        class_type.methods.push(("__eq__".to_string(), eq_type));
+                    }
+                }
+                "Default" => {
+                    // default() class method returns an instance with default values
+                    let default_type = Type::callable(
+                        vec![FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular }],
+                        Type::Any,
+                        false,
+                    );
+                    class_type.methods.push(("default".to_string(), default_type));
+                }
+                "Debug" => {
+                    // __repr__() method returns a string representation
+                    let repr_type = Type::callable(
+                        vec![FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular }],
+                        Type::Str,
+                        false,
+                    );
+                    class_type.methods.push(("__repr__".to_string(), repr_type));
+                }
+                "Clone" => {
+                    // clone() method returns a copy of the instance
+                    let clone_type = Type::callable(
+                        vec![FuncParam { name: None, ty: Type::Any, default: false, kind: ParamKind::Regular }],
+                        Type::Any,
+                        false,
+                    );
+                    class_type.methods.push(("clone".to_string(), clone_type));
+                }
+                _ => {} // Unknown protocol, ignore
+            }
+        }
 
         // Pre-scan body for methods
         for stmt in body {
@@ -593,7 +815,16 @@ impl<'a> TypeChecker<'a> {
         };
 
         if let Some(expected) = &self.current_return_type {
-            if !self.ctx.is_subtype(&return_type, expected) {
+            // Allow None to be returned for any class/reference type (Python semantics)
+            // This enables patterns like: def find() -> Todo: ... return None
+            let is_none_compatible = matches!(&return_type, Type::NoneType) && 
+                matches!(
+                    expected,
+                    Type::Class(_) | Type::Any | Type::Optional(_) | Type::Var(_) |
+                    Type::Generic { .. } | Type::Ref { .. }
+                );
+            
+            if !is_none_compatible && !self.ctx.is_subtype(&return_type, expected) {
                 self.diagnostics.report(
                     Diagnostic::error(format!(
                         "return type mismatch: expected {}, got {}",
@@ -1033,13 +1264,25 @@ impl<'a> TypeChecker<'a> {
                 if let Some(ty) = self.ctx.lookup(id.name) {
                     ty.clone()
                 } else {
-                    self.diagnostics.report(
-                        Diagnostic::error(format!(
-                            "undefined name: {}",
-                            self.interner.resolve(id.name).unwrap_or("?")
-                        ))
-                        .with_span(expr.span),
-                    );
+                    let name = self.interner.resolve(id.name).unwrap_or("?");
+                    
+                    // Try to find a similar name for suggestions
+                    let suggestion = {
+                        let names_in_scope: Vec<&str> = self.ctx.all_names()
+                            .filter_map(|sym| self.interner.resolve(*sym))
+                            .collect();
+                        find_similar_name(name, names_in_scope.into_iter())
+                    };
+                    
+                    let mut diag = Diagnostic::error(format!("undefined name: '{}'", name))
+                        .with_code("E0001")
+                        .with_span(expr.span);
+                    
+                    if let Some(similar) = suggestion {
+                        diag = diag.with_note(format!("help: did you mean '{}'?", similar));
+                    }
+                    
+                    self.diagnostics.report(diag);
                     Type::Error
                 }
             }
@@ -1505,11 +1748,11 @@ impl<'a> TypeChecker<'a> {
                     let arg_type = self.check_expr(arg);
                     if !self.ctx.is_subtype(&arg_type, &param.ty) {
                         self.diagnostics.report(
-                            Diagnostic::error(format!(
-                                "argument type mismatch: expected {}, got {}",
-                                param.ty, arg_type
-                            ))
-                            .with_span(arg.span),
+                            Diagnostic::error("argument type mismatch")
+                                .with_code("E0002")
+                                .with_span(arg.span)
+                                .with_note(format!("expected type: {}", param.ty))
+                                .with_note(format!("     got type: {}", arg_type)),
                         );
                     }
                 }
@@ -1529,7 +1772,10 @@ impl<'a> TypeChecker<'a> {
             Type::Error => Type::Error,
             _ => {
                 self.diagnostics.report(
-                    Diagnostic::error(format!("'{}' is not callable", func_type)).with_span(span),
+                    Diagnostic::error(format!("type '{}' is not callable", func_type))
+                        .with_code("E0004")
+                        .with_span(span)
+                        .with_note("note: only functions, methods, and classes are callable"),
                 );
                 Type::Error
             }
@@ -1574,14 +1820,26 @@ impl<'a> TypeChecker<'a> {
                         return ty.clone();
                     }
                 }
-                self.diagnostics.report(
-                    Diagnostic::error(format!(
-                        "type '{}' has no attribute '{}'",
-                        cls.name,
-                        self.interner.resolve(attr.name).unwrap_or("?")
-                    ))
-                    .with_span(span),
-                );
+                let attr_name = self.interner.resolve(attr.name).unwrap_or("?");
+                
+                // Try to suggest similar attribute names from class methods
+                let available_attrs: Vec<&str> = cls.methods.iter()
+                    .map(|(name, _)| name.as_str())
+                    .collect();
+                let suggestion = find_similar_name(attr_name, available_attrs.into_iter());
+                
+                let mut diag = Diagnostic::error(format!(
+                    "type '{}' has no attribute '{}'",
+                    cls.name, attr_name
+                ))
+                    .with_code("E0003")
+                    .with_span(span);
+                
+                if let Some(similar) = suggestion {
+                    diag = diag.with_note(format!("help: did you mean '{}'?", similar));
+                }
+                
+                self.diagnostics.report(diag);
                 Type::Error
             }
             Type::Any => Type::Any,
@@ -1622,6 +1880,9 @@ impl<'a> TypeChecker<'a> {
             Type::Bytes => Type::Int,
             Type::Any => Type::Any,
             Type::Error => Type::Error,
+            // Allow subscripting type variables - they might be tuples, lists, etc.
+            // Return Any since we don't know the element type at this point
+            Type::Var(_) => Type::Any,
             _ => {
                 self.diagnostics.report(
                     Diagnostic::error(format!("'{}' is not subscriptable", value_type))
@@ -1654,6 +1915,26 @@ impl<'a> TypeChecker<'a> {
             Type::Bytes => Type::Int,
             Type::Any => Type::Any,
             Type::Error => Type::Error,
+            // Type variables are assumed iterable (will be resolved at monomorphization)
+            Type::Var(_) => Type::Any,
+            // Generic types with list-like base (e.g., List[T]) should extract the element type
+            Type::Generic { base, args } => {
+                if let Type::List(_) = base.as_ref() {
+                    if !args.is_empty() {
+                        args[0].clone()
+                    } else {
+                        Type::Any
+                    }
+                } else {
+                    Type::Any
+                }
+            }
+            // Optional types - iterate over inner type
+            Type::Optional(inner) => self.get_iterator_element_type(inner, span),
+            // Class types - assume they implement __iter__ and return Any
+            Type::Class(_) => Type::Any,
+            // Range returns int
+            Type::Rc(inner) => self.get_iterator_element_type(inner, span),
             _ => {
                 self.diagnostics.report(
                     Diagnostic::error(format!("'{}' is not iterable", iter_type)).with_span(span),
@@ -1681,7 +1962,7 @@ impl<'a> TypeChecker<'a> {
                     Some("Self") => Type::SelfType,
                     Some("list") | Some("List") | Some("dict") | Some("Dict") | 
                     Some("set") | Some("Set") | Some("tuple") | Some("Tuple") |
-                    Some("Optional") => {
+                    Some("Optional") | Some("rc") => {
                         // Treat these as type constructors when used in type expressions
                         self.ctx.fresh_named_var(name.name)
                     }

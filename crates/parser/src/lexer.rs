@@ -424,9 +424,19 @@ impl<'src> Lexer<'src> {
     /// Scans an f-string literal (format string).
     /// F-strings like f"Hello {name}!" are parsed into FString token
     /// which contains the raw parts and expression placeholders.
+    /// Also supports triple-quoted f-strings: f"""...""" or f'''...'''
     fn scan_fstring(&mut self) -> Token {
         let start = self.pos;
         let quote = self.advance().unwrap(); // Opening quote
+
+        // Check for triple-quoted f-string
+        let triple = if self.peek() == Some(quote) && self.peek_next() == Some(quote) {
+            self.advance();
+            self.advance();
+            true
+        } else {
+            false
+        };
 
         // We tokenize f-strings as a special FString token that contains
         // a list of (literal_part, expression_part) pairs
@@ -436,7 +446,13 @@ impl<'src> Lexer<'src> {
 
         loop {
             match self.peek() {
-                None | Some('\n') => {
+                None => {
+                    return self.token(
+                        TokenKind::Error("unterminated f-string".to_string()),
+                        start,
+                    );
+                }
+                Some('\n') if !triple => {
                     return self.token(
                         TokenKind::Error("unterminated f-string".to_string()),
                         start,
@@ -444,8 +460,21 @@ impl<'src> Lexer<'src> {
                 }
                 Some(c) if c == quote => {
                     self.advance();
-                    closed = true;
-                    break;
+                    if triple {
+                        // Check for closing triple quote
+                        if self.peek() == Some(quote) && self.peek_next() == Some(quote) {
+                            self.advance();
+                            self.advance();
+                            closed = true;
+                            break;
+                        } else {
+                            // Single quote inside triple-quoted string, add it as content
+                            current_literal.push(quote);
+                        }
+                    } else {
+                        closed = true;
+                        break;
+                    }
                 }
                 Some('{') => {
                     self.advance();

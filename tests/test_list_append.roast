@@ -1,0 +1,30 @@
+# Test basic list operations
+
+def main() -> int:
+    print("=== List Test ===")
+    
+    # Test basic list
+    nums: list[int] = [1, 2, 3]
+    print(f"Initial: {nums}")
+    print(f"Len: {len(nums)}")
+    
+    # Test append
+    nums.append(4)
+    print(f"After append(4): {nums}")
+    print(f"Len: {len(nums)}")
+    
+    # Test empty list append
+    empty: list = []
+    empty.append(10)
+    print(f"Empty after append: len={len(empty)}")
+    
+    # Test string append
+    strs: list = []
+    strs.append("hello")
+    strs.append("world")
+    print(f"Strings len: {len(strs)}")
+    
+    print("=== Complete ===")
+    return 0
+
+main()

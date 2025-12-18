@@ -61,6 +61,9 @@ pub enum Type {
     /// Bytes type.
     Bytes,
 
+    /// File handle type.
+    File,
+
     /// List type.
     List(Arc<Type>),
 
@@ -296,6 +299,7 @@ impl fmt::Display for Type {
             Type::Complex128 => write!(f, "c128"),
             Type::Str => write!(f, "str"),
             Type::Bytes => write!(f, "bytes"),
+            Type::File => write!(f, "File"),
             Type::List(elem) => write!(f, "List[{}]", elem),
             Type::Dict(k, v) => write!(f, "Dict[{}, {}]", k, v),
             Type::Set(elem) => write!(f, "Set[{}]", elem),

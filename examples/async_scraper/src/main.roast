@@ -1,0 +1,220 @@
+# Web Scraper - Synchronous Version
+# Testing: classes, OOP patterns, inheritance (without async to isolate bugs)
+
+from typing import List
+
+# ============================================================================
+# Configuration
+# ============================================================================
+
+class ScraperConfig:
+    max_concurrent: int
+    timeout: int
+    output_dir: str
+    
+    def __init__(self) -> None:
+        self.max_concurrent = 5
+        self.timeout = 30
+        self.output_dir = "./output"
+
+
+# ============================================================================
+# Page Result
+# ============================================================================
+
+class PageResult:
+    url: str
+    title: str
+    link_count: int
+    success: bool
+    
+    def __init__(self, url: str, title: str, link_count: int) -> None:
+        self.url = url
+        self.title = title
+        self.link_count = link_count
+        self.success = True
+
+
+# ============================================================================
+# HTTP Client
+# ============================================================================
+
+class HttpClient:
+    timeout: int
+    
+    def __init__(self, timeout: int) -> None:
+        self.timeout = timeout
+    
+    def get(self, url: str) -> str:
+        print(f"[HTTP] GET {url}")
+        
+        if "example.com" in url:
+            return "<html><title>Example</title><body><h1>Example Domain</h1></body></html>"
+        elif "github.com" in url:
+            return '{"login": "roast-lang", "repos": 42}'
+        else:
+            return f"<html><body>Content from {url}</body></html>"
+
+
+# ============================================================================
+# HTML Parser
+# ============================================================================
+
+class HtmlParser:
+    def __init__(self) -> None:
+        pass
+    
+    def extract_title(self, html: str) -> str:
+        if "<title>" in html and "</title>" in html:
+            start: int = html.find("<title>") + 7
+            end: int = html.find("</title>")
+            return html[start:end]
+        return "Untitled"
+    
+    def count_links(self, html: str) -> int:
+        if "href=" in html:
+            return 2
+        return 0
+
+
+# ============================================================================
+# Logger
+# ============================================================================
+
+class Logger:
+    name: str
+    
+    def __init__(self, name: str) -> None:
+        self.name = name
+    
+    def info(self, message: str) -> None:
+        print(f"[{self.name}] INFO: {message}")
+    
+    def error(self, message: str) -> None:
+        print(f"[{self.name}] ERROR: {message}")
+
+
+# ============================================================================
+# Web Scraper Engine
+# ============================================================================
+
+class Scraper:
+    config: ScraperConfig
+    client: HttpClient
+    parser: HtmlParser
+    logger: Logger
+    results_count: int
+    
+    def __init__(self, config: ScraperConfig) -> None:
+        self.config = config
+        self.client = HttpClient(timeout=30)
+        self.parser = HtmlParser()
+        self.logger = Logger(name="Scraper")
+        self.results_count = 0
+    
+    def scrape_page(self, url: str) -> PageResult:
+        self.logger.info(f"Scraping: {url}")
+        
+        # Fetch the page
+        html: str = self.client.get(url)
+        
+        # Parse content
+        title: str = self.parser.extract_title(html)
+        links: int = self.parser.count_links(html)
+        
+        self.results_count = self.results_count + 1
+        self.logger.info(f"Scraped: {title} ({links} links)")
+        
+        return PageResult(url, title, links)
+    
+    def scrape_all(self, urls: List[str]) -> List[PageResult]:
+        self.logger.info(f"Starting batch scrape of {len(urls)} URLs")
+        
+        results: List[PageResult] = []
+        
+        for url in urls:
+            result: PageResult = self.scrape_page(url)
+            results.append(result)
+        
+        self.logger.info(f"Completed: {len(results)} pages scraped")
+        return results
+
+
+# ============================================================================
+# Result Processor
+# ============================================================================
+
+class ResultProcessor:
+    logger: Logger
+    
+    def __init__(self) -> None:
+        self.logger = Logger(name="Processor")
+    
+    def generate_report(self, results: List[PageResult]) -> None:
+        total: int = len(results)
+        successful: int = 0
+        total_links: int = 0
+        
+        for result in results:
+            if result.success:
+                successful = successful + 1
+                total_links = total_links + result.link_count
+        
+        print("")
+        print("========================================")
+        print("       WEB SCRAPER REPORT")
+        print("========================================")
+        print(f"Total URLs:     {total}")
+        print(f"Successful:     {successful}")
+        print(f"Failed:         {total - successful}")
+        print(f"Total Links:    {total_links}")
+        print("========================================")
+
+
+# ============================================================================
+# Main Application
+# ============================================================================
+
+def run_scraper() -> None:
+    print("=" * 60)
+    print("Roast Web Scraper - Native Compilation Demo")
+    print("   Features: Classes, OOP, Type Safety")
+    print("=" * 60)
+    print("")
+    
+    # Initialize
+    config: ScraperConfig = ScraperConfig()
+    scraper: Scraper = Scraper(config=config)
+    
+    # URLs to scrape
+    urls: List[str] = [
+        "https://example.com",
+        "https://api.github.com/users/roast",
+        "https://docs.roast-lang.org",
+        "https://blog.example.com/post/1",
+        "https://news.example.com",
+    ]
+    
+    print(f"Scraping {len(urls)} URLs...")
+    print("")
+    
+    # Scrape all pages
+    results: List[PageResult] = scraper.scrape_all(urls)
+    
+    # Generate report
+    processor: ResultProcessor = ResultProcessor()
+    processor.generate_report(results)
+    
+    print("")
+    print("=" * 60)
+    print("Scraping completed successfully!")
+    print("=" * 60)
+
+
+def main() -> int:
+    run_scraper()
+    return 0
+
+
+# Run
+main()

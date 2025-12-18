@@ -1,0 +1,27 @@
+async def double(x: int) -> int:
+    return x * 2
+
+async def add_one(x: int) -> int:
+    return x + 1
+
+async def compute(x: int) -> int:
+    # Chain multiple async calls with await
+    doubled = await double(x)
+    result = await add_one(doubled)
+    return result
+
+# Test async execution
+print("Testing chained async...")
+result = compute(5)  # Should be (5 * 2) + 1 = 11
+print(result)
+
+async def nested_async() -> int:
+    a = await double(3)   # 6
+    b = await double(a)   # 12
+    c = await add_one(b)  # 13
+    return c
+
+print("Testing nested async...")
+result2 = nested_async()
+print(result2)
+print("All async tests PASSED!")

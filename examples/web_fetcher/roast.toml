@@ -1,0 +1,21 @@
+[package]
+name = "web_fetcher"
+version = "0.1.0"
+edition = "2024"
+authors = ["Swadhin"]
+description = "A simple Roast app that fetches data from a website and saves to file"
+entry = "src/main.roast"
+
+[dependencies]
+# HTTP client functionality
+roast-http = "0.1"
+
+[dev-dependencies]
+roast-test = "0.1"
+
+[scripts]
+run = "kitchen run"
+test = "kitchen test"
+
+[build]
+target_dir = "cooked"

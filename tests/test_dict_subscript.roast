@@ -1,0 +1,34 @@
+# Test dict subscript assignment
+
+class Item:
+    def __init__(self, name: str):
+        self.name = name
+
+
+def main() -> int:
+    print("=== Dict Subscript Test ===")
+    
+    # Test with int values
+    d: dict = {}
+    d[1] = 100
+    d[2] = 200
+    print(d)
+    print(f"d[1] = {d[1]}")
+    
+    # Test with string values
+    s: dict = {}
+    s["a"] = "alpha"
+    s["b"] = "beta"
+    print(s)
+    
+    # Test with object values
+    print("Testing object values...")
+    items: dict = {}
+    item1 = Item("first")
+    items[1] = item1
+    print("Assigned item1")
+    
+    print("=== Complete ===")
+    return 0
+
+main()

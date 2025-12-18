@@ -909,7 +909,7 @@ pub fn open_type() -> Type {
                 kind: ParamKind::Regular,
             },
         ],
-        returns: Arc::new(Type::Any), // File object
+        returns: Arc::new(Type::File), // File object
         is_async: false,
     }
 }

@@ -213,6 +213,18 @@ impl PyModule {
         module
     }
 
+    /// Gets or creates a stub module (for use with PyO3 implementation).
+    /// Note: This creates a new minimal stub each time. Actual Python calls go through PythonBridge.call().
+    pub fn get_or_create_stub(name: &str) -> &'static Self {
+        // Leak a minimal stub - the actual module functionality comes from PyO3 bridge.call()
+        Box::leak(Box::new(Self {
+            name: name.to_string(),
+            attributes: FxHashMap::default(),
+            functions: FxHashMap::default(),
+            is_stub: true,
+        }))
+    }
+
     /// Adds a function to the module.
     pub fn add_function<F>(&mut self, name: &str, func: F)
     where

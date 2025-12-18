@@ -37,7 +37,9 @@ mod backend {
         /// Data descriptions for constants.
         _data_desc: DataDescription,
         /// Compiled functions.
-        compiled_funcs: HashMap<String, FuncId>,
+        pub compiled_funcs: HashMap<String, FuncId>,
+        /// Pre-declared function signatures (for forward references).
+        pub declared_funcs: HashMap<String, FuncId>,
         /// String constants.
         _string_constants: HashMap<String, DataId>,
         /// Optimization level.
@@ -99,6 +101,7 @@ mod backend {
                 func_ctx,
                 _data_desc: data_desc,
                 compiled_funcs: HashMap::new(),
+                declared_funcs: HashMap::new(),
                 _string_constants: HashMap::new(),
                 _opt_level: opt_level,
             })
@@ -150,8 +153,8 @@ mod backend {
                 let self_func_ref = self.module.declare_func_in_func(func_id, builder.func);
                 func_refs.insert(func_name.clone(), self_func_ref);
 
-                // Also declare all previously compiled functions
-                for (other_name, &other_id) in &self.compiled_funcs {
+                // Declare ALL pre-declared functions (including forward references)
+                for (other_name, &other_id) in &self.declared_funcs {
                     if other_name != &func_name {
                         let other_ref = self.module.declare_func_in_func(other_id, builder.func);
                         func_refs.insert(other_name.clone(), other_ref);
@@ -178,12 +181,55 @@ mod backend {
             Ok(func_id)
         }
 
-        /// Compile all functions in a module.
+        /// Compile all functions in a module using two-pass approach.
+        /// Pass 1: Declare all function signatures (enables forward references).
+        /// Pass 2: Compile all function bodies.
         pub fn compile_module(&mut self, bodies: &[MirBody]) -> CodegenResult<()> {
+            // Pass 1: Declare all functions first
+            for body in bodies {
+                self.declare_function(body)?;
+            }
+            
+            // Pass 2: Compile all function bodies
             for body in bodies {
                 self.compile_function(body)?;
             }
             Ok(())
+        }
+        
+        /// Declare a function signature without compiling the body.
+        /// This allows forward references to functions defined later.
+        fn declare_function(&mut self, body: &MirBody) -> CodegenResult<FuncId> {
+            let func_name = format!("roast_fn_{}", body.name.as_raw());
+            
+            // Check if already declared
+            if let Some(&id) = self.declared_funcs.get(&func_name) {
+                return Ok(id);
+            }
+            
+            // Create function signature
+            let mut sig = self.module.make_signature();
+            
+            // Add parameters
+            for param in &body.params {
+                let ty = self.roast_type_to_clif(&param.local.ty);
+                sig.params.push(AbiParam::new(ty));
+            }
+            
+            // Add return type
+            let ret_ty = self.roast_type_to_clif(&body.return_ty);
+            if ret_ty != types::INVALID {
+                sig.returns.push(AbiParam::new(ret_ty));
+            }
+            
+            // Declare function
+            let func_id = self.module
+                .declare_function(&func_name, Linkage::Export, &sig)
+                .map_err(|e| CodegenError::Internal(e.to_string()))?;
+            
+            self.declared_funcs.insert(func_name, func_id);
+            
+            Ok(func_id)
         }
 
         /// Generate a C main() entry point that calls the Roast main function.

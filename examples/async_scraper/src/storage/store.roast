@@ -1,0 +1,92 @@
+# Storage Module
+# Handles data persistence with async file operations
+
+from typing import List, Optional
+import asyncio
+
+# ============================================================================
+# Data Store
+# ============================================================================
+
+class DataStore:
+    """Thread-safe data storage."""
+    name: str
+    items: List[str]
+    
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.items = []
+    
+    def add(self, item: str) -> None:
+        """Add item to store."""
+        self.items.append(item)
+        print(f"[Store:{self.name}] Added item ({len(self.items)} total)")
+    
+    def get_all(self) -> List[str]:
+        """Get all items."""
+        return self.items
+    
+    def count(self) -> int:
+        """Get item count."""
+        return len(self.items)
+    
+    def clear(self) -> None:
+        """Clear all items."""
+        self.items = []
+        print(f"[Store:{self.name}] Cleared")
+
+
+# ============================================================================
+# File Storage (Async)
+# ============================================================================
+
+class FileStorage:
+    """Async file storage handler."""
+    base_path: str
+    
+    def __init__(self, base_path: str) -> None:
+        self.base_path = base_path
+    
+    async def save(self, filename: str, content: str) -> bool:
+        """Save content to file asynchronously."""
+        filepath: str = f"{self.base_path}/{filename}"
+        print(f"[FileStorage] Saving to {filepath}")
+        
+        # Simulate async file I/O
+        await asyncio.sleep(0.05)
+        
+        # In real implementation, would write to file
+        print(f"[FileStorage] Saved {len(content)} bytes to {filepath}")
+        return True
+    
+    async def load(self, filename: str) -> str:
+        """Load content from file asynchronously."""
+        filepath: str = f"{self.base_path}/{filename}"
+        print(f"[FileStorage] Loading from {filepath}")
+        
+        await asyncio.sleep(0.05)
+        
+        # Mock file content
+        return f"Content from {filepath}"
+    
+    async def save_batch(self, items: List[tuple]) -> int:
+        """Save multiple items concurrently."""
+        saved: int = 0
+        for item in items:
+            filename: str = item[0]
+            content: str = item[1]
+            success: bool = await self.save(filename, content)
+            if success:
+                saved = saved + 1
+        return saved
+
+
+# Factory function
+def create_store(name: str) -> DataStore:
+    """Create a new data store."""
+    return DataStore(name=name)
+
+
+def create_file_storage(path: str) -> FileStorage:
+    """Create a file storage handler."""
+    return FileStorage(base_path=path)

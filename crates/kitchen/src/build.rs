@@ -6,7 +6,7 @@ use std::time::Instant;
 use std::process::Command;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-// use rayon::prelude::*; // For parallel builds
+use rayon::prelude::*; // For parallel builds
 // use crate::config::{ProfileConfig, OptLevel};
 use crate::project::Project;
 use crate::gpu::GpuInfo;
@@ -194,30 +194,36 @@ impl Builder {
         let warnings: Vec<String> = Vec::new();
         let mut artifacts = Vec::new();
 
-        // Compile each file
-        for source_file in source_files.iter() {
-            if self.options.verbose {
-                println!("  {} {}",
-                    "Compiling".cyan(),
-                    source_file.display()
-                );
-            }
+        // Compile files in parallel using rayon
+        let compile_results: Vec<Result<Artifact>> = source_files
+            .par_iter()
+            .map(|source_file| {
+                if self.options.verbose {
+                    println!("  {} {}",
+                        "Compiling".cyan(),
+                        source_file.display()
+                    );
+                }
+                let result = self.compile_file(source_file);
+                pb.inc(1);
+                result
+            })
+            .collect();
 
-            // Compile the file
-            match self.compile_file(source_file) {
+        // Check for errors and collect artifacts
+        for (i, result) in compile_results.into_iter().enumerate() {
+            match result {
                 Ok(artifact) => {
                     artifacts.push(artifact);
                 }
                 Err(e) => {
                     return Err(Error::Build(format!(
                         "Failed to compile {}: {}",
-                        source_file.display(),
+                        source_files[i].display(),
                         e
                     )));
                 }
             }
-
-            pb.inc(1);
         }
 
         pb.finish_and_clear();
@@ -294,6 +300,8 @@ impl Builder {
 
         // Type check
         let mut type_ctx = roast_typer::TypeContext::new();
+        // Register builtins (print, len, open, etc.) before type checking
+        roast_typer::builtins::register_builtins(&mut type_ctx, &interner);
         let mut checker = roast_typer::TypeChecker::new(
             &mut type_ctx,
             &interner,
@@ -337,39 +345,65 @@ impl Builder {
         };
 
         let output_path = self.target_dir().join(&output_name);
+        let entry_point = self.project.entry_point();
 
-        // For bytecode mode, create a launcher script
-        #[cfg(unix)]
-        {
-            let launcher = format!(
-                r#"#!/bin/sh
-exec roastc run "{}" "$@"
-"#,
-                self.project.entry_point().display()
-            );
-            fs::write(&output_path, launcher)?;
+        println!("{} {} (LLVM)",
+            "    Linking".green().bold(),
+            output_path.display()
+        );
 
-            use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(&output_path)?.permissions();
-            perms.set_mode(0o755);
-            fs::set_permissions(&output_path, perms)?;
-        }
+        // Use roastc build to create a native binary via LLVM
+        // This produces a true standalone executable like Go/Rust
+        let result = Command::new("roastc")
+            .arg("build")
+            .arg(entry_point.as_os_str())
+            .arg("-o")
+            .arg(output_path.as_os_str())
+            .output();
 
-        #[cfg(windows)]
-        {
-            let launcher = format!(
-                r#"@echo off
-roastc run "{}" %*
-"#,
-                self.project.entry_point().display()
-            );
-            fs::write(&output_path, launcher)?;
+        match result {
+            Ok(output) => {
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    return Err(Error::Build(format!("LLVM compilation failed: {}", stderr)));
+                }
+            }
+            Err(e) => {
+                // roastc not found in PATH, try using the current executable's directory
+                if let Ok(current_exe) = std::env::current_exe() {
+                    if let Some(exe_dir) = current_exe.parent() {
+                        let roastc_path = exe_dir.join("roastc");
+                        let result = Command::new(&roastc_path)
+                            .arg("build")
+                            .arg(entry_point.as_os_str())
+                            .arg("-o")
+                            .arg(output_path.as_os_str())
+                            .output();
+
+                        match result {
+                            Ok(output) => {
+                                if !output.status.success() {
+                                    let stderr = String::from_utf8_lossy(&output.stderr);
+                                    return Err(Error::Build(format!("LLVM compilation failed: {}", stderr)));
+                                }
+                            }
+                            Err(_) => {
+                                return Err(Error::Build(format!("Failed to run roastc: {}", e)));
+                            }
+                        }
+                    } else {
+                        return Err(Error::Build(format!("Failed to run roastc: {}", e)));
+                    }
+                } else {
+                    return Err(Error::Build(format!("Failed to run roastc: {}", e)));
+                }
+            }
         }
 
         let size = fs::metadata(&output_path)?.len();
 
         Ok(Artifact {
-            kind: ArtifactKind::Binary,
+            kind: ArtifactKind::NativeBinary,
             path: output_path,
             size,
         })
@@ -457,7 +491,8 @@ roastc run "{}" %*
     }
 
     fn is_binary_target(&self) -> bool {
-        self.project.config.package.entry.ends_with("main.roast")
+        let entry = &self.project.config.package.entry;
+        entry.ends_with("main.roast") || entry.ends_with("main.ro")
     }
 }
 

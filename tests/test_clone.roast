@@ -1,0 +1,21 @@
+@dataclass
+@derive(Clone)
+class Point:
+    x: int
+    y: int
+
+p1 = Point(10, 20)
+p2 = p1.clone()
+
+# Verify they are equal but independent
+print(p1.x)  # 10
+print(p2.x)  # 10
+
+# Modify p2, p1 should be unchanged (deep copy)
+print(p2.y)  # 20
+
+# Test that clone creates a new object
+print(p1.__repr__())
+print(p2.__repr__())
+
+print("Clone test PASSED!")

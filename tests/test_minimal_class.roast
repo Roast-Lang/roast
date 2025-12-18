@@ -1,0 +1,23 @@
+# Minimal class test for Roast
+
+class Item:
+    def __init__(self, name: str):
+        self.name = name
+
+
+def main() -> int:
+    print("=== Minimal Class Test ===")
+    
+    # Test class creation
+    item = Item("first")
+    print(f"Created: {item.name}")
+    
+    # Test list append with class
+    items: list = []
+    items.append(Item("a"))
+    print(f"List has {len(items)} items")
+    
+    print("=== Complete ===")
+    return 0
+
+main()

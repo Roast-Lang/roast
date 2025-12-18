@@ -175,6 +175,14 @@ impl TypeContext {
         None
     }
 
+    /// Returns an iterator over all names defined in any scope.
+    /// Used for suggesting similar names in error messages.
+    pub fn all_names(&self) -> impl Iterator<Item = &Symbol> {
+        self.scopes.iter()
+            .flat_map(|scope| scope.keys())
+            .chain(self.named_types.keys())
+    }
+
     /// Registers a named type.
     pub fn register_type(&mut self, name: Symbol, ty: Type) {
         self.named_types.insert(name, ty);
@@ -271,6 +279,9 @@ impl TypeContext {
 
             // Set covariance
             (Type::Set(a), Type::Set(b)) => self.is_subtype(a, b),
+
+            // Rc covariance - rc[T] is subtype of rc[U] if T is subtype of U
+            (Type::Rc(a), Type::Rc(b)) => self.is_subtype(a, b),
 
             // Dict covariance (simplified)
             (Type::Dict(k1, v1), Type::Dict(k2, v2)) => {

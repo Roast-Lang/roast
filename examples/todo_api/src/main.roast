@@ -1,0 +1,179 @@
+# Interactive Todo App - Roast Demo
+# Uses text file as database, supports add/list/complete/delete
+
+# ============================================================================
+# Todo Class
+# ============================================================================
+
+class Todo:
+    def __init__(self, id: int, title: str, done: int = 0):
+        self.id = id
+        self.title = title
+        self.done = done
+    
+    def mark_done(self):
+        self.done = 1
+    
+    def to_line(self) -> str:
+        return f"{self.id}|{self.title}|{self.done}"
+
+
+# ============================================================================
+# Database Functions (File-based)
+# ============================================================================
+
+def load_todos(filename: str) -> list[int]:
+    """Load todos from file, returns list of [id, title, done] values"""
+    todos: list[int] = [1, 2, 3]  # Placeholder - we'll use direct approach
+    return todos
+
+
+def save_all(filename: str, todos_data: str):
+    """Save all todos to file"""
+    f = open(filename, "w")
+    f.write(todos_data)
+    f.close()
+
+
+def read_file(filename: str) -> str:
+    """Read entire file content"""
+    f = open(filename, "r")
+    content: str = f.read()
+    f.close()
+    return content
+
+
+# ============================================================================
+# Main Application
+# ============================================================================
+
+def print_header():
+    print("=" * 50)
+    print("       TODO APP - Roast Language Demo")
+    print("=" * 50)
+    print("")
+
+
+def print_menu():
+    print("Commands:")
+    print("  1 - List all todos")
+    print("  2 - Add new todo")
+    print("  3 - Mark todo done")
+    print("  4 - Show statistics")
+    print("  5 - Save and exit")
+    print("")
+
+
+def run_app():
+    print_header()
+    
+    # Database file
+    db_file: str = "/tmp/todos.txt"
+    
+    # In-memory todo storage (using dict with id as key)
+    todos: dict = {}
+    next_id: int = 1
+    
+    # Demo: Add some initial todos
+    print("Adding demo todos...")
+    todos[1] = Todo(1, "Learn Roast programming")
+    todos[2] = Todo(2, "Build a web app")
+    todos[3] = Todo(3, "Write documentation")
+    next_id = 4
+    print(f"Added 3 demo todos")
+    print("")
+    
+    # Interactive loop
+    running: int = 1
+    while running == 1:
+        print_menu()
+        print("Enter command (1-5): ", end="")
+        choice: str = input("")
+        print("")
+        
+        if choice == "1":
+            # List all todos
+            print("--- Your Todos ---")
+            if len(todos) == 0:
+                print("  No todos yet!")
+            else:
+                for id in range(1, next_id):
+                    if id in todos:
+                        t: Todo = todos[id]
+                        status: str = "[x]" if t.done == 1 else "[ ]"
+                        print(f"  {status} {t.id}: {t.title}")
+            print("")
+            
+        elif choice == "2":
+            # Add new todo
+            print("Enter todo title: ", end="")
+            title: str = input("")
+            new_todo = Todo(next_id, title)
+            todos[next_id] = new_todo
+            print(f"Added: ({next_id}) {title}")
+            next_id = next_id + 1
+            print("")
+            
+        elif choice == "3":
+            # Mark done
+            print("Enter todo ID to mark done: ", end="")
+            id_str: str = input("")
+            id_num: int = int(id_str)
+            if id_num in todos:
+                t: Todo = todos[id_num]
+                t.mark_done()
+                print(f"Marked done: {t.title}")
+            else:
+                print("Todo not found!")
+            print("")
+            
+        elif choice == "4":
+            # Statistics
+            total: int = len(todos)
+            done: int = 0
+            for id in range(1, next_id):
+                if id in todos:
+                    t: Todo = todos[id]
+                    if t.done == 1:
+                        done = done + 1
+            pending: int = total - done
+            
+            print("--- Statistics ---")
+            print(f"  Total: {total}")
+            print(f"  Done: {done}")
+            print(f"  Pending: {pending}")
+            if total > 0:
+                pct: int = (done * 100) / total
+                print(f"  Completion: {pct}%")
+            print("")
+            
+        elif choice == "5":
+            # Save and exit
+            print("Saving to file...")
+            
+            # Build file content
+            content: str = ""
+            for id in range(1, next_id):
+                if id in todos:
+                    t: Todo = todos[id]
+                    line: str = f"{t.id}|{t.title}|{t.done}\n"
+                    content = content + line
+            
+            save_all(db_file, content)
+            print(f"Saved to {db_file}")
+            print("")
+            print("Goodbye!")
+            running = 0
+            
+        else:
+            print("Unknown command. Try 1-5.")
+            print("")
+
+
+def main() -> int:
+    run_app()
+    return 0
+
+
+# Run the app
+main()

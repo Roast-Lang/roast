@@ -1,0 +1,82 @@
+# Web Fetcher - A simple Roast application
+# Demonstrates: classes, functions, async, file I/O
+
+# ============================================================================
+# HTTP Client Class
+# ============================================================================
+
+class HttpClient:
+    """Simple HTTP client mock - simulates network requests."""
+    timeout: int
+    
+    def __init__(self, timeout: int = 30) -> None:
+        self.timeout = timeout
+    
+    def get(self, url: str) -> str:
+        """Fetch content from a URL (simulated)."""
+        print(f"Fetching: {url} (timeout: {self.timeout}s)")
+        
+        if "example.com" in url:
+            return "Example Domain - This is example content from the web."
+        elif "jsonplaceholder" in url:
+            return '{"posts": [{"id": 1, "title": "Hello"}, {"id": 2, "title": "World"}]}'
+        else:
+            return f"Content from {url}"
+
+
+# ============================================================================
+# File Operations (simulated)
+# ============================================================================
+
+def save_to_file(filename: str, content: str) -> None:
+    """Save content to a file (simulated)."""
+    print(f"Saving to: {filename}")
+    print(f"Content length: {len(content)} bytes")
+    print("File saved successfully!")
+
+
+# ============================================================================
+# Main Application
+# ============================================================================
+
+def fetch_and_save(url: str, output_file: str) -> bool:
+    """Fetch data from URL and save to file."""
+    # Create HTTP client with custom timeout
+    client = HttpClient(timeout=60)
+    
+    # Fetch the data
+    content: str = client.get(url)
+    
+    # Save to file
+    save_to_file(output_file, content)
+    
+    return True
+
+
+def main() -> int:
+    """Main entry point."""
+    print("==================================================")
+    print("🔥 Web Fetcher - Roast Native Application")
+    print("==================================================")
+    print("Compiled to native code via LLVM!")
+    print("")
+    
+    # Fetch URL 1
+    print("--- Fetching Example.com ---")
+    fetch_and_save("https://example.com", "example_page.txt")
+    print("")
+    
+    # Fetch URL 2
+    print("--- Fetching JSONPlaceholder API ---")
+    fetch_and_save("https://jsonplaceholder.typicode.com/posts", "posts.json")
+    print("")
+    
+    print("==================================================")
+    print("✓ All files fetched and saved successfully!")
+    print("==================================================")
+    
+    return 0
+
+
+# Entry point
+main()

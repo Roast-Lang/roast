@@ -1,0 +1,42 @@
+{
+    "name": "roast-lang",
+    "displayName": "Roast Language",
+    "description": "Language support for Roast - Python-like syntax with Rust-like performance",
+    "version": "0.1.0",
+    "publisher": "roast-lang",
+    "icon": "icons/roast_logo.png",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "roast",
+                "aliases": ["Roast", "roast"],
+                "extensions": [".ro", ".roast"],
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "light": "./icons/roast_logo.png",
+                    "dark": "./icons/roast_logo.png"
+                }
+            }
+        ],
+        "grammars": [
+            {
+                "language": "roast",
+                "scopeName": "source.roast",
+                "path": "./syntaxes/roast.tmLanguage.json"
+            }
+        ],
+        "iconThemes": [
+            {
+                "id": "roast-icons",
+                "label": "Roast Icons",
+                "path": "./icons/roast-icon-theme.json"
+            }
+        ]
+    }
+}

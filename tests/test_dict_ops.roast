@@ -1,0 +1,22 @@
+# Test dict operations
+
+def main() -> int:
+    print("=== Dict Ops Test ===")
+    
+    # Pre-populated dict works
+    d: dict = {"a": 1, "b": 2}
+    print(d)
+    print(f"d['a'] = {d['a']}")
+    
+    # Try modifying existing key
+    d["a"] = 100
+    print(f"After d['a'] = 100: {d}")
+    
+    # Dict literal only - no subscript assign
+    data: dict = {"name": "Roast", "version": "1.0"}
+    print(f"Name: {data['name']}")
+    
+    print("=== Complete ===")
+    return 0
+
+main()

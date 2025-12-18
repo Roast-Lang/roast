@@ -822,6 +822,253 @@ impl NamedTuple {
     }
 }
 
+// =============================================================================
+// LRUCache - Least Recently Used Cache
+// =============================================================================
+
+/// An LRU (Least Recently Used) cache with a fixed capacity.
+/// When full, the least recently accessed item is evicted.
+#[derive(Clone, Debug)]
+pub struct LRUCache<K, V> {
+    capacity: usize,
+    map: HashMap<K, V>,
+    order: VecDeque<K>,
+}
+
+impl<K: std::hash::Hash + Eq + Clone, V: Clone> LRUCache<K, V> {
+    /// Create a new LRU cache with the given capacity.
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            capacity: capacity.max(1),
+            map: HashMap::with_capacity(capacity),
+            order: VecDeque::with_capacity(capacity),
+        }
+    }
+    
+    /// Get a value and mark it as recently used.
+    pub fn get(&mut self, key: &K) -> Option<&V> {
+        if self.map.contains_key(key) {
+            // Move to end (most recently used)
+            self.order.retain(|k| k != key);
+            self.order.push_back(key.clone());
+            self.map.get(key)
+        } else {
+            None
+        }
+    }
+    
+    /// Get a value without updating recency.
+    pub fn peek(&self, key: &K) -> Option<&V> {
+        self.map.get(key)
+    }
+    
+    /// Insert a key-value pair.
+    /// Returns the evicted (key, value) if cache was at capacity.
+    pub fn put(&mut self, key: K, value: V) -> Option<(K, V)> {
+        let mut evicted = None;
+        
+        if self.map.contains_key(&key) {
+            // Update existing: move to end
+            self.order.retain(|k| k != &key);
+            self.order.push_back(key.clone());
+            self.map.insert(key, value);
+        } else {
+            // New key: possibly evict oldest
+            if self.map.len() >= self.capacity {
+                if let Some(oldest_key) = self.order.pop_front() {
+                    if let Some(oldest_value) = self.map.remove(&oldest_key) {
+                        evicted = Some((oldest_key, oldest_value));
+                    }
+                }
+            }
+            self.order.push_back(key.clone());
+            self.map.insert(key, value);
+        }
+        
+        evicted
+    }
+    
+    /// Remove a key-value pair.
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        if let Some(value) = self.map.remove(key) {
+            self.order.retain(|k| k != key);
+            Some(value)
+        } else {
+            None
+        }
+    }
+    
+    /// Check if key exists.
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.map.contains_key(key)
+    }
+    
+    /// Get number of items.
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+    
+    /// Check if empty.
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+    
+    /// Get capacity.
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+    
+    /// Clear all items.
+    pub fn clear(&mut self) {
+        self.map.clear();
+        self.order.clear();
+    }
+    
+    /// Get keys in order from least to most recently used.
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.order.iter()
+    }
+}
+
+// =============================================================================
+// Trie - Prefix Tree
+// =============================================================================
+
+/// A node in a Trie.
+#[derive(Clone, Debug, Default)]
+struct TrieNode {
+    children: HashMap<char, TrieNode>,
+    is_end: bool,
+    value: Option<Arc<Value>>,
+}
+
+/// A Trie (prefix tree) for efficient string prefix operations.
+#[derive(Clone, Debug, Default)]
+pub struct Trie {
+    root: TrieNode,
+    size: usize,
+}
+
+impl Trie {
+    /// Create a new empty Trie.
+    pub fn new() -> Self {
+        Self {
+            root: TrieNode::default(),
+            size: 0,
+        }
+    }
+    
+    /// Insert a word into the trie.
+    pub fn insert(&mut self, word: &str) {
+        self.insert_with_value(word, Value::Bool(true))
+    }
+    
+    /// Insert a word with an associated value.
+    pub fn insert_with_value(&mut self, word: &str, value: Value) {
+        let mut node = &mut self.root;
+        for c in word.chars() {
+            node = node.children.entry(c).or_default();
+        }
+        if !node.is_end {
+            self.size += 1;
+        }
+        node.is_end = true;
+        node.value = Some(Arc::new(value));
+    }
+    
+    /// Check if a word exists in the trie.
+    pub fn contains(&self, word: &str) -> bool {
+        self.get_node(word).map(|n| n.is_end).unwrap_or(false)
+    }
+    
+    /// Get value associated with a word.
+    pub fn get(&self, word: &str) -> Option<&Value> {
+        self.get_node(word)
+            .filter(|n| n.is_end)
+            .and_then(|n| n.value.as_ref().map(|v| v.as_ref()))
+    }
+    
+    /// Check if any word starts with the given prefix.
+    pub fn starts_with(&self, prefix: &str) -> bool {
+        self.get_node(prefix).is_some()
+    }
+    
+    /// Get all words with the given prefix.
+    pub fn words_with_prefix(&self, prefix: &str) -> Vec<String> {
+        let mut results = Vec::new();
+        if let Some(node) = self.get_node(prefix) {
+            self.collect_words(node, prefix.to_string(), &mut results);
+        }
+        results
+    }
+    
+    /// Remove a word from the trie.
+    pub fn remove(&mut self, word: &str) -> bool {
+        if self.contains(word) {
+            self.remove_recursive(&mut self.root.clone(), word, 0);
+            self.size -= 1;
+            true
+        } else {
+            false
+        }
+    }
+    
+    /// Get the number of words.
+    pub fn len(&self) -> usize {
+        self.size
+    }
+    
+    /// Check if empty.
+    pub fn is_empty(&self) -> bool {
+        self.size == 0
+    }
+    
+    /// Clear all words.
+    pub fn clear(&mut self) {
+        self.root = TrieNode::default();
+        self.size = 0;
+    }
+    
+    fn get_node(&self, prefix: &str) -> Option<&TrieNode> {
+        let mut node = &self.root;
+        for c in prefix.chars() {
+            node = node.children.get(&c)?;
+        }
+        Some(node)
+    }
+    
+    fn collect_words(&self, node: &TrieNode, prefix: String, results: &mut Vec<String>) {
+        if node.is_end {
+            results.push(prefix.clone());
+        }
+        for (&c, child) in &node.children {
+            let mut new_prefix = prefix.clone();
+            new_prefix.push(c);
+            self.collect_words(child, new_prefix, results);
+        }
+    }
+    
+    fn remove_recursive(&mut self, _node: &mut TrieNode, _word: &str, _depth: usize) -> bool {
+        // Simplified removal - mark as not end
+        // A full implementation would clean up empty branches
+        if let Some(node) = self.get_node_mut(_word) {
+            node.is_end = false;
+            node.value = None;
+            true
+        } else {
+            false
+        }
+    }
+    
+    fn get_node_mut(&mut self, prefix: &str) -> Option<&mut TrieNode> {
+        let mut node = &mut self.root;
+        for c in prefix.chars() {
+            node = node.children.get_mut(&c)?;
+        }
+        Some(node)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -31,6 +31,8 @@ fn is_builtin(name: &str) -> bool {
         "map" | "filter" | "input" | "ord" | "chr" | "repr" | "hash" |
         "id" | "isinstance" | "issubclass" | "hasattr" | "getattr" | "setattr" |
         "all" | "any" | "pow" | "super" | "bint" | "Some" | "rc" |
+        // File I/O
+        "open" |
         // Async builtins
         "asyncio_run" | "asyncio_sleep"
     )
@@ -134,6 +136,13 @@ fn get_builtin_method_by_kind(collection_kind: &str, method_name: &str) -> Optio
             "contains" => Some("roast_set_contains"),
             "clear" => Some("roast_set_clear"),
             "copy" => Some("roast_set_copy"),
+            _ => None,
+        },
+        "file" => match method_name {
+            "read" => Some("roast_file_read"),
+            "write" => Some("roast_file_write"),
+            "close" => Some("roast_file_close"),
+            "readline" => Some("roast_file_readline"),
             _ => None,
         },
         _ => None,
@@ -862,6 +871,7 @@ entry:
         ir.push_str("declare i64 @roast_list_pop(i8*) nounwind\n");
         ir.push_str("declare i1 @roast_list_contains(i8*, i64) nounwind\n");
         ir.push_str("declare i64 @roast_subscript_get(i64, i64) nounwind\n");
+        ir.push_str("declare void @roast_subscript_set(i64, i64, i64) nounwind\n");
         ir.push_str("declare i64 @roast_list_count(i8*, i64) nounwind\n");
         ir.push_str("declare void @roast_list_sort(i8*) nounwind\n");
         ir.push_str("declare i64 @roast_list_pop_at(i8*, i64) nounwind\n");
@@ -1076,6 +1086,13 @@ entry:
         ir.push_str("declare i64 @roast_all(i64) nounwind\n");
         ir.push_str("declare i64 @roast_any(i64) nounwind\n");
         ir.push_str("declare i64 @roast_pow(i64, i64) nounwind\n");
+        
+        // File I/O functions
+        ir.push_str("declare i64 @roast_open(i64, i64) nounwind\n");
+        ir.push_str("declare i64 @roast_file_read(i64) nounwind\n");
+        ir.push_str("declare i64 @roast_file_write(i64, i64) nounwind\n");
+        ir.push_str("declare void @roast_file_close(i64) nounwind\n");
+        ir.push_str("declare i64 @roast_file_readline(i64) nounwind\n");
         ir.push('\n');
 
         // Generate class initialization function
@@ -1450,6 +1467,7 @@ impl<'a> FunctionGen<'a> {
                         Type::Dict(_, _) => Some("dict"),
                         Type::Str => Some("str"),
                         Type::Set(_) => Some("set"),
+                        Type::File => Some("file"),
                         _ => None,
                     }
                 })
@@ -1575,6 +1593,11 @@ impl<'a> FunctionGen<'a> {
                 let args_ptr = self.i64_to_ptr(arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"));
                 ("i8*", format!("i8* {}, i8* {}", receiver_ptr, args_ptr))
             },
+
+            // File methods
+            "roast_file_read" | "roast_file_readline" => ("i64", format!("i64 {}", arg_vals[0])),
+            "roast_file_write" => ("i64", format!("i64 {}, i64 {}", arg_vals[0], arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"))),
+            "roast_file_close" => ("void", format!("i64 {}", arg_vals[0])),
 
             // Default - assume i64 return
             _ => {
@@ -1944,11 +1967,10 @@ impl<'a> FunctionGen<'a> {
                     list_val, obj_ptr, attr_ptr
                 ));
 
-                // Set the index on the list
-                let list_ptr = self.i64_to_ptr(&list_val);
+                // Set the index on the container (use dynamic dispatch)
                 self.ir.push_str(&format!(
-                    "  call void @roast_list_set(i8* {}, i64 {}, i64 {})\n",
-                    list_ptr, idx, val
+                    "  call void @roast_subscript_set(i64 {}, i64 {}, i64 {})\n",
+                    list_val, idx, val
                 ));
             }
             MirStmtKind::TryEnd => {
@@ -2060,8 +2082,15 @@ impl<'a> FunctionGen<'a> {
                                 ));
                             }
                         }
+                        Type::Any | Type::Var(_) => {
+                            // Use dynamic dispatch for untyped containers
+                            self.ir.push_str(&format!(
+                                "  call void @roast_subscript_set(i64 {}, i64 {}, i64 {})\n",
+                                base, idx, val
+                            ));
+                        }
                         _ => {
-                            // Assume list-like
+                            // Assume list-like for other types
                             self.ir.push_str(&format!(
                                 "  call void @roast_list_set(i8* {}, i64 {}, i64 {})\n",
                                 base_ptr, idx, val
@@ -4037,6 +4066,14 @@ impl<'a> FunctionGen<'a> {
                                     self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, arg_val));
                                     self.ir.push_str(&format!("  call void @roast_bigint_print(i8* {})\n", ptr));
                                 }
+                                Type::Dict(..) | Type::List(..) | Type::Set(..) | Type::Tuple(..) => {
+                                    // For collections, convert to string first using roast_str, then print
+                                    let str_val = self.fresh_value();
+                                    self.ir.push_str(&format!("  {} = call i64 @roast_str(i64 {})\n", str_val, arg_val));
+                                    let ptr = self.fresh_value();
+                                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, str_val));
+                                    self.ir.push_str(&format!("  call void @roast_print_roast_str(i8* {})\n", ptr));
+                                }
                                 _ => {
                                     // Default to roast_print for other values (might add newline)
                                     self.ir.push_str(&format!("  call i64 @roast_print(i64 {})\n", arg_val));
@@ -4137,19 +4174,38 @@ impl<'a> FunctionGen<'a> {
                 };
 
                 // Check for list/dict builtin methods
+                // Also handle Type::Any (untyped collections) by trying dynamic dispatch
                 if let Some(collection_kind) = match &actual_receiver_type {
                     Type::List(_) => Some("list"),
                     Type::Dict(_, _) => Some("dict"),
                     Type::Set(_) => Some("set"),
                     Type::Str => Some("str"),
+                    Type::File => Some("file"),
+                    // For untyped (Any) or generic (Var) - try to match method name to determine type
+                    Type::Any | Type::Var(_) => {
+                        // Use method name heuristic to determine collection type
+                        match method_name.as_str() {
+                            "append" | "extend" | "pop" | "insert" | "remove" | "reverse" | "sort" | "copy" | "count" | "index" => Some("list"),
+                            "keys" | "values" | "items" | "get" | "update" | "setdefault" | "popitem" => Some("dict"),
+                            "add" | "discard" | "union" | "intersection" | "difference" => Some("set"),
+                            "upper" | "lower" | "strip" | "split" | "join" | "replace" | "startswith" | "endswith" => Some("str"),
+                            "read" | "write" | "readline" | "close" => Some("file"),
+                            _ => None,
+                        }
+                    },
                     _ => None,
                 } {
                     if let Some(runtime_fn) = get_builtin_method_by_kind(collection_kind, &method_name) {
                         // Call the builtin method
-                        let receiver_ptr = self.i64_to_ptr(&receiver_val);
+                        // File methods take i64 directly, others take i8* pointer
+                        let receiver_arg = if collection_kind == "file" {
+                            receiver_val.clone()
+                        } else {
+                            self.i64_to_ptr(&receiver_val)
+                        };
 
                         // Build args for the runtime function
-                        let mut arg_vals: Vec<String> = vec![receiver_ptr.clone()];
+                        let mut arg_vals: Vec<String> = vec![receiver_arg.clone()];
                         for arg in args {
                             arg_vals.push(self.generate_operand_as_i64(arg)?);
                         }

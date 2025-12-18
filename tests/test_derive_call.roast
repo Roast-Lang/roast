@@ -1,0 +1,25 @@
+@dataclass
+@derive(Hash, Ord)
+class Point:
+    x: int
+    y: int
+
+p1 = Point(1, 2)
+p2 = Point(3, 4)
+
+# Test hash
+h = p1.__hash__()
+print("Hash:")
+print(h)
+
+# Test lt
+lt_result = p1.__lt__(p2)
+print("Lt:")
+print(lt_result)
+
+# Test repr
+repr_result = p1.__repr__()
+print("Repr:")
+print(repr_result)
+
+print("@derive direct call test PASSED!")

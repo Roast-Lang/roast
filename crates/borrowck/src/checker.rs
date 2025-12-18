@@ -340,18 +340,22 @@ impl<'a> BorrowChecker<'a> {
 
     /// Checks reading from a place.
     fn check_read_place(&mut self, place: &Place, location: Location, span: Span) {
-        // Check if initialized
-        let init_status = self.move_data.is_initialized(place);
-        if matches!(init_status, InitStatus::Uninitialized | InitStatus::MaybeUninitialized) {
-            // Find where the move happened
-            let moves = self.move_data.moves_of(place);
-            let moved_at = moves.last().map(|m| m.span).unwrap_or(span);
+        // Skip initialization check for field projections (like self.field)
+        // Class field access uses borrowing semantics, not ownership transfer
+        if place.is_local() {
+            // Only check initialization for local variables, not field accesses
+            let init_status = self.move_data.is_initialized(place);
+            if matches!(init_status, InitStatus::Uninitialized | InitStatus::MaybeUninitialized) {
+                // Find where the move happened
+                let moves = self.move_data.moves_of(place);
+                let moved_at = moves.last().map(|m| m.span).unwrap_or(span);
 
-            self.errors.push(BorrowError::use_after_move(
-                place.clone(),
-                moved_at,
-                span,
-            ));
+                self.errors.push(BorrowError::use_after_move(
+                    place.clone(),
+                    moved_at,
+                    span,
+                ));
+            }
         }
 
         // Check for conflicting mutable borrows
@@ -392,6 +396,15 @@ impl<'a> BorrowChecker<'a> {
 
     /// Checks moving from a place.
     fn check_move_place(&mut self, place: &Place, location: Location, span: Span) {
+        // Skip move tracking for field projections (like self.field)
+        // Class field access uses borrowing semantics, not ownership transfer
+        // This allows patterns like: for item in self.items: ...
+        if !place.is_local() {
+            // Just do a read check for field accesses
+            self.check_read_place(place, location, span);
+            return;
+        }
+
         // Check if already moved
         let init_status = self.move_data.is_initialized(place);
         if matches!(init_status, InitStatus::Uninitialized | InitStatus::MaybeUninitialized) {

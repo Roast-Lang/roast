@@ -1,0 +1,30 @@
+# Test triple-quoted strings and f-strings
+
+def test_triple_quotes() -> None:
+    # Triple-quoted regular string
+    message = """
+    This is a multi-line
+    string that spans
+    multiple lines.
+    """
+    print(message)
+    
+    # Triple-quoted f-string
+    name: str = "Roast"
+    version: str = "1.0"
+    report = f"""
+========================================
+       TEST REPORT
+========================================
+Language: {name}
+Version:  {version}
+Status:   Working!
+========================================
+"""
+    print(report)
+    
+    print("Triple-quote test PASSED!")
+
+
+# Run test
+test_triple_quotes()

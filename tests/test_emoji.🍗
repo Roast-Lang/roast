@@ -1,0 +1,8 @@
+# Test emoji extension 🍗
+
+def main() -> int:
+    print("Hello from 🍗 file!")
+    print("Emoji extension test!")
+    return 0
+
+main()

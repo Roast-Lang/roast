@@ -1,0 +1,8 @@
+[package]
+name = "todo_app"
+version = "1.0.0"
+description = "Interactive Todo Application - Roast Demo"
+
+[build]
+entry = "main.roast"
+output = "todo_app"

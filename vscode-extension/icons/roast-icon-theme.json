@@ -1,0 +1,17 @@
+{
+    "iconDefinitions": {
+        "roast-icon": {
+            "iconPath": "./roast_logo.png"
+        }
+    },
+    "fileExtensions": {
+        "ro": "roast-icon",
+        "roast": "roast-icon"
+    },
+    "fileNames": {
+        "roast.toml": "roast-icon"
+    },
+    "languageIds": {
+        "roast": "roast-icon"
+    }
+}

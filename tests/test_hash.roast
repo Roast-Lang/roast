@@ -1,0 +1,36 @@
+@dataclass
+@derive(Hash)
+class Point:
+    x: int
+    y: int
+
+p1 = Point(10, 20)
+p2 = Point(10, 20)
+p3 = Point(30, 40)
+
+h1 = p1.__hash__()
+h2 = p2.__hash__()
+h3 = p3.__hash__()
+
+print("hash(Point(10,20)):")
+print(h1)
+print("hash(Point(10,20)) again:")
+print(h2)
+print("hash(Point(30,40)):")
+print(h3)
+
+# Same values should produce same hash
+print("h1 == h2 (should be 1):")
+if h1 == h2:
+    print(1)
+else:
+    print(0)
+
+# Different values should produce different hash (usually)
+print("h1 != h3 (should be 1):")
+if h1 != h3:
+    print(1)
+else:
+    print(0)
+
+print("Hash test PASSED!")

@@ -297,7 +297,7 @@ fn collect_roast_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
 
         if path.is_dir() {
             collect_roast_files(&path, files)?;
-        } else if path.extension().map_or(false, |ext| ext == "roast") {
+        } else if path.extension().map_or(false, |ext| ext == "roast" || ext == "ro" || ext == "🍗") {
             files.push(path);
         }
     }

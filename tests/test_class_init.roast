@@ -1,0 +1,20 @@
+# Minimal test for class field initialization
+
+class Simple:
+    name: str
+    
+    def __init__(self, name: str) -> None:
+        self.name = name
+        print(f"In __init__: self.name = {self.name}")
+    
+    def greet(self) -> None:
+        print(f"Hello from {self.name}")
+
+
+def main() -> int:
+    obj = Simple(name="Test")
+    obj.greet()
+    return 0
+
+
+main()

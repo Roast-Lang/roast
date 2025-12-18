@@ -1,0 +1,137 @@
+{
+    "name": "Roast",
+    "scopeName": "source.roast",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#builtins"
+        },
+        {
+            "include": "#functions"
+        },
+        {
+            "include": "#classes"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#operators"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "match": "#.*$",
+                    "name": "comment.line.hash.roast"
+                },
+                {
+                    "begin": "\"\"\"",
+                    "end": "\"\"\"",
+                    "name": "comment.block.roast"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "match": "f\"[^\"]*\"",
+                    "name": "string.quoted.double.fstring.roast"
+                },
+                {
+                    "match": "\"[^\"]*\"",
+                    "name": "string.quoted.double.roast"
+                },
+                {
+                    "match": "'[^']*'",
+                    "name": "string.quoted.single.roast"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "match": "\\b(if|elif|else|for|while|match|case|try|except|finally|with|break|continue|pass|return|yield|raise|import|from|as|assert|async|await)\\b",
+                    "name": "keyword.control.roast"
+                },
+                {
+                    "match": "\\b(def|class|lambda)\\b",
+                    "name": "keyword.declaration.roast"
+                },
+                {
+                    "match": "\\b(and|or|not|in|is)\\b",
+                    "name": "keyword.operator.roast"
+                },
+                {
+                    "match": "\\b(True|False|None)\\b",
+                    "name": "constant.language.roast"
+                },
+                {
+                    "match": "\\b(self|cls)\\b",
+                    "name": "variable.language.roast"
+                }
+            ]
+        },
+        "builtins": {
+            "patterns": [
+                {
+                    "match": "\\b(int|str|float|bool|list|dict|set|tuple|rc|opt)\\b",
+                    "name": "support.type.roast"
+                },
+                {
+                    "match": "\\b(print|len|range|open|input|type|isinstance|hasattr|getattr|setattr)\\b",
+                    "name": "support.function.roast"
+                }
+            ]
+        },
+        "functions": {
+            "patterns": [
+                {
+                    "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+                    "name": "entity.name.function.roast"
+                }
+            ]
+        },
+        "classes": {
+            "patterns": [
+                {
+                    "match": "(?<=class\\s)([A-Z][a-zA-Z0-9_]*)",
+                    "name": "entity.name.class.roast"
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "match": "\\b[0-9]+\\.?[0-9]*\\b",
+                    "name": "constant.numeric.roast"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "match": "->",
+                    "name": "keyword.operator.arrow.roast"
+                },
+                {
+                    "match": "::",
+                    "name": "keyword.operator.scope.roast"
+                },
+                {
+                    "match": "[+\\-*/%=<>!&|^~]",
+                    "name": "keyword.operator.roast"
+                }
+            ]
+        }
+    }
+}

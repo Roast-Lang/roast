@@ -1119,6 +1119,27 @@ pub extern "C" fn roast_subscript_get(container: c_long, key: c_long) -> c_long 
     }
 }
 
+/// Unified subscript set - works for both lists and dicts
+/// Detects the container type at runtime and dispatches to appropriate function
+#[no_mangle]
+pub extern "C" fn roast_subscript_set(container: c_long, key: c_long, value: c_long) {
+    let ptr = container as *mut c_void;
+    if ptr.is_null() { return; }
+
+    unsafe {
+        let header = ptr as *const ObjectHeader;
+        match (*header).type_tag {
+            TypeTag::List => {
+                roast_list_set(ptr as *mut RoastList, key, value);
+            }
+            TypeTag::Dict => {
+                roast_dict_set(ptr as *mut RoastDict, key, value);
+            }
+            _ => {}
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn roast_list_pop(list: *mut RoastList) -> c_long {
     if list.is_null() { return 0; }
@@ -1430,7 +1451,8 @@ fn roast_list_free_internal(list: *mut RoastList) {
 #[repr(C)]
 pub struct RoastDict {
     header: ObjectHeader,
-    map: *mut HashMap<c_long, c_long>,
+    /// HashMap stores: hash -> (original_key, value)
+    map: *mut HashMap<c_long, (c_long, c_long)>,
 }
 
 #[no_mangle]
@@ -1440,7 +1462,7 @@ pub extern "C" fn roast_dict_new() -> *mut RoastDict {
         let ptr = alloc(layout) as *mut RoastDict;
 
         (*ptr).header = ObjectHeader::new(TypeTag::Dict);
-        (*ptr).map = Box::into_raw(Box::new(HashMap::new()));
+        (*ptr).map = Box::into_raw(Box::new(HashMap::<c_long, (c_long, c_long)>::new()));
 
         ptr
     }
@@ -1487,14 +1509,16 @@ fn dict_hash_key(key: c_long) -> c_long {
 pub extern "C" fn roast_dict_set(dict: *mut RoastDict, key: c_long, value: c_long) {
     if dict.is_null() { return; }
     let hash_key = dict_hash_key(key);
-    unsafe { (*(*dict).map).insert(hash_key, value); }
+    // Store original key and value as tuple
+    unsafe { (*(*dict).map).insert(hash_key, (key, value)); }
 }
 
 #[no_mangle]
 pub extern "C" fn roast_dict_get(dict: *const RoastDict, key: c_long) -> c_long {
     if dict.is_null() { return 0; }
     let hash_key = dict_hash_key(key);
-    unsafe { (*(*dict).map).get(&hash_key).copied().unwrap_or(0) }
+    // Return value from (key, value) tuple
+    unsafe { (*(*dict).map).get(&hash_key).map(|(_, v)| *v).unwrap_or(0) }
 }
 
 #[no_mangle]
@@ -1516,8 +1540,9 @@ pub extern "C" fn roast_dict_keys(dict: *const RoastDict) -> *mut RoastList {
     let result = roast_list_new(0);
     if dict.is_null() { return result; }
     unsafe {
-        for key in (*(*dict).map).keys() {
-            roast_list_append(result, *key);
+        // Return original keys from (key, value) tuples
+        for (original_key, _) in (*(*dict).map).values() {
+            roast_list_append(result, *original_key);
         }
     }
     result
@@ -1528,7 +1553,8 @@ pub extern "C" fn roast_dict_values(dict: *const RoastDict) -> *mut RoastList {
     let result = roast_list_new(0);
     if dict.is_null() { return result; }
     unsafe {
-        for value in (*(*dict).map).values() {
+        // Return values from (key, value) tuples
+        for (_, value) in (*(*dict).map).values() {
             roast_list_append(result, *value);
         }
     }
@@ -1546,7 +1572,7 @@ pub extern "C" fn roast_dict_clear(dict: *mut RoastDict) {
 pub extern "C" fn roast_dict_get_default(dict: *const RoastDict, key: c_long, default: c_long) -> c_long {
     if dict.is_null() { return default; }
     let hash_key = dict_hash_key(key);
-    unsafe { (*(*dict).map).get(&hash_key).copied().unwrap_or(default) }
+    unsafe { (*(*dict).map).get(&hash_key).map(|(_, v)| *v).unwrap_or(default) }
 }
 
 /// Pop value (remove and return) with default if not found
@@ -1554,7 +1580,8 @@ pub extern "C" fn roast_dict_get_default(dict: *const RoastDict, key: c_long, de
 pub extern "C" fn roast_dict_pop(dict: *mut RoastDict, key: c_long, default: c_long) -> c_long {
     if dict.is_null() { return default; }
     let hash_key = dict_hash_key(key);
-    unsafe { (*(*dict).map).remove(&hash_key).unwrap_or(default) }
+    // Return value from removed (key, value) tuple
+    unsafe { (*(*dict).map).remove(&hash_key).map(|(_, v)| v).unwrap_or(default) }
 }
 
 /// Set value if key doesn't exist, return value
@@ -1563,7 +1590,8 @@ pub extern "C" fn roast_dict_setdefault(dict: *mut RoastDict, key: c_long, defau
     if dict.is_null() { return default; }
     let hash_key = dict_hash_key(key);
     unsafe {
-        *(*(*dict).map).entry(hash_key).or_insert(default)
+        // Return value from (key, value) tuple
+        (*(*dict).map).entry(hash_key).or_insert((key, default)).1
     }
 }
 
@@ -1597,11 +1625,12 @@ pub extern "C" fn roast_dict_items(dict: *const RoastDict) -> *mut RoastList {
     let result = roast_list_new(0);
     if dict.is_null() { return result; }
     unsafe {
-        for (k, v) in (*(*dict).map).iter() {
-            // Create a 2-tuple for each pair
+        // HashMap stores: hash -> (original_key, value)
+        for (original_key, value) in (*(*dict).map).values() {
+            // Create a 2-tuple for each (key, value) pair
             let tuple = roast_tuple_new(2);
-            roast_tuple_set(tuple, 0, *k);
-            roast_tuple_set(tuple, 1, *v);
+            roast_tuple_set(tuple, 0, *original_key);
+            roast_tuple_set(tuple, 1, *value);
             roast_list_append(result, tuple as c_long);
         }
     }
@@ -3237,6 +3266,41 @@ pub extern "C" fn roast_print_roast_str(s: *const RoastString) {
 }
 
 // ============================================================================
+// User Input
+// ============================================================================
+
+/// input(prompt) - Read a line from stdin, optionally displaying a prompt
+/// Returns a RoastString containing the user input (without trailing newline)
+#[no_mangle]
+pub extern "C" fn roast_input(prompt: *const RoastString) -> *mut RoastString {
+    use std::io::{self, Write, BufRead};
+    
+    // Print prompt if provided
+    if !prompt.is_null() {
+        unsafe {
+            let slice = std::slice::from_raw_parts((*prompt).data, (*prompt).len);
+            if let Ok(string) = std::str::from_utf8(slice) {
+                print!("{}", string);
+                let _ = io::stdout().flush();
+            }
+        }
+    }
+    
+    // Read line from stdin
+    let stdin = io::stdin();
+    let mut input = String::new();
+    if stdin.lock().read_line(&mut input).is_err() {
+        return roast_str_from_cstr(b"".as_ptr() as *const c_char);
+    }
+    
+    // Remove trailing newline
+    let input = input.trim_end_matches(|c| c == '\n' || c == '\r');
+    
+    // Convert to RoastString
+    roast_str_new(input.as_ptr() as *const c_char, input.len() as c_long)
+}
+
+// ============================================================================
 // Async Operations
 // ============================================================================
 
@@ -3507,6 +3571,22 @@ pub extern "C" fn roast_print(value: c_long) -> c_long {
                             return 0;
                         }
                     }
+                    TypeTag::Dict => {
+                        let dict = ptr as *const RoastDict;
+                        let map = &*(*dict).map;
+                        print!("{{");
+                        let mut first = true;
+                        // HashMap stores: hash -> (original_key, value)
+                        for (original_key, val) in map.values() {
+                            if !first { print!(", "); }
+                            first = false;
+                            let key_str = value_to_display_string(*original_key);
+                            let val_str = value_to_display_string(*val);
+                            print!("{}: {}", key_str, val_str);
+                        }
+                        println!("}}");
+                        return 0;
+                    }
                     _ => {}
                 }
             }
@@ -3611,57 +3691,114 @@ pub extern "C" fn roast_bool_to_int(value: bool) -> c_long {
 // Python-like builtin conversion functions (str, int, float, bool)
 // ============================================================================
 
+/// Helper function to convert a value to a display string for dict/collection printing
+fn value_to_display_string(value: c_long) -> String {
+    if !is_likely_pointer(value) {
+        return format!("{}", value);
+    }
+    
+    let ptr = value as *const c_void;
+    if ptr.is_null() {
+        return "None".to_string();
+    }
+    
+    unsafe {
+        let header = ptr as *const ObjectHeader;
+        let tag_val = (*header).type_tag as u8;
+        if tag_val <= TypeTag::Bytes as u8 {
+            match (*header).type_tag {
+                TypeTag::Str => {
+                    let s = ptr as *const RoastString;
+                    let slice = std::slice::from_raw_parts((*s).data, (*s).len);
+                    if let Ok(string) = std::str::from_utf8(slice) {
+                        return format!("\"{}\"", string);
+                    }
+                    return "\"<invalid utf8>\"".to_string();
+                }
+                TypeTag::None => return "None".to_string(),
+                _ => {}
+            }
+        }
+    }
+    
+    format!("{}", value)
+}
+
 /// Convert any value to string (Python str() builtin)
 #[no_mangle]
 pub extern "C" fn roast_str(value: c_long) -> c_long {
+    // First check: if value is NOT a likely pointer, it's probably a small integer.
+    // This handles the critical case of 0 and other small integers that would
+    // otherwise be misinterpreted as null pointers.
+    if !is_likely_pointer(value) {
+        // Treat as integer directly
+        return roast_int_to_str(value) as c_long;
+    }
+
     let ptr = value as *const c_void;
 
-    // Handle null
+    // Handle null (only for actual null pointers, not integer 0)
     if ptr.is_null() {
         let s = CString::new("None").unwrap();
         return roast_str_from_cstr(s.as_ptr()) as c_long;
     }
 
     // Check if it's a likely pointer to an object
-    if is_likely_pointer(value) {
-        unsafe {
-            let header = ptr as *const ObjectHeader;
-            let tag_val = (*header).type_tag as u8;
-            if tag_val <= TypeTag::Bytes as u8 {
-                match (*header).type_tag {
-                    TypeTag::Str => {
-                        // Already a string - return as is
-                        return value;
-                    }
-                    TypeTag::Int => {
-                        return roast_int_to_str(value) as c_long;
-                    }
-                    TypeTag::Float => {
-                        // Reinterpret as double
-                        let float_ptr = ptr as *const c_double;
-                        return roast_float_to_str(*float_ptr) as c_long;
-                    }
-                    TypeTag::Bool => {
-                        return roast_bool_to_str(value != 0) as c_long;
-                    }
-                    TypeTag::List => {
-                        let list = ptr as *const RoastList;
-                        let mut s = String::from("[");
-                        for i in 0..(*list).len {
-                            if i > 0 { s.push_str(", "); }
-                            let elem = *(*list).data.add(i);
-                            s.push_str(&format!("{}", elem));
-                        }
-                        s.push(']');
-                        let cstr = CString::new(s).unwrap();
-                        return roast_str_from_cstr(cstr.as_ptr()) as c_long;
-                    }
-                    TypeTag::None => {
-                        let s = CString::new("None").unwrap();
-                        return roast_str_from_cstr(s.as_ptr()) as c_long;
-                    }
-                    _ => {}
+    unsafe {
+        let header = ptr as *const ObjectHeader;
+        let tag_val = (*header).type_tag as u8;
+        if tag_val <= TypeTag::Bytes as u8 {
+            match (*header).type_tag {
+                TypeTag::Str => {
+                    // Already a string - return as is
+                    return value;
                 }
+                TypeTag::Int => {
+                    return roast_int_to_str(value) as c_long;
+                }
+                TypeTag::Float => {
+                    // Reinterpret as double
+                    let float_ptr = ptr as *const c_double;
+                    return roast_float_to_str(*float_ptr) as c_long;
+                }
+                TypeTag::Bool => {
+                    return roast_bool_to_str(value != 0) as c_long;
+                }
+                TypeTag::List => {
+                    let list = ptr as *const RoastList;
+                    let mut s = String::from("[");
+                    for i in 0..(*list).len {
+                        if i > 0 { s.push_str(", "); }
+                        let elem = *(*list).data.add(i);
+                        s.push_str(&format!("{}", elem));
+                    }
+                    s.push(']');
+                    let cstr = CString::new(s).unwrap();
+                    return roast_str_from_cstr(cstr.as_ptr()) as c_long;
+                }
+                TypeTag::Dict => {
+                    let dict = ptr as *const RoastDict;
+                    let mut s = String::from("{");
+                    let map = &*(*dict).map;
+                    let mut first = true;
+                    // HashMap stores: hash -> (original_key, value)
+                    for (original_key, val) in map.values() {
+                        if !first { s.push_str(", "); }
+                        first = false;
+                        // Format key and value - show original string keys properly
+                        let key_str = value_to_display_string(*original_key);
+                        let val_str = value_to_display_string(*val);
+                        s.push_str(&format!("{}: {}", key_str, val_str));
+                    }
+                    s.push('}');
+                    let cstr = CString::new(s).unwrap();
+                    return roast_str_from_cstr(cstr.as_ptr()) as c_long;
+                }
+                TypeTag::None => {
+                    let s = CString::new("None").unwrap();
+                    return roast_str_from_cstr(s.as_ptr()) as c_long;
+                }
+                _ => {}
             }
         }
     }
@@ -4309,4 +4446,183 @@ pub extern "C" fn roast_init() {
 #[no_mangle]
 pub extern "C" fn roast_cleanup() {
     // Cleanup runtime (if needed)
+}
+
+// ============================================================================
+// File I/O Operations
+// ============================================================================
+
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write, BufRead, BufReader};
+
+/// A file handle for Roast file I/O
+#[repr(C)]
+pub struct RoastFile {
+    header: ObjectHeader,
+    file: *mut File,
+    mode: u8,  // 0 = read, 1 = write, 2 = append
+    path: *mut RoastString,
+}
+
+/// TypeTag for File (add to enum if not present, use 20 for now)
+const FILE_TAG: u8 = 20;
+
+/// Open a file with the given mode ("r", "w", "a", "rb", "wb", "ab")
+/// Returns a RoastFile pointer
+#[no_mangle]
+pub extern "C" fn roast_file_open(path: *const RoastString, mode: *const RoastString) -> *mut RoastFile {
+    if path.is_null() || mode.is_null() {
+        return std::ptr::null_mut();
+    }
+    
+    unsafe {
+        // Get path string
+        let path_slice = std::slice::from_raw_parts((*path).data, (*path).len);
+        let path_str = match std::str::from_utf8(path_slice) {
+            Ok(s) => s,
+            Err(_) => return std::ptr::null_mut(),
+        };
+        
+        // Get mode string
+        let mode_slice = std::slice::from_raw_parts((*mode).data, (*mode).len);
+        let mode_str = match std::str::from_utf8(mode_slice) {
+            Ok(s) => s,
+            Err(_) => return std::ptr::null_mut(),
+        };
+        
+        // Parse mode and open file
+        let file = match mode_str {
+            "r" | "rb" => File::open(path_str),
+            "w" | "wb" => File::create(path_str),
+            "a" | "ab" => OpenOptions::new().append(true).create(true).open(path_str),
+            _ => return std::ptr::null_mut(),
+        };
+        
+        let file = match file {
+            Ok(f) => f,
+            Err(_) => return std::ptr::null_mut(),
+        };
+        
+        // Allocate RoastFile
+        let layout = Layout::new::<RoastFile>();
+        let ptr = alloc(layout) as *mut RoastFile;
+        
+        let mode_val = match mode_str.chars().next() {
+            Some('r') => 0,
+            Some('w') => 1,
+            Some('a') => 2,
+            _ => 0,
+        };
+        
+        (*ptr).header = ObjectHeader::new(TypeTag::None); // Use None for now
+        (*ptr).file = Box::into_raw(Box::new(file));
+        (*ptr).mode = mode_val;
+        (*ptr).path = path as *mut RoastString;
+        
+        ptr
+    }
+}
+
+/// Read the entire file contents as a string
+#[no_mangle]
+pub extern "C" fn roast_file_read(file: *mut RoastFile) -> *mut RoastString {
+    if file.is_null() {
+        return roast_str_from_cstr(b"".as_ptr() as *const c_char);
+    }
+    
+    unsafe {
+        if (*file).file.is_null() {
+            return roast_str_from_cstr(b"".as_ptr() as *const c_char);
+        }
+        
+        let f = &mut *(*file).file;
+        let mut contents = String::new();
+        
+        if f.read_to_string(&mut contents).is_err() {
+            return roast_str_from_cstr(b"".as_ptr() as *const c_char);
+        }
+        
+        roast_str_new(contents.as_ptr() as *const c_char, contents.len() as c_long)
+    }
+}
+
+/// Write a string to the file
+#[no_mangle]
+pub extern "C" fn roast_file_write(file: *mut RoastFile, content: *const RoastString) -> c_long {
+    if file.is_null() || content.is_null() {
+        return 0;
+    }
+    
+    unsafe {
+        if (*file).file.is_null() {
+            return 0;
+        }
+        
+        let f = &mut *(*file).file;
+        let slice = std::slice::from_raw_parts((*content).data, (*content).len);
+        
+        match f.write_all(slice) {
+            Ok(_) => (*content).len as c_long,
+            Err(_) => 0,
+        }
+    }
+}
+
+/// Close the file
+#[no_mangle]
+pub extern "C" fn roast_file_close(file: *mut RoastFile) {
+    if file.is_null() {
+        return;
+    }
+    
+    unsafe {
+        if !(*file).file.is_null() {
+            // Drop the file to close it
+            let _ = Box::from_raw((*file).file);
+            (*file).file = std::ptr::null_mut();
+        }
+    }
+}
+
+/// Read a single line from the file
+#[no_mangle]
+pub extern "C" fn roast_file_readline(file: *mut RoastFile) -> *mut RoastString {
+    if file.is_null() {
+        return roast_str_from_cstr(b"".as_ptr() as *const c_char);
+    }
+    
+    unsafe {
+        if (*file).file.is_null() {
+            return roast_str_from_cstr(b"".as_ptr() as *const c_char);
+        }
+        
+        // Note: This is a simplified implementation
+        // For a proper implementation, we'd need to buffer the file
+        let f = &mut *(*file).file;
+        let mut line = String::new();
+        let mut buf = [0u8; 1];
+        
+        loop {
+            match f.read(&mut buf) {
+                Ok(0) => break, // EOF
+                Ok(_) => {
+                    if buf[0] == b'\n' {
+                        line.push('\n');
+                        break;
+                    }
+                    line.push(buf[0] as char);
+                }
+                Err(_) => break,
+            }
+        }
+        
+        roast_str_new(line.as_ptr() as *const c_char, line.len() as c_long)
+    }
+}
+
+/// Python-like open() - returns a File object
+/// This is the main entry point for file I/O
+#[no_mangle]
+pub extern "C" fn roast_open(path: *const RoastString, mode: *const RoastString) -> *mut RoastFile {
+    roast_file_open(path, mode)
 }

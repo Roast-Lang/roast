@@ -1,0 +1,20 @@
+Remaining Priority Options
+Option 1: Proper __lt__ for Ord (Easy - 1 hour)
+Currently returns false placeholder
+Implement tuple-wise field comparison
+Completes the derive feature
+Option 2: Better Error Messages (Medium - 2-3 hours)
+Add suggestions for common mistakes
+Show expected types in mismatches
+Improve span highlighting
+Option 3: LSP Improvements (Medium - 3-4 hours)
+Cross-file go-to-definition
+Code actions (quick fixes)
+Auto-complete for auto-generated methods
+Option 4: Python FFI (Hard - Days)
+Parser doesn't recognize py: yet
+Requires PyO3 integration
+Large scope
+Option 5: Update ROADMAP.md (Quick - 30 min)
+Mark completed items as done
+Accurate status assessment

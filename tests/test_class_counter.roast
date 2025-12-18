@@ -1,0 +1,21 @@
+# Test class init with keyword argument
+
+class Counter:
+    value: int
+    
+    def __init__(self, initial: int) -> None:
+        self.value = initial
+    
+    def get_value(self) -> int:
+        return self.value
+
+
+def main() -> int:
+    # Use keyword argument
+    c = Counter(initial=42)
+    v = c.get_value()
+    print(v)
+    return 0
+
+
+main()

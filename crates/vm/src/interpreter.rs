@@ -333,7 +333,7 @@ impl VM {
             // Fetch instruction
             let instruction = self.frames[frame_idx].code.instructions[self.frames[frame_idx].ip].clone();
 
-            // Call debug hook
+            // Call debug hook (only if set)
             if let Some(hook) = &self.debug_hook {
                 hook.on_step(self)?;
             }
@@ -345,10 +345,232 @@ impl VM {
             // Advance IP before execution
             self.frames[frame_idx].ip += 1;
 
-            // Execute
+            // ============================================================
+            // FAST PATH: Handle common opcodes inline to avoid dispatch overhead
+            // ============================================================
+            match instruction.opcode {
+                // Fast path: Load local variable
+                OpCode::LoadFast | OpCode::LoadLocal => {
+                    let slot = match instruction.operand {
+                        Operand::U8(s) => s as usize,
+                        Operand::U16(s) => s as usize,
+                        _ => 0,
+                    };
+                    let frame = self.frames.last().unwrap();
+                    let value = frame.get_local(slot).cloned().unwrap_or(Value::None);
+                    self.stack.push(value)?;
+                    continue;
+                }
+
+                // Fast path: Store local variable
+                OpCode::StoreFast | OpCode::StoreLocal => {
+                    let slot = match instruction.operand {
+                        Operand::U8(s) => s as usize,
+                        Operand::U16(s) => s as usize,
+                        _ => 0,
+                    };
+                    let value = self.stack.pop()?;
+                    let frame = self.frames.last_mut().unwrap();
+                    frame.set_local(slot, value);
+                    continue;
+                }
+
+                // Fast path: Load integer constant
+                OpCode::LoadInt => {
+                    if let Operand::I64(n) = instruction.operand {
+                        self.stack.push(Value::Int(n))?;
+                    }
+                    continue;
+                }
+
+                // Fast path: Integer addition (most common case)
+                OpCode::Add => {
+                    let b = self.stack.pop()?;
+                    let a = self.stack.pop()?;
+                    match (&a, &b) {
+                        (Value::Int(x), Value::Int(y)) => {
+                            self.stack.push(Value::Int(x.wrapping_add(*y)))?;
+                            continue;
+                        }
+                        _ => {
+                            // Fall back to full implementation
+                            self.stack.push(a)?;
+                            self.stack.push(b)?;
+                        }
+                    }
+                }
+
+                // Fast path: Integer subtraction
+                OpCode::Sub => {
+                    let b = self.stack.pop()?;
+                    let a = self.stack.pop()?;
+                    match (&a, &b) {
+                        (Value::Int(x), Value::Int(y)) => {
+                            self.stack.push(Value::Int(x.wrapping_sub(*y)))?;
+                            continue;
+                        }
+                        _ => {
+                            self.stack.push(a)?;
+                            self.stack.push(b)?;
+                        }
+                    }
+                }
+
+                // Fast path: Less than comparison
+                OpCode::Lt => {
+                    let b = self.stack.pop()?;
+                    let a = self.stack.pop()?;
+                    match (&a, &b) {
+                        (Value::Int(x), Value::Int(y)) => {
+                            self.stack.push(Value::Bool(*x < *y))?;
+                            continue;
+                        }
+                        _ => {
+                            self.stack.push(a)?;
+                            self.stack.push(b)?;
+                        }
+                    }
+                }
+
+                // Fast path: Less than or equal
+                OpCode::Le => {
+                    let b = self.stack.pop()?;
+                    let a = self.stack.pop()?;
+                    match (&a, &b) {
+                        (Value::Int(x), Value::Int(y)) => {
+                            self.stack.push(Value::Bool(*x <= *y))?;
+                            continue;
+                        }
+                        _ => {
+                            self.stack.push(a)?;
+                            self.stack.push(b)?;
+                        }
+                    }
+                }
+
+                // Fast path: Unconditional jump
+                OpCode::Jump => {
+                    if let Operand::I16(offset) = instruction.operand {
+                        let frame = self.frames.last_mut().unwrap();
+                        frame.jump(offset);
+                    }
+                    continue;
+                }
+
+                // Fast path: Jump if false
+                OpCode::JumpIfFalse => {
+                    if let Operand::I16(offset) = instruction.operand {
+                        let value = self.stack.pop()?;
+                        if !self.is_truthy(&value) {
+                            let frame = self.frames.last_mut().unwrap();
+                            frame.jump(offset);
+                        }
+                    }
+                    continue;
+                }
+
+                // Fast path: Jump if true
+                OpCode::JumpIfTrue => {
+                    if let Operand::I16(offset) = instruction.operand {
+                        let value = self.stack.pop()?;
+                        if self.is_truthy(&value) {
+                            let frame = self.frames.last_mut().unwrap();
+                            frame.jump(offset);
+                        }
+                    }
+                    continue;
+                }
+
+                // Fast path: Return
+                OpCode::Return => {
+                    let value = if self.stack.is_empty() {
+                        Value::None
+                    } else {
+                        self.stack.pop()?
+                    };
+                    // Call debug hook before popping frame
+                    if let Some(hook) = &self.debug_hook {
+                        hook.on_function_exit(self)?;
+                    }
+                    if self.frames.len() == 1 {
+                        return Ok(value);
+                    }
+                    self.frames.pop();
+                    self.stack.push(value)?;
+                    continue;
+                }
+
+                // Fast path: Function call (non-async, matching arity)
+                OpCode::Call => {
+                    if let Operand::U8(argc) = instruction.operand {
+                        let argc = argc as usize;
+                        // Pop arguments first
+                        let args = self.stack.pop_n(argc)?;
+                        let func = self.stack.pop()?;
+
+                        match func {
+                            Value::Function(ref f) if !f.is_async && f.arity == argc => {
+                                // Fast path for simple function calls
+                                let code = f.code.clone();
+                                let mut frame = CallFrame::new(code, 0);
+                                for (i, arg) in args.into_iter().enumerate() {
+                                    frame.set_local(i, arg);
+                                }
+                                self.frames.push(frame);
+                                // Call debug hook after pushing frame
+                                if let Some(hook) = &self.debug_hook {
+                                    hook.on_function_entry(self)?;
+                                }
+                                continue;
+                            }
+                            Value::Function(f) => {
+                                // Async or arity mismatch - handle normally
+                                if args.len() != f.arity {
+                                    return Err(VMError::TypeError(format!(
+                                        "{}() takes {} arguments but {} were given",
+                                        f.name, f.arity, args.len()
+                                    )));
+                                }
+                                if f.is_async {
+                                    let coroutine = Arc::new(Coroutine::new(f, args));
+                                    self.stack.push(Value::Coroutine(coroutine))?;
+                                    continue;
+                                }
+                                let code = f.code.clone();
+                                let mut frame = CallFrame::new(code, 0);
+                                for (i, arg) in args.into_iter().enumerate() {
+                                    frame.set_local(i, arg);
+                                }
+                                self.frames.push(frame);
+                                // Call debug hook after pushing frame
+                                if let Some(hook) = &self.debug_hook {
+                                    hook.on_function_entry(self)?;
+                                }
+                                continue;
+                            }
+                            _ => {
+                                // Builtin or other callable
+                                let result = self.call_builtin(func, args)?;
+                                self.stack.push(result)?;
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                _ => {
+                    // Fall through to execute_instruction for complex opcodes
+                }
+            }
+
+            // Execute via full dispatch (for opcodes not in fast path)
             match self.execute_instruction(&instruction)? {
                 ExecResult::Continue => {}
                 ExecResult::Return(value) => {
+                    // Call debug hook before popping frame
+                    if let Some(hook) = &self.debug_hook {
+                        hook.on_function_exit(self)?;
+                    }
                     if self.frames.len() == 1 {
                         return Ok(value);
                     }
@@ -378,6 +600,7 @@ impl VM {
             }
         }
     }
+
 
     /// Executes a single instruction.
     fn execute_instruction(&mut self, instr: &Instruction) -> VMResult<ExecResult> {
@@ -419,7 +642,6 @@ impl VM {
                 };
                 let frame = self.frames.last().unwrap();
                 let value = frame.get_local(slot).cloned().unwrap_or(Value::None);
-                eprintln!("LoadFast slot={} value={:?} num_locals={}", slot, value, frame.locals.len());
                 self.stack.push(value)?;
             }
             OpCode::StoreFast | OpCode::StoreLocal => {
@@ -430,7 +652,6 @@ impl VM {
                 };
                 let value = self.stack.pop()?;
                 let frame = self.frames.last_mut().unwrap();
-                eprintln!("StoreFast slot={} value={:?} num_locals={}", slot, value, frame.locals.len());
                 frame.set_local(slot, value);
             }
 
@@ -684,6 +905,10 @@ impl VM {
                                 }
 
                                 self.frames.push(frame);
+                                // Call debug hook after pushing frame
+                                if let Some(hook) = &self.debug_hook {
+                                    hook.on_function_entry(self)?;
+                                }
                                 // Do NOT push result, return Continue to execute new frame
                             }
                         }

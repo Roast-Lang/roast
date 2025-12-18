@@ -34,3 +34,5 @@
 
 - Scope: Ensure runtime functions (e.g., `roast_make_iter`) declared identically across native_full and LLVM backend; add compile-time guard or generator.
 - Acceptance: Build fails if declarations diverge; doc note in `docs/` describing the source of truth.
+
+

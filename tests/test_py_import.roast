@@ -1,0 +1,11 @@
+# Test Python FFI imports
+import py:math as math
+import py:json
+
+from py:os import getcwd, path
+
+def main():
+    # These would call Python via FFI at runtime
+    x = math.pi
+    cwd = getcwd()
+    print(cwd)

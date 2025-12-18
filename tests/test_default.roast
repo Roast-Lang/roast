@@ -1,0 +1,25 @@
+@dataclass
+@derive(Default)
+class Point:
+    x: int
+    y: int
+
+# Call default() class method
+p = Point.default()
+print("Default Point created!")
+print(p.x)  # Should be 0
+print(p.y)  # Should be 0
+
+@dataclass
+@derive(Default)
+class Config:
+    name: str
+    count: int
+    enabled: bool
+
+c = Config.default()
+print("Default Config created!")
+print(c.count)   # Should be 0
+print(c.enabled) # Should be 0 (false)
+
+print("Default test PASSED!")

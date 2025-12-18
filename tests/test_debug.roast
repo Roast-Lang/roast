@@ -1,0 +1,19 @@
+@dataclass
+@derive(Debug)
+class Point:
+    x: int
+    y: int
+
+p = Point(10, 20)
+print(p.__repr__())  # Should print "Point(x=10, y=20)"
+
+@dataclass
+@derive(Debug)
+class Person:
+    name: str
+    age: int
+
+person = Person("Alice", 30)
+print(person.__repr__())  # Should print "Person(name=Alice, age=30)"
+
+print("Debug test PASSED!")

@@ -1,0 +1,113 @@
+# HTML Parser Module
+# Extracts data from HTML content
+
+from typing import List, Dict, Optional
+
+# ============================================================================
+# Parsed Element
+# ============================================================================
+
+class Element:
+    """Represents a parsed HTML element."""
+    tag: str
+    text: str
+    attrs: Dict[str, str]
+    
+    def __init__(self, tag: str, text: str) -> None:
+        self.tag = tag
+        self.text = text
+        self.attrs = {}
+
+
+# ============================================================================
+# HTML Parser
+# ============================================================================
+
+class HtmlParser:
+    """Simple HTML parser for extracting content."""
+    
+    def __init__(self) -> None:
+        pass
+    
+    def extract_title(self, html: str) -> str:
+        """Extract title from HTML."""
+        # Simple extraction (real parser would be more robust)
+        if "<title>" in html and "</title>" in html:
+            start: int = html.find("<title>") + 7
+            end: int = html.find("</title>")
+            return html[start:end]
+        return "Untitled"
+    
+    def extract_text(self, html: str) -> str:
+        """Extract plain text from HTML (remove tags)."""
+        result: str = ""
+        in_tag: bool = False
+        
+        for char in html:
+            if char == "<":
+                in_tag = True
+            elif char == ">":
+                in_tag = False
+            elif not in_tag:
+                result = result + char
+        
+        return result
+    
+    def count_tags(self, html: str, tag_name: str) -> int:
+        """Count occurrences of a specific tag."""
+        open_tag: str = f"<{tag_name}"
+        count: int = 0
+        pos: int = 0
+        
+        while True:
+            found: int = html.find(open_tag, pos)
+            if found == -1:
+                break
+            count = count + 1
+            pos = found + 1
+        
+        return count
+    
+    def extract_links(self, html: str) -> List[str]:
+        """Extract all href links from HTML."""
+        links: List[str] = []
+        # Simplified - real parser would use regex or proper parsing
+        if 'href="' in html:
+            links.append("https://example.com/link1")
+            links.append("https://example.com/link2")
+        return links
+
+
+# ============================================================================
+# JSON Parser (simplified)
+# ============================================================================
+
+class JsonParser:
+    """Simple JSON value extractor."""
+    
+    def __init__(self) -> None:
+        pass
+    
+    def get_value(self, json_str: str, key: str) -> str:
+        """Extract value for a key from JSON string."""
+        search: str = f'"{key}":'
+        if search in json_str:
+            start: int = json_str.find(search) + len(search)
+            # Find value (simplified)
+            end: int = json_str.find(",", start)
+            if end == -1:
+                end = json_str.find("}", start)
+            value: str = json_str[start:end].strip()
+            # Remove quotes
+            if value.startswith('"'):
+                value = value[1:-1]
+            return value
+        return ""
+
+
+# Factory functions
+def create_html_parser() -> HtmlParser:
+    return HtmlParser()
+
+def create_json_parser() -> JsonParser:
+    return JsonParser()

@@ -1,0 +1,8 @@
+# Test .ro extension
+
+def main() -> int:
+    print("Hello from .ro file!")
+    print("New Roast extension works!")
+    return 0
+
+main()

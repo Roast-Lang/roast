@@ -2,7 +2,7 @@
 
 use crate::nodes::*;
 use id_arena::Arena;
-use roast_ast::{*, macros::has_dataclass};
+use roast_ast::{*, macros::DataclassOptions};
 use roast_common::{DiagnosticSink, Interner, Span, Symbol};
 use roast_typer::{Type, TypeContext, TypeChecker, compute_mro};
 use std::collections::HashMap;
@@ -247,6 +247,88 @@ impl<'a> HirBuilder<'a> {
         }
     }
 
+    /// Check if decorators include @dataclass, properly resolving Symbol names.
+    fn check_dataclass_decorator(&self, decorators: &[Decorator]) -> Option<DataclassOptions> {
+        for d in decorators {
+            // Get the decorator name by resolving the Symbol through the interner
+            let name = match &d.name.kind {
+                ExprKind::Name { id, .. } => {
+                    self.interner.resolve(id.name).map(|s| s.to_string())
+                }
+                ExprKind::Attribute { value, attr, .. } => {
+                    if let ExprKind::Name { id, .. } = &value.kind {
+                        let base = self.interner.resolve(id.name).unwrap_or("");
+                        let attr_name = self.interner.resolve(attr.name).unwrap_or("");
+                        Some(format!("{}.{}", base, attr_name))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+
+            if let Some(name_str) = name {
+                if name_str == "dataclass" {
+                    // Parse options from keywords
+                    let mut opts = DataclassOptions::default();
+                    opts.init = true;
+                    opts.repr = true;
+                    opts.eq = true;
+                    
+                    for kw in &d.keywords {
+                        if let Some(ref kw_name) = kw.name {
+                            let kw_name_str = self.interner.resolve(kw_name.name).unwrap_or("");
+                            let val = if let ExprKind::BoolLit { value } = &kw.value.kind {
+                                Some(*value)
+                            } else {
+                                None
+                            };
+                            match kw_name_str {
+                                "init" => opts.init = val.unwrap_or(true),
+                                "repr" => opts.repr = val.unwrap_or(true),
+                                "eq" => opts.eq = val.unwrap_or(true),
+                                "order" => opts.order = val.unwrap_or(false),
+                                "frozen" => opts.frozen = val.unwrap_or(false),
+                                "slots" => opts.slots = val.unwrap_or(false),
+                                "kw_only" => opts.kw_only = val.unwrap_or(false),
+                                _ => {}
+                            }
+                        }
+                    }
+                    return Some(opts);
+                }
+            }
+        }
+        None
+    }
+
+    /// Check if decorators include @derive, properly resolving Symbol names.
+    /// Returns a list of protocol names to derive.
+    fn check_derive_protocols(&self, decorators: &[Decorator]) -> Vec<String> {
+        let mut protocols = Vec::new();
+        for d in decorators {
+            // Get the decorator name by resolving the Symbol through the interner
+            let name = match &d.name.kind {
+                ExprKind::Name { id, .. } => {
+                    self.interner.resolve(id.name).map(|s| s.to_string())
+                }
+                _ => None,
+            };
+
+            if name.as_deref() == Some("derive") {
+                // Parse protocol arguments
+                for arg in &d.arguments {
+                    if let ExprKind::Name { id, .. } = &arg.kind {
+                        if let Some(proto_name) = self.interner.resolve(id.name) {
+                            protocols.push(proto_name.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        protocols
+    }
+
     fn build_class(
         &mut self,
         name: &Ident,
@@ -417,7 +499,9 @@ impl<'a> HirBuilder<'a> {
 
         // ===== @dataclass method generation =====
         // Check if this class has @dataclass decorator and generate methods accordingly
-        if let Some(dataclass_opts) = has_dataclass(decorators) {
+        // Use local helper that properly resolves Symbol names via the interner
+        let dataclass_opts = self.check_dataclass_decorator(decorators);
+        if let Some(dataclass_opts) = dataclass_opts {
             // Collect field info: (field_name_symbol, field_type, field_name_string)
             let fields: Vec<(Symbol, Type, String)> = members.iter()
                 .filter_map(|m| {
@@ -521,11 +605,75 @@ impl<'a> HirBuilder<'a> {
                     let repr_sym = self.interner.intern("__repr__");
                     let self_sym = self.interner.intern("self");
 
-                    // Generate string like "ClassName(field1=value1, field2=value2)"
-                    // For now, just return a simple string literal (proper implementation would concatenate)
-                    let repr_str = format!("{}(...)", class_name);
-                    let repr_literal = self.expr_arena.alloc(HirExpr {
-                        kind: HirExprKind::Literal(HirLiteral::Str(repr_str)),
+                    let self_var = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Var(self_sym),
+                        ty: Type::Any,
+                        span,
+                    });
+
+                    // Build format string: "ClassName(field1=value1, field2=value2, ...)"
+                    // Start with "ClassName("
+                    let class_name_str = class_name.clone() + "(";
+                    let mut result_expr = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Literal(HirLiteral::Str(class_name_str)),
+                        ty: Type::Str,
+                        span,
+                    });
+
+                    for (i, (field_sym, field_ty, field_name)) in fields.iter().enumerate() {
+                        // Add "fieldname="
+                        let prefix = if i == 0 {
+                            format!("{}=", field_name)
+                        } else {
+                            format!(", {}=", field_name)
+                        };
+                        let prefix_expr = self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Literal(HirLiteral::Str(prefix)),
+                            ty: Type::Str,
+                            span,
+                        });
+                        result_expr = self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Binary { op: HirBinOp::Add, left: result_expr, right: prefix_expr },
+                            ty: Type::Str,
+                            span,
+                        });
+
+                        // Get self.field
+                        let self_field = self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                            ty: field_ty.clone(),
+                            span,
+                        });
+
+                        // Call str() on the field value
+                        let str_builtin = self.interner.intern("str");
+                        let str_fn = self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Var(str_builtin),
+                            ty: Type::Any,
+                            span,
+                        });
+                        let str_call = self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Call { callee: str_fn, args: vec![self_field] },
+                            ty: Type::Str,
+                            span,
+                        });
+
+                        // Concatenate: result + str(self.field)
+                        result_expr = self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Binary { op: HirBinOp::Add, left: result_expr, right: str_call },
+                            ty: Type::Str,
+                            span,
+                        });
+                    }
+
+                    // Add closing ")"
+                    let close_paren = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Literal(HirLiteral::Str(")".to_string())),
+                        ty: Type::Str,
+                        span,
+                    });
+                    result_expr = self.expr_arena.alloc(HirExpr {
+                        kind: HirExprKind::Binary { op: HirBinOp::Add, left: result_expr, right: close_paren },
                         ty: Type::Str,
                         span,
                     });
@@ -542,7 +690,7 @@ impl<'a> HirBuilder<'a> {
                         return_type: Type::Str,
                         body: HirBlock {
                             stmts: vec![HirStmt {
-                                kind: HirStmtKind::Return(Some(repr_literal)),
+                                kind: HirStmtKind::Return(Some(result_expr)),
                                 span,
                             }],
                             span,
@@ -574,12 +722,76 @@ impl<'a> HirBuilder<'a> {
                     let other_sym = self.interner.intern("other");
 
                     // Generate comparison: self.field1 == other.field1 and self.field2 == other.field2 ...
-                    // For now, return True (proper implementation would compare all fields)
-                    let true_literal = self.expr_arena.alloc(HirExpr {
-                        kind: HirExprKind::Literal(HirLiteral::Bool(true)),
-                        ty: Type::Bool,
-                        span,
-                    });
+                    // Build the comparison expression
+                    let result_expr = if fields.is_empty() {
+                        // No fields, always equal
+                        self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Literal(HirLiteral::Bool(true)),
+                            ty: Type::Bool,
+                            span,
+                        })
+                    } else {
+                        // Create self and other var expressions
+                        let self_var = self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Var(self_sym),
+                            ty: Type::Any,
+                            span,
+                        });
+                        let other_var = self.expr_arena.alloc(HirExpr {
+                            kind: HirExprKind::Var(other_sym),
+                            ty: Type::Any,
+                            span,
+                        });
+
+                        // Build comparisons for each field
+                        let mut comparisons: Vec<HirExprId> = Vec::new();
+                        for (field_sym, field_ty, _field_name) in &fields {
+                            // self.field
+                            let self_field = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Field {
+                                    base: self_var,
+                                    field: *field_sym,
+                                },
+                                ty: field_ty.clone(),
+                                span,
+                            });
+                            // other.field
+                            let other_field = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Field {
+                                    base: other_var,
+                                    field: *field_sym,
+                                },
+                                ty: field_ty.clone(),
+                                span,
+                            });
+                            // self.field == other.field
+                            let cmp = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Binary {
+                                    op: HirBinOp::Eq,
+                                    left: self_field,
+                                    right: other_field,
+                                },
+                                ty: Type::Bool,
+                                span,
+                            });
+                            comparisons.push(cmp);
+                        }
+
+                        // Chain all comparisons with And
+                        let mut result = comparisons[0];
+                        for cmp in comparisons.into_iter().skip(1) {
+                            result = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Binary {
+                                    op: HirBinOp::And,
+                                    left: result,
+                                    right: cmp,
+                                },
+                                ty: Type::Bool,
+                                span,
+                            });
+                        }
+                        result
+                    };
 
                     let eq_func = HirFunction {
                         name: eq_sym,
@@ -602,7 +814,7 @@ impl<'a> HirBuilder<'a> {
                         return_type: Type::Bool,
                         body: HirBlock {
                             stmts: vec![HirStmt {
-                                kind: HirStmtKind::Return(Some(true_literal)),
+                                kind: HirStmtKind::Return(Some(result_expr)),
                                 span,
                             }],
                             span,
@@ -613,6 +825,859 @@ impl<'a> HirBuilder<'a> {
                     };
 
                     members.push(HirClassMember::Method { func: eq_func, kind: MethodKind::Instance });
+                }
+            }
+        }
+
+        // ===== @derive method generation =====
+        // Check for @derive(Hash, Ord, ...) decorator and generate protocol methods
+        let derive_protocols = self.check_derive_protocols(decorators);
+        if !derive_protocols.is_empty() {
+            // Collect field info for derive generation
+            let fields: Vec<(Symbol, Type, String)> = members.iter()
+                .filter_map(|m| {
+                    if let HirClassMember::Field { name, ty, .. } = m {
+                        let name_str = self.interner.resolve(*name)
+                            .map(|s| s.to_string())
+                            .unwrap_or_default();
+                        Some((*name, ty.clone(), name_str))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // Helper to check if a method already exists
+            let has_method = |members: &[HirClassMember], method_name: &str| {
+                members.iter().any(|m| {
+                    if let HirClassMember::Method { func, .. } = m {
+                        self.interner.resolve(func.name)
+                            .map(|s| s == method_name)
+                            .unwrap_or(false)
+                    } else {
+                        false
+                    }
+                })
+            };
+
+            for protocol_name in &derive_protocols {
+                match protocol_name.as_str() {
+                    "Hash" => {
+                        // Generate __hash__ method if not already defined
+                        if !has_method(&members, "__hash__") && !fields.is_empty() {
+                            let hash_sym = self.interner.intern("__hash__");
+                            let self_sym = self.interner.intern("self");
+                            let hash_builtin = self.interner.intern("hash");
+
+                            // Create self variable expression
+                            let self_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(self_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            // Build: hash(self.field1) ^ hash(self.field2) ^ ...
+                            let mut hash_exprs: Vec<HirExprId> = Vec::new();
+                            for (field_sym, field_ty, _field_name) in &fields {
+                                // self.field
+                                let self_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field {
+                                        base: self_var,
+                                        field: *field_sym,
+                                    },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                // hash builtin function
+                                let hash_fn = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Var(hash_builtin),
+                                    ty: Type::Any,
+                                    span,
+                                });
+                                // hash(self.field)
+                                let hash_call = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Call {
+                                        callee: hash_fn,
+                                        args: vec![self_field],
+                                    },
+                                    ty: Type::Int,
+                                    span,
+                                });
+                                hash_exprs.push(hash_call);
+                            }
+
+                            // XOR all hash values together
+                            let result_expr = if hash_exprs.len() == 1 {
+                                hash_exprs[0]
+                            } else {
+                                let mut result = hash_exprs[0];
+                                for hash_expr in hash_exprs.into_iter().skip(1) {
+                                    result = self.expr_arena.alloc(HirExpr {
+                                        kind: HirExprKind::Binary {
+                                            op: HirBinOp::BitXor,
+                                            left: result,
+                                            right: hash_expr,
+                                        },
+                                        ty: Type::Int,
+                                        span,
+                                    });
+                                }
+                                result
+                            };
+
+                            let hash_func = HirFunction {
+                                name: hash_sym,
+                                params: vec![HirParam {
+                                    name: self_sym,
+                                    ty: Type::Any,
+                                    default: None,
+                                    kind: HirParamKind::Regular,
+                                    span,
+                                }],
+                                return_type: Type::Int,
+                                body: HirBlock {
+                                    stmts: vec![HirStmt {
+                                        kind: HirStmtKind::Return(Some(result_expr)),
+                                        span,
+                                    }],
+                                    span,
+                                },
+                                is_async: false,
+                                decorators: Vec::new(),
+                                span,
+                            };
+
+                            members.push(HirClassMember::Method { func: hash_func, kind: MethodKind::Instance });
+                        }
+                    }
+                    "Ord" => {
+                        // Generate __lt__ method if not already defined
+                        if !has_method(&members, "__lt__") && !fields.is_empty() {
+                            let lt_sym = self.interner.intern("__lt__");
+                            let self_sym = self.interner.intern("self");
+                            let other_sym = self.interner.intern("other");
+
+                            // Create self and other variable expressions
+                            let self_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(self_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+                            let other_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(other_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            // Build tuple-wise comparison:
+                            // if self.x < other.x: return True
+                            // if self.x > other.x: return False
+                            // if self.y < other.y: return True
+                            // if self.y > other.y: return False
+                            // ... (for all fields)
+                            // return False  (all fields equal)
+                            
+                            let mut stmts: Vec<HirStmt> = Vec::new();
+                            let true_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Bool(true)),
+                                ty: Type::Bool,
+                                span,
+                            });
+                            let false_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Bool(false)),
+                                ty: Type::Bool,
+                                span,
+                            });
+
+                            for (field_sym, field_ty, _field_name) in &fields {
+                                // self.field
+                                let self_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field {
+                                        base: self_var,
+                                        field: *field_sym,
+                                    },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                // other.field
+                                let other_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field {
+                                        base: other_var,
+                                        field: *field_sym,
+                                    },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+
+                                // self.field < other.field
+                                let lt_cmp = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary {
+                                        op: HirBinOp::Lt,
+                                        left: self_field,
+                                        right: other_field,
+                                    },
+                                    ty: Type::Bool,
+                                    span,
+                                });
+
+                                // if self.field < other.field: return True
+                                stmts.push(HirStmt {
+                                    kind: HirStmtKind::If {
+                                        cond: lt_cmp,
+                                        then_block: HirBlock {
+                                            stmts: vec![HirStmt {
+                                                kind: HirStmtKind::Return(Some(true_expr)),
+                                                span,
+                                            }],
+                                            span,
+                                        },
+                                        else_block: None,
+                                    },
+                                    span,
+                                });
+
+                                // self.field > other.field (recreate expressions for this use)
+                                let self_field2 = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field {
+                                        base: self_var,
+                                        field: *field_sym,
+                                    },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let other_field2 = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field {
+                                        base: other_var,
+                                        field: *field_sym,
+                                    },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let gt_cmp = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary {
+                                        op: HirBinOp::Gt,
+                                        left: self_field2,
+                                        right: other_field2,
+                                    },
+                                    ty: Type::Bool,
+                                    span,
+                                });
+
+                                // if self.field > other.field: return False
+                                stmts.push(HirStmt {
+                                    kind: HirStmtKind::If {
+                                        cond: gt_cmp,
+                                        then_block: HirBlock {
+                                            stmts: vec![HirStmt {
+                                                kind: HirStmtKind::Return(Some(false_expr)),
+                                                span,
+                                            }],
+                                            span,
+                                        },
+                                        else_block: None,
+                                    },
+                                    span,
+                                });
+                            }
+
+                            // All fields equal - return False
+                            stmts.push(HirStmt {
+                                kind: HirStmtKind::Return(Some(false_expr)),
+                                span,
+                            });
+
+                            let lt_func = HirFunction {
+                                name: lt_sym,
+                                params: vec![
+                                    HirParam {
+                                        name: self_sym,
+                                        ty: Type::Any,
+                                        default: None,
+                                        kind: HirParamKind::Regular,
+                                        span,
+                                    },
+                                    HirParam {
+                                        name: other_sym,
+                                        ty: Type::Any,
+                                        default: None,
+                                        kind: HirParamKind::Regular,
+                                        span,
+                                    },
+                                ],
+                                return_type: Type::Bool,
+                                body: HirBlock {
+                                    stmts,
+                                    span,
+                                },
+                                is_async: false,
+                                decorators: Vec::new(),
+                                span,
+                            };
+
+                            members.push(HirClassMember::Method { func: lt_func, kind: MethodKind::Instance });
+                        }
+
+                        // Generate __le__ method if not already defined
+                        // Logic: lexicographic comparison, return true if < or ==
+                        if !has_method(&members, "__le__") && !fields.is_empty() {
+                            let le_sym = self.interner.intern("__le__");
+                            let self_sym = self.interner.intern("self");
+                            let other_sym = self.interner.intern("other");
+
+                            let self_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(self_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+                            let other_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(other_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            let mut stmts: Vec<HirStmt> = Vec::new();
+                            let true_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Bool(true)),
+                                ty: Type::Bool,
+                                span,
+                            });
+                            let false_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Bool(false)),
+                                ty: Type::Bool,
+                                span,
+                            });
+
+                            for (field_sym, field_ty, _) in &fields {
+                                let self_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let other_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: other_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let lt_cmp = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary { op: HirBinOp::Lt, left: self_field, right: other_field },
+                                    ty: Type::Bool,
+                                    span,
+                                });
+                                stmts.push(HirStmt {
+                                    kind: HirStmtKind::If {
+                                        cond: lt_cmp,
+                                        then_block: HirBlock { stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(true_expr)), span }], span },
+                                        else_block: None,
+                                    },
+                                    span,
+                                });
+
+                                let self_field2 = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let other_field2 = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: other_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let gt_cmp = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary { op: HirBinOp::Gt, left: self_field2, right: other_field2 },
+                                    ty: Type::Bool,
+                                    span,
+                                });
+                                stmts.push(HirStmt {
+                                    kind: HirStmtKind::If {
+                                        cond: gt_cmp,
+                                        then_block: HirBlock { stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(false_expr)), span }], span },
+                                        else_block: None,
+                                    },
+                                    span,
+                                });
+                            }
+                            // All fields equal - return True (le includes equal)
+                            stmts.push(HirStmt { kind: HirStmtKind::Return(Some(true_expr)), span });
+
+                            let le_func = HirFunction {
+                                name: le_sym,
+                                params: vec![
+                                    HirParam { name: self_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                    HirParam { name: other_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                ],
+                                return_type: Type::Bool,
+                                body: HirBlock { stmts, span },
+                                is_async: false,
+                                decorators: Vec::new(),
+                                span,
+                            };
+
+                            members.push(HirClassMember::Method { func: le_func, kind: MethodKind::Instance });
+                        }
+
+                        // Generate __gt__ method if not already defined
+                        // Logic: lexicographic comparison, return true if self > other
+                        if !has_method(&members, "__gt__") && !fields.is_empty() {
+                            let gt_sym = self.interner.intern("__gt__");
+                            let self_sym = self.interner.intern("self");
+                            let other_sym = self.interner.intern("other");
+
+                            let self_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(self_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+                            let other_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(other_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            let mut stmts: Vec<HirStmt> = Vec::new();
+                            let true_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Bool(true)),
+                                ty: Type::Bool,
+                                span,
+                            });
+                            let false_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Bool(false)),
+                                ty: Type::Bool,
+                                span,
+                            });
+
+                            for (field_sym, field_ty, _) in &fields {
+                                let self_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let other_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: other_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                // if self.field > other.field: return True
+                                let gt_cmp = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary { op: HirBinOp::Gt, left: self_field, right: other_field },
+                                    ty: Type::Bool,
+                                    span,
+                                });
+                                stmts.push(HirStmt {
+                                    kind: HirStmtKind::If {
+                                        cond: gt_cmp,
+                                        then_block: HirBlock { stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(true_expr)), span }], span },
+                                        else_block: None,
+                                    },
+                                    span,
+                                });
+
+                                let self_field2 = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let other_field2 = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: other_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                // if self.field < other.field: return False
+                                let lt_cmp = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary { op: HirBinOp::Lt, left: self_field2, right: other_field2 },
+                                    ty: Type::Bool,
+                                    span,
+                                });
+                                stmts.push(HirStmt {
+                                    kind: HirStmtKind::If {
+                                        cond: lt_cmp,
+                                        then_block: HirBlock { stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(false_expr)), span }], span },
+                                        else_block: None,
+                                    },
+                                    span,
+                                });
+                            }
+                            // All fields equal - return False (gt excludes equal)
+                            stmts.push(HirStmt { kind: HirStmtKind::Return(Some(false_expr)), span });
+
+                            let gt_func = HirFunction {
+                                name: gt_sym,
+                                params: vec![
+                                    HirParam { name: self_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                    HirParam { name: other_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                ],
+                                return_type: Type::Bool,
+                                body: HirBlock { stmts, span },
+                                is_async: false,
+                                decorators: Vec::new(),
+                                span,
+                            };
+
+                            members.push(HirClassMember::Method { func: gt_func, kind: MethodKind::Instance });
+                        }
+
+                        // Generate __ge__ method if not already defined
+                        // Logic: lexicographic comparison, return true if self >= other
+                        if !has_method(&members, "__ge__") && !fields.is_empty() {
+                            let ge_sym = self.interner.intern("__ge__");
+                            let self_sym = self.interner.intern("self");
+                            let other_sym = self.interner.intern("other");
+
+                            let self_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(self_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+                            let other_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(other_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            let mut stmts: Vec<HirStmt> = Vec::new();
+                            let true_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Bool(true)),
+                                ty: Type::Bool,
+                                span,
+                            });
+                            let false_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Bool(false)),
+                                ty: Type::Bool,
+                                span,
+                            });
+
+                            for (field_sym, field_ty, _) in &fields {
+                                let self_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let other_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: other_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                // if self.field > other.field: return True
+                                let gt_cmp = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary { op: HirBinOp::Gt, left: self_field, right: other_field },
+                                    ty: Type::Bool,
+                                    span,
+                                });
+                                stmts.push(HirStmt {
+                                    kind: HirStmtKind::If {
+                                        cond: gt_cmp,
+                                        then_block: HirBlock { stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(true_expr)), span }], span },
+                                        else_block: None,
+                                    },
+                                    span,
+                                });
+
+                                let self_field2 = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                let other_field2 = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: other_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                // if self.field < other.field: return False
+                                let lt_cmp = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary { op: HirBinOp::Lt, left: self_field2, right: other_field2 },
+                                    ty: Type::Bool,
+                                    span,
+                                });
+                                stmts.push(HirStmt {
+                                    kind: HirStmtKind::If {
+                                        cond: lt_cmp,
+                                        then_block: HirBlock { stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(false_expr)), span }], span },
+                                        else_block: None,
+                                    },
+                                    span,
+                                });
+                            }
+                            // All fields equal - return True (ge includes equal)
+                            stmts.push(HirStmt { kind: HirStmtKind::Return(Some(true_expr)), span });
+
+                            let ge_func = HirFunction {
+                                name: ge_sym,
+                                params: vec![
+                                    HirParam { name: self_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                    HirParam { name: other_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                ],
+                                return_type: Type::Bool,
+                                body: HirBlock { stmts, span },
+                                is_async: false,
+                                decorators: Vec::new(),
+                                span,
+                            };
+
+                            members.push(HirClassMember::Method { func: ge_func, kind: MethodKind::Instance });
+                        }
+                    }
+                    "Default" => {
+                        // Generate default() class method if not already defined
+                        // Returns an instance with default values for each field
+                        if !has_method(&members, "default") && !fields.is_empty() {
+                            let default_sym = self.interner.intern("default");
+                            let cls_sym = self.interner.intern("cls");
+
+                            // Build constructor call with default values for each field
+                            // e.g., return Point(0, 0) for Point with x: int, y: int
+                            let mut args: Vec<HirExprId> = Vec::new();
+                            
+                            for (_, field_ty, _) in &fields {
+                                // Create default value expression based on type
+                                let default_val = match field_ty {
+                                    Type::Int | Type::Int8 | Type::Int16 | Type::Int32 | 
+                                    Type::Int64 | Type::Int128 | Type::UInt | Type::UInt8 | 
+                                    Type::UInt16 | Type::UInt32 | Type::UInt64 | Type::UInt128 => {
+                                        self.expr_arena.alloc(HirExpr {
+                                            kind: HirExprKind::Literal(HirLiteral::Int(0)),
+                                            ty: field_ty.clone(),
+                                            span,
+                                        })
+                                    }
+                                    Type::Float | Type::Float32 | Type::Float64 => {
+                                        self.expr_arena.alloc(HirExpr {
+                                            kind: HirExprKind::Literal(HirLiteral::Float(0.0)),
+                                            ty: field_ty.clone(),
+                                            span,
+                                        })
+                                    }
+                                    Type::Bool => {
+                                        self.expr_arena.alloc(HirExpr {
+                                            kind: HirExprKind::Literal(HirLiteral::Bool(false)),
+                                            ty: Type::Bool,
+                                            span,
+                                        })
+                                    }
+                                    Type::Str => {
+                                        self.expr_arena.alloc(HirExpr {
+                                            kind: HirExprKind::Literal(HirLiteral::Str(String::new())),
+                                            ty: Type::Str,
+                                            span,
+                                        })
+                                    }
+                                    Type::NoneType => {
+                                        self.expr_arena.alloc(HirExpr {
+                                            kind: HirExprKind::Literal(HirLiteral::None),
+                                            ty: Type::NoneType,
+                                            span,
+                                        })
+                                    }
+                                    _ => {
+                                        // For other types, use None as default
+                                        self.expr_arena.alloc(HirExpr {
+                                            kind: HirExprKind::Literal(HirLiteral::None),
+                                            ty: Type::NoneType,
+                                            span,
+                                        })
+                                    }
+                                };
+                                args.push(default_val);
+                            }
+
+                            // Create class reference for constructor call
+                            let class_ref = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(cls_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            // Create constructor call: cls(default1, default2, ...)
+                            let constructor_call = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Call {
+                                    callee: class_ref,
+                                    args,
+                                },
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            let default_func = HirFunction {
+                                name: default_sym,
+                                params: vec![
+                                    HirParam { name: cls_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                ],
+                                return_type: Type::Any,
+                                body: HirBlock {
+                                    stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(constructor_call)), span }],
+                                    span,
+                                },
+                                is_async: false,
+                                decorators: Vec::new(),
+                                span,
+                            };
+
+                            members.push(HirClassMember::Method { func: default_func, kind: MethodKind::Class });
+                        }
+                    }
+                    "Debug" => {
+                        // Generate __repr__ method if not already defined
+                        // Returns a string like "Point(x=1, y=2)"
+                        if !has_method(&members, "__repr__") && !fields.is_empty() {
+                            let repr_sym = self.interner.intern("__repr__");
+                            let self_sym = self.interner.intern("self");
+
+                            let self_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(self_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            // Build format string: "ClassName(field1={}, field2={}, ...)"
+                            // We'll use string concatenation to build the result
+                            
+                            // Start with "ClassName("
+                            let class_name_str = class_name.clone() + "(";
+                            let mut result_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Str(class_name_str)),
+                                ty: Type::Str,
+                                span,
+                            });
+
+                            for (i, (field_sym, field_ty, field_name)) in fields.iter().enumerate() {
+                                // Add "fieldname="
+                                let prefix = if i == 0 {
+                                    format!("{}=", field_name)
+                                } else {
+                                    format!(", {}=", field_name)
+                                };
+                                let prefix_expr = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Literal(HirLiteral::Str(prefix)),
+                                    ty: Type::Str,
+                                    span,
+                                });
+                                result_expr = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary { op: HirBinOp::Add, left: result_expr, right: prefix_expr },
+                                    ty: Type::Str,
+                                    span,
+                                });
+
+                                // Get self.field
+                                let self_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+
+                                // Call str() on the field value
+                                let str_builtin = self.interner.intern("str");
+                                let str_fn = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Var(str_builtin),
+                                    ty: Type::Any,
+                                    span,
+                                });
+                                let str_call = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Call { callee: str_fn, args: vec![self_field] },
+                                    ty: Type::Str,
+                                    span,
+                                });
+
+                                // Concatenate: result + str(self.field)
+                                result_expr = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Binary { op: HirBinOp::Add, left: result_expr, right: str_call },
+                                    ty: Type::Str,
+                                    span,
+                                });
+                            }
+
+                            // Add closing ")"
+                            let close_paren = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Literal(HirLiteral::Str(")".to_string())),
+                                ty: Type::Str,
+                                span,
+                            });
+                            result_expr = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Binary { op: HirBinOp::Add, left: result_expr, right: close_paren },
+                                ty: Type::Str,
+                                span,
+                            });
+
+                            let repr_func = HirFunction {
+                                name: repr_sym,
+                                params: vec![
+                                    HirParam { name: self_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                ],
+                                return_type: Type::Str,
+                                body: HirBlock {
+                                    stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(result_expr)), span }],
+                                    span,
+                                },
+                                is_async: false,
+                                decorators: Vec::new(),
+                                span,
+                            };
+
+                            members.push(HirClassMember::Method { func: repr_func, kind: MethodKind::Instance });
+                        }
+                    }
+                    "Clone" => {
+                        // Generate clone() method if not already defined
+                        // Returns a new instance with copied field values
+                        if !has_method(&members, "clone") && !fields.is_empty() {
+                            let clone_sym = self.interner.intern("clone");
+                            let self_sym = self.interner.intern("self");
+
+                            let self_var = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(self_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            // Build constructor call with self.field for each field
+                            // e.g., return Point(self.x, self.y)
+                            let mut args: Vec<HirExprId> = Vec::new();
+                            
+                            for (field_sym, field_ty, _) in &fields {
+                                let self_field = self.expr_arena.alloc(HirExpr {
+                                    kind: HirExprKind::Field { base: self_var, field: *field_sym },
+                                    ty: field_ty.clone(),
+                                    span,
+                                });
+                                args.push(self_field);
+                            }
+
+                            // Get the class type for the constructor call
+                            let class_sym = self.interner.intern(&class_name);
+                            let class_ref = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Var(class_sym),
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            // Create constructor call: ClassName(self.field1, self.field2, ...)
+                            let constructor_call = self.expr_arena.alloc(HirExpr {
+                                kind: HirExprKind::Call {
+                                    callee: class_ref,
+                                    args,
+                                },
+                                ty: Type::Any,
+                                span,
+                            });
+
+                            let clone_func = HirFunction {
+                                name: clone_sym,
+                                params: vec![
+                                    HirParam { name: self_sym, ty: Type::Any, default: None, kind: HirParamKind::Regular, span },
+                                ],
+                                return_type: Type::Any,
+                                body: HirBlock {
+                                    stmts: vec![HirStmt { kind: HirStmtKind::Return(Some(constructor_call)), span }],
+                                    span,
+                                },
+                                is_async: false,
+                                decorators: Vec::new(),
+                                span,
+                            };
+
+                            members.push(HirClassMember::Method { func: clone_func, kind: MethodKind::Instance });
+                        }
+                    }
+                    _ => {
+                        // Unknown protocol, ignore for now
+                    }
                 }
             }
         }
@@ -671,6 +1736,25 @@ impl<'a> HirBuilder<'a> {
 
         // Class is abstract if it has any unimplemented abstract methods
         let is_abstract = !abstract_methods.is_empty();
+
+        // Register class constructor signature for default argument filling at call sites.
+        // When someone calls `ClassName(args...)`, we need to look up defaults from __init__.
+        // Skip the first param (self) since it's not passed by the caller.
+        if let Some(init_method) = members.iter().find_map(|m| {
+            if let HirClassMember::Method { func, .. } = m {
+                if self.interner.resolve(func.name).map(|s| s == "__init__").unwrap_or(false) {
+                    return Some(func);
+                }
+            }
+            None
+        }) {
+            // Clone params, skipping self (first param)
+            let init_params: Vec<HirParam> = init_method.params.iter()
+                .skip(1)  // Skip self
+                .cloned()
+                .collect();
+            self.function_sigs.insert(name.name, FunctionSig { params: init_params });
+        }
 
         HirClass {
             name: name.name,
@@ -1133,9 +2217,22 @@ impl<'a> HirBuilder<'a> {
                 // Return early since we're returning an id
                 return result;
             }
-            ExprKind::Call { func, args, .. } => {
+            ExprKind::Call { func, args, keywords } => {
                 let callee = self.build_expr(func);
+                // Build positional arguments
                 let mut hir_args: Vec<_> = args.iter().map(|a| self.build_expr(a)).collect();
+                
+                // Add keyword arguments - for now we append them in order.
+                // This works for simple cases like Counter(initial=42) where positional
+                // and keyword args don't overlap. Full keyword argument handling would
+                // require function signature lookup to map names to positions.
+                for kw in keywords {
+                    // kw.name is Some(ident) for named keyword args, None for **kwargs
+                    // For now, only handle named keyword args
+                    if kw.name.is_some() {
+                        hir_args.push(self.build_expr(&kw.value));
+                    }
+                }
                 
                 // Fill in default arguments if we have function signature info
                 // Get the function name from the callee if it's a simple name reference

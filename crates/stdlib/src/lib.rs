@@ -30,6 +30,9 @@ pub mod thread;
 pub mod channel;
 pub mod async_utils;
 
+// Logging
+pub mod logging;
+
 // Data structures
 pub mod heap;
 pub mod queue;

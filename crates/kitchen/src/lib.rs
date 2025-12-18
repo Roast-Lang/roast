@@ -21,6 +21,7 @@ pub mod gpu;
 pub mod scripts;
 pub mod workspace;
 pub mod pypi;
+pub mod doc;
 
 pub use config::{KitchenConfig, ProjectConfig};
 pub use project::Project;

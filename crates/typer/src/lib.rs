@@ -14,6 +14,7 @@ pub mod ownership;
 pub mod protocols;
 pub mod exhaustiveness;
 pub mod mro;
+pub mod variance;
 
 pub use types::*;
 pub use mro::{compute_mro, get_next_in_mro};
@@ -21,6 +22,7 @@ pub use context::TypeContext;
 pub use checker::TypeChecker;
 pub use ownership::{OwnershipAnalyzer, OwnershipInfo, OwnershipMode, TypeTrait};
 pub use protocols::{Protocol, ProtocolRegistry, ProtocolMethod, ProtocolImpl, DerivableProtocol};
+pub use variance::{Variance, TypeParam, ConstGeneric, WhereClause, TypeBounds};
 
 use roast_common::prelude::*;
 
@@ -31,4 +33,5 @@ pub mod prelude {
     pub use crate::checker::TypeChecker;
     pub use crate::ownership::{OwnershipAnalyzer, OwnershipMode, TypeTrait};
     pub use crate::protocols::{Protocol, ProtocolRegistry, ProtocolMethod};
+    pub use crate::variance::{Variance, TypeParam, ConstGeneric, WhereClause};
 }

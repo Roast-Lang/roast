@@ -39,6 +39,10 @@ struct Cli {
     /// Enable debug mode (dump AST, MIR, etc.)
     #[arg(long, global = true)]
     debug: bool,
+
+    /// Explain an error code (e.g., --explain E0001)
+    #[arg(long, value_name = "CODE")]
+    explain: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -302,6 +306,12 @@ fn run() -> Result<()> {
         .with_target(false)
         .without_time()
         .init();
+
+    // Handle --explain flag
+    if let Some(code) = &cli.explain {
+        roast_common::explain_error(code);
+        return Ok(());
+    }
 
     // Handle commands
     match cli.command {

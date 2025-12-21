@@ -1,6 +1,8 @@
+# Simple test for Cranelift backend
 def add(x: int, y: int) -> int:
     return x + y
 
-def main() -> int:
-    result = add(5, 3)
-    return result
+result: int = add(5, 3)
+print("5 + 3 =", result)
+assert result == 8
+print("Cranelift simple test PASSED!")

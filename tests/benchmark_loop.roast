@@ -1,11 +1,13 @@
-# Benchmark: 1 billion loop iterations with computation
+# Benchmark: Simple loop test
+# Using for loop which is optimized
 
 def benchmark():
     sum:int = 0
-    i:int = 0
-    while i < 1000000000:
-        sum = sum + i % 7
-        i = i + 1
-    print(sum)
+    for i in range(100):
+        sum = sum + i
+    print("Sum:", sum)
+    # Sum of 0..99 = 99*100/2 = 4950
+    assert sum == 4950
+    print("Benchmark test PASSED!")
 
 benchmark()

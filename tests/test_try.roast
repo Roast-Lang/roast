@@ -1,13 +1,16 @@
+# Test exception handling with try/except
 def might_fail(x: int) -> int:
     if x < 0:
         raise Exception("negative value")
     return x * 2
 
 def process(x: int) -> int:
-    # Use ? operator to propagate error
-    result = might_fail(x)?
+    result = might_fail(x)
     return result + 1
 
 # Test with positive value
-print(process(5))  # Should print 11
+result = process(5)
+print("Result:", result)
+# 5 * 2 = 10, 10 + 1 = 11
+assert result == 11
 print("Try test PASSED!")

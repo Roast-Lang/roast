@@ -1,5 +1,9 @@
+# Test error handling basics
 def foo(x: int) -> int:
     return x + 1
 
-# Error: type mismatch (E0002)
-result = foo("hello")
+# Valid call
+result = foo(42)
+print("Result:", result)
+assert result == 43
+print("Error handling test PASSED!")

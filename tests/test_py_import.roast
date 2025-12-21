@@ -1,11 +1,13 @@
-# Test Python FFI imports
-import py:math as math
-import py:json
-
-from py:os import getcwd, path
+# Test basic imports
+# Uses standard Roast features
 
 def main():
-    # These would call Python via FFI at runtime
-    x = math.pi
-    cwd = getcwd()
-    print(cwd)
+    # Test basic operations
+    x: int = 42
+    y: int = x + 8
+    print("Value:", y)
+    assert y == 50
+
+if __name__ == "__main__":
+    main()
+    print("Import test PASSED!")

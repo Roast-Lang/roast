@@ -1,0 +1,25 @@
+# Minimal test to isolate attribute storage bug
+
+class Simple:
+    def __init__(self, val: str):
+        self._val: str = val
+    
+    def get_val(self) -> str:
+        return self._val
+
+def main():
+    s = Simple("Hello")
+    
+    # Try different ways to access the value
+    print("Direct attribute access:")
+    print(s._val)
+    
+    print("Via method:")
+    print(s.get_val())
+    
+    print("In f-string:")
+    print(f"Value: {s._val}")
+    
+    print("Done")
+
+main()

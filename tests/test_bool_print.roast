@@ -1,0 +1,29 @@
+# Test boolean printing
+def main():
+    # Test 1: Explicit bool variables
+    flag: bool = True
+    print(flag)
+    
+    negative: bool = False
+    print(negative)
+    
+    # Test 2: Bool literals
+    print(True)
+    print(False)
+    
+    # Test 3: Multi-arg print with bool
+    print("flag is:", flag)
+    
+    # Test 4: Comparison results
+    x: int = 5
+    y: int = 10
+    print(x < y)     # Should print: True
+    print(x > y)     # Should print: False
+    print(x == 5)    # Should print: True
+    
+    # Test 5: Chained comparison
+    z: int = 7
+    print(x < z < y)  # Should print: True
+    print("result:", x < y, "and", x > y)
+
+main()

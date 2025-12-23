@@ -1818,21 +1818,45 @@ fn get_column_at_offset(source: &str, offset: usize) -> usize {
 
 /// Collect import module names from an AST module.
 /// Returns a list of module names (e.g., "test_modules.helpers")
-fn collect_imports(module: &roast_ast::Module, interner: &Interner) -> Vec<String> {
+/// Returns a list of (module_path, optional_alias, local_binding_symbol)
+/// e.g., "test_modules.helpers" -> ("test_modules.helpers", Some(alias_symbol))
+/// For Python imports, the local binding is the module name without py: prefix.
+fn collect_imports(module: &roast_ast::Module, interner: &Interner) -> Vec<(String, Option<roast_common::Symbol>)> {
     let mut imports = Vec::new();
     for stmt in &module.body {
         match &stmt.kind {
             // Handle "from module import names"
             StmtKind::ImportFrom { module: Some(mod_ident), .. } => {
                 if let Some(name) = interner.resolve(mod_ident.name) {
-                    imports.push(name.to_string());
+                    // ImportFrom doesn't bind the module name itself as a variable
+                    imports.push((name.to_string(), None));
                 }
             }
             // Handle "import module" or "import module as alias"
             StmtKind::Import { names } => {
                 for alias in names {
                     if let Some(name) = interner.resolve(alias.name.name) {
-                        imports.push(name.to_string());
+                        // The symbol bound in the local scope is either the alias or the module name part
+                        // For "import lib", binds "lib". For "import lib as l", binds "l".
+                        // For Python imports (py:module), the local binding is "module" not "py:module"
+                        let sym = if let Some(asname) = alias.asname.as_ref() {
+                            asname.name
+                        } else if name.starts_with("py:") || name.starts_with("python:") {
+                            // For Python imports without explicit alias, the local binding is the module name
+                            // e.g., "import py:json" binds "json" not "py:json"
+                            let base_name = if let Some(rest) = name.strip_prefix("py:") {
+                                rest
+                            } else if let Some(rest) = name.strip_prefix("python:") {
+                                rest
+                            } else {
+                                &name
+                            };
+                            // Get or create a symbol for the base module name
+                            interner.intern(base_name)
+                        } else {
+                            alias.name.name
+                        };
+                        imports.push((name.to_string(), Some(sym)));
                     }
                 }
             }
@@ -1842,9 +1866,32 @@ fn collect_imports(module: &roast_ast::Module, interner: &Interner) -> Vec<Strin
     imports
 }
 
+/// Check if a module name is a Python import (py: or python: prefix).
+fn is_python_import(module_name: &str) -> bool {
+    module_name.starts_with("py:") || module_name.starts_with("python:")
+}
+
+/// Get the actual Python module name from a py:-prefixed import.
+/// e.g., "py:numpy" -> "numpy", "python:pandas.core" -> "pandas.core"
+fn get_python_module_name(module_name: &str) -> &str {
+    if let Some(rest) = module_name.strip_prefix("py:") {
+        rest
+    } else if let Some(rest) = module_name.strip_prefix("python:") {
+        rest
+    } else {
+        module_name
+    }
+}
+
 /// Resolve a module name to a file path.
 /// e.g., "test_modules.helpers" -> "{base_dir}/test_modules/helpers.roast"
+/// Returns None for Python imports (py:*) as those are handled at runtime.
 fn resolve_module_path(module_name: &str, base_path: &Path) -> Option<std::path::PathBuf> {
+    // Python imports are handled at runtime, not by file resolution
+    if is_python_import(module_name) {
+        return None;
+    }
+    
     // Convert dots to path separators
     let rel_path = format!("{}.roast", module_name.replace('.', "/"));
     
@@ -1960,7 +2007,9 @@ pub fn build_native(
             Some(p) => p.to_path_buf(),
             None => {
                 let stem = path.file_stem().unwrap_or_default();
-                std::env::temp_dir().join(stem)
+                let cooked_dir = path.parent().unwrap_or(Path::new(".")).join("cooked");
+                std::fs::create_dir_all(&cooked_dir).ok();
+                cooked_dir.join(stem)
             }
         };
 
@@ -1995,8 +2044,30 @@ pub fn build_llvm(
     opt_level: u32,
     debug: bool,
 ) -> Result<()> {
+    build_llvm_with_opts(path, output, opt_level, debug, false, false)
+}
+
+/// Build with LLVM backend with output options.
+pub fn build_llvm_with_opts(
+    path: &Path,
+    output: Option<&Path>,
+    opt_level: u32,
+    debug: bool,
+    quiet: bool,
+    verbose: bool,
+) -> Result<()> {
     let start = Instant::now();
-    println!("{} {} (LLVM)", "   Compiling".green().bold(), path.display());
+    if !quiet {
+        if verbose {
+            println!("{} {} (LLVM)", "   Compiling".green().bold(), path.display());
+        } else {
+            // Minimal output - just basename
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            print!("   {} {}...", "Compiling".cyan(), name);
+            use std::io::Write;
+            std::io::stdout().flush().ok();
+        }
+    }
 
     let source = fs::read_to_string(path)
         .with_context(|| format!("failed to read {}", path.display()))?;
@@ -2005,6 +2076,9 @@ pub fn build_llvm(
     let mut diagnostics = DiagnosticSink::with_source(&source);
 
     let module = parse_module(&source, &path.to_string_lossy(), &interner, &mut diagnostics)?;
+    
+
+
 
     let mut type_ctx = TypeContext::with_builtins(&interner);
     
@@ -2060,8 +2134,19 @@ pub fn build_llvm(
         bail!("compilation failed");
     }
 
+    // Get source file info for debug info
+    let source_file = path.file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "unknown.roast".to_string());
+    let source_dir = path.parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| ".".to_string());
+
     let config = LlvmConfig {
         opt_level,
+        debug_info: debug,
+        source_file: Some(source_file),
+        source_dir: Some(source_dir),
         ..Default::default()
     };
     let mut codegen = LlvmCodeGen::new(config);
@@ -2089,6 +2174,8 @@ pub fn build_llvm(
         function_count: &mut usize,
         all_borrow_errors: &mut Vec<String>,
         opt_level: u32,
+        module_aliases: &std::collections::HashSet<roast_common::Symbol>,
+        python_modules: &std::collections::HashMap<roast_common::Symbol, String>,
     | -> Result<()> {
         for item in &hir_module.items {
             match item {
@@ -2106,6 +2193,13 @@ pub fn build_llvm(
                     }
 
                     let mut mir_builder = MirBuilder::new(hir_builder.expr_arena());
+                    for &sym in module_aliases {
+                        mir_builder.register_module(sym);
+                    }
+                    // Register Python modules for FFI calls
+                    for (sym, py_name) in python_modules {
+                        mir_builder.register_python_module(*sym, py_name.clone());
+                    }
                     let mut mir_body = mir_builder.build_function(func);
 
                     // Optimize MIR before codegen based on opt_level
@@ -2146,6 +2240,10 @@ pub fn build_llvm(
                             *function_count += 1;
                             let mut mir_builder = MirBuilder::new(hir_builder.expr_arena());
                             mir_builder.set_class_context(Some(class_name.to_string()), cls.mro.clone());
+                            // Register Python modules for FFI calls in methods
+                            for (sym, py_name) in python_modules {
+                                mir_builder.register_python_module(*sym, py_name.clone());
+                            }
                             let mut mir_body = mir_builder.build_function(func);
                             
                             // Optimize MIR before codegen based on opt_level
@@ -2190,6 +2288,11 @@ pub fn build_llvm(
                         let class_sym_id = cls.name.as_raw();
                         codegen.generate_class_constructor(class_sym_id, init_id, init_num_params, class_name)
                             .map_err(|e| anyhow::anyhow!("Failed to generate class constructor: {}", e))?;
+                    } else {
+                        // Generate default constructor for classes without __init__
+                        let class_sym_id = cls.name.as_raw();
+                        codegen.generate_default_class_constructor(class_sym_id, class_name)
+                            .map_err(|e| anyhow::anyhow!("Failed to generate default class constructor: {}", e))?;
                     }
                 }
                 _ => {}
@@ -2202,8 +2305,28 @@ pub fn build_llvm(
     // This ensures that imported class methods are registered before main module is compiled,
     // enabling direct dispatch for imported class methods.
     let import_names = collect_imports(&module, &interner);
-    for import_name in &import_names {
+
+
+    let mut main_module_aliases = std::collections::HashSet::new();
+    let mut main_python_modules: std::collections::HashMap<roast_common::Symbol, String> = std::collections::HashMap::new();
+
+    for (import_name, alias_opt) in &import_names {
+        if let Some(alias) = alias_opt {
+            main_module_aliases.insert(*alias);
+        }
+
+        // Handle Python imports (py:* or python:*)
+        if is_python_import(import_name) {
+            if let Some(alias) = alias_opt {
+                let python_name = get_python_module_name(import_name);
+                codegen.register_python_module(alias.as_raw(), python_name);
+                main_python_modules.insert(*alias, python_name.to_string());
+            }
+            continue; // Python imports are handled at runtime, not by file resolution
+        }
+
         if let Some(import_path) = resolve_module_path(import_name, path) {
+
             // Parse the imported module
             let import_source = match fs::read_to_string(&import_path) {
                 Ok(s) => s,
@@ -2215,7 +2338,9 @@ pub fn build_llvm(
             
             let mut import_diagnostics = DiagnosticSink::with_source(&import_source);
             let import_module = match parse_module(&import_source, &import_path.to_string_lossy(), &interner, &mut import_diagnostics) {
-                Ok(m) => m,
+                Ok(m) => {
+                    m
+                },
                 Err(e) => {
                     eprintln!("{} Failed to parse import '{}': {}", "warning:".yellow(), import_name, e);
                     continue;
@@ -2248,10 +2373,14 @@ pub fn build_llvm(
             // We don't want imported modules to set the entry point
             let mut _unused_entry: Option<String> = None;
             let mut _unused_void = false;
+            let empty_aliases = std::collections::HashSet::new();
+            let empty_python = std::collections::HashMap::new();
             compile_module(
                 &import_hir_builder, &import_hir_module, &mut codegen, &interner,
                 &mut _unused_entry, &mut _unused_void, &mut function_count,
                 &mut all_borrow_errors, opt_level,
+                &empty_aliases,
+                &empty_python,
             )?;
         }
     }
@@ -2265,16 +2394,34 @@ pub fn build_llvm(
             &hir_builder, &hir_module, &mut codegen, &interner,
             &mut entry_point, &mut entry_point_void, &mut function_count,
             &mut all_borrow_errors, opt_level,
+            &main_module_aliases,
+            &main_python_modules,
         )?;
     }
 
-    // Check for borrow errors - show warnings but don't block compilation for now
-    // The borrow checker needs more refinement for complex class method patterns
+    // Check for borrow errors - enforce memory safety by default
+    // The --unsafe flag can be used to bypass this (at your own risk)
     if !all_borrow_errors.is_empty() {
-        eprintln!("{}: {} borrow warning(s) found (non-blocking)", "warning".yellow().bold(), all_borrow_errors.len());
-        eprintln!("Borrow checker detected potential issues. These are informational for now.");
-        // TODO: Make borrow errors blocking again once checker handles for-loop patterns
-        // bail!("compilation failed due to borrow checker errors");
+        let unsafe_mode = std::env::var("ROAST_UNSAFE").is_ok();
+        if unsafe_mode {
+            eprintln!("{}: {} borrow error(s) found (ROAST_UNSAFE=1, bypassing)", "warning".yellow().bold(), all_borrow_errors.len());
+            eprintln!("⚠️  UNSAFE MODE: Memory safety not guaranteed! Use at your own risk.");
+        } else {
+            eprintln!("{}: {} borrow error(s) found", "error".red().bold(), all_borrow_errors.len());
+            eprintln!();
+            eprintln!("Memory safety errors detected:");
+            for (i, err) in all_borrow_errors.iter().enumerate() {
+                eprintln!("  {}. {}", i + 1, err);
+            }
+            eprintln!();
+            eprintln!("These errors prevent safe compilation. To fix:");
+            eprintln!("  1. Ensure values are not used after being moved");
+            eprintln!("  2. Avoid mutable and immutable borrows of the same value");
+            eprintln!("  3. Ensure borrowed values live long enough");
+            eprintln!();
+            eprintln!("To bypass (UNSAFE): ROAST_UNSAFE=1 roastc build ...");
+            bail!("compilation failed due to memory safety errors");
+        }
     }
 
     if let Some(entry) = entry_point {
@@ -2282,10 +2429,19 @@ pub fn build_llvm(
             .map_err(|e| anyhow::anyhow!("Failed to generate main: {}", e))?;
     }
 
-    println!("  Compiled {} function(s) to LLVM IR", function_count);
+    if !quiet && verbose {
+        println!("  Compiled {} function(s) to LLVM IR", function_count);
+    }
 
-    let output_path = output.unwrap_or_else(|| Path::new("output"));
-    println!("    Linking {}", output_path.display());
+    let output_path = output.map(|p| p.to_path_buf()).unwrap_or_else(|| {
+        let stem = path.file_stem().unwrap_or_default();
+        let cooked_dir = path.parent().unwrap_or(Path::new(".")).join("cooked");
+        std::fs::create_dir_all(&cooked_dir).ok();
+        cooked_dir.join(stem)
+    });
+    if !quiet && verbose {
+        println!("    Linking {}", output_path.display());
+    }
     let ir = codegen.get_ir();
 
     // Write IR to a temporary file
@@ -2293,14 +2449,19 @@ pub fn build_llvm(
     std::fs::write(&ir_path, ir)
         .map_err(|e| anyhow::anyhow!("Failed to write IR: {}", e))?;
 
-    // Compile with clang
-    let mut cmd = std::process::Command::new("clang");
+    // Find a suitable C compiler (clang > gcc > cc)
+    let compiler = which::which("clang")
+        .or_else(|_| which::which("gcc"))
+        .or_else(|_| which::which("cc"))
+        .map_err(|_| anyhow::anyhow!("No C compiler found. Please install clang, gcc, or cc."))?;
+    
+    let mut cmd = std::process::Command::new(&compiler);
     cmd.arg(&ir_path)
         .arg("-o")
-        .arg(output_path)
+        .arg(&output_path)
         .arg("-Wno-override-module")
-        // Optimization flags for smaller binary size
-        .arg("-O2")           // Optimize for speed (also reduces size)
+        // Optimization flags (without -march=native for portability)
+        .arg("-O3")           // Maximum optimization
         .arg("-flto")         // Link-time optimization (removes unused code)
         .arg("-ffunction-sections")
         .arg("-fdata-sections");
@@ -2328,15 +2489,38 @@ pub fn build_llvm(
         None
     };
     
-    // Fall back to checking known locations
+    // Universal runtime library discovery
+    // Priority: env var > user-local > system > development
     let runtime_lib = runtime_lib.or_else(|| {
-        // Try roast source tree locations
-        for path in &[
-            "/home/swadhin/lang/roast/target/release/libroast_runtime.a",
-            "/home/swadhin/lang/roast/target/debug/libroast_runtime.a",
-            "target/release/libroast_runtime.a",
-            "target/debug/libroast_runtime.a",
-        ] {
+        // Check environment variable first
+        if let Ok(lib_path) = std::env::var("ROAST_RUNTIME_LIB") {
+            if std::path::Path::new(&lib_path).exists() {
+                return Some(std::path::PathBuf::from(lib_path));
+            }
+        }
+        
+        let mut search_paths = Vec::new();
+        
+        // User-local paths
+        if let Ok(home) = std::env::var("HOME") {
+            search_paths.push(format!("{}/.local/lib/libroast_runtime.a", home));
+            search_paths.push(format!("{}/.roast/lib/libroast_runtime.a", home));
+        }
+        
+        // XDG data path
+        if let Ok(xdg_data) = std::env::var("XDG_DATA_HOME") {
+            search_paths.push(format!("{}/roast/lib/libroast_runtime.a", xdg_data));
+        }
+        
+        // System paths
+        search_paths.push("/usr/local/lib/libroast_runtime.a".to_string());
+        search_paths.push("/usr/lib/libroast_runtime.a".to_string());
+        
+        // Development paths
+        search_paths.push("target/release/libroast_runtime.a".to_string());
+        search_paths.push("target/debug/libroast_runtime.a".to_string());
+        
+        for path in &search_paths {
             if std::path::Path::new(path).exists() {
                 return Some(std::path::PathBuf::from(path));
             }
@@ -2347,31 +2531,70 @@ pub fn build_llvm(
     if let Some(lib_path) = runtime_lib {
         cmd.arg(&lib_path);
     } else {
-        // Fall back to dynamic linking
-        cmd.arg("-L/home/swadhin/lang/roast/target/release")
-           .arg("-L/home/swadhin/lang/roast/target/debug")
-           .arg("-Ltarget/release")
-           .arg("-Ltarget/debug")
-           .arg("-lroast_runtime");
+        // Fall back to dynamic linking with universal search paths
+        let mut lib_dirs = Vec::new();
+        
+        if let Ok(home) = std::env::var("HOME") {
+            lib_dirs.push(format!("{}/.local/lib", home));
+            lib_dirs.push(format!("{}/.roast/lib", home));
+        }
+        lib_dirs.push("/usr/local/lib".to_string());
+        lib_dirs.push("/usr/lib".to_string());
+        lib_dirs.push("target/release".to_string());
+        lib_dirs.push("target/debug".to_string());
+        
+        for dir in &lib_dirs {
+            cmd.arg(format!("-L{}", dir));
+        }
+        cmd.arg("-lroast_runtime");
     }
 
-    let status = cmd.arg("-lm")
-        .arg("-ldl")
-        .arg("-lpthread")
-        .arg("-Wl,--gc-sections")  // Remove unused sections
-        .arg("-Wl,-s")             // Strip symbols
-        .status()
-        .map_err(|e| anyhow::anyhow!("Failed to run clang: {}", e))?;
+    // Common libraries
+    cmd.arg("-lm")
+       .arg("-lpthread");
+    
+    // Platform-specific flags
+    #[cfg(target_os = "linux")]
+    {
+        cmd.arg("-ldl")
+           .arg("-Wl,--gc-sections");  // Remove unused sections (Linux only)
+        
+        // Only strip symbols if not in debug mode
+        if !debug {
+            cmd.arg("-Wl,-s");  // Strip symbols (Linux only)
+        } else {
+            cmd.arg("-g");  // Include debug info
+        }
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        cmd.arg("-Wl,-dead_strip");  // macOS equivalent
+        if debug {
+            cmd.arg("-g");  // Include debug info
+        }
+    }
+    
+    let status = cmd.status()
+        .map_err(|e| anyhow::anyhow!("Failed to run compiler: {}", e))?;
 
     if !status.success() {
         return Err(anyhow::anyhow!("clang failed with exit code {}", status));
     }
 
-    println!(
-        "    Finished LLVM executable in {:.3}s",
-        start.elapsed().as_secs_f64()
-    );
-    println!("\n→ Run with: {}", output_path.display());
+    if !quiet {
+        if verbose {
+            println!(
+                "    {} in {:.3}s",
+                "Finished".green().bold(),
+                start.elapsed().as_secs_f64()
+            );
+            println!("\n→ Run with: {}", output_path.display());
+        } else {
+            // Minimal output: just "done" on same line
+            println!(" {}", "✓".green());
+        }
+    }
 
     Ok(())
 }
@@ -2382,12 +2605,32 @@ pub fn run_llvm(
     opt_level: u32,
     debug: bool,
 ) -> Result<()> {
+    run_llvm_with_opts(path, args, opt_level, debug, false, false)
+}
+
+/// Run LLVM-compiled program with output options.
+pub fn run_llvm_with_opts(
+    path: &Path,
+    args: &[String],
+    opt_level: u32,
+    debug: bool,
+    quiet: bool,
+    verbose: bool,
+) -> Result<()> {
     let stem = path.file_stem().unwrap_or_default();
-    let output_path = std::env::temp_dir().join(stem);
+    let cooked_dir = path.parent().unwrap_or(Path::new(".")).join("cooked");
+    std::fs::create_dir_all(&cooked_dir).ok();
+    let output_path = cooked_dir.join(stem);
 
-    build_llvm(path, Some(&output_path), opt_level, debug)?;
+    build_llvm_with_opts(path, Some(&output_path), opt_level, debug, quiet, verbose)?;
 
-    println!("\n    Running {}", output_path.display());
+    if !quiet {
+        if verbose {
+            println!("\n    {} {}", "Running".green().bold(), output_path.display());
+        } else {
+            println!();  // Just a blank line before output
+        }
+    }
 
     let start = Instant::now();
     let status = std::process::Command::new(&output_path)
@@ -2395,11 +2638,14 @@ pub fn run_llvm(
         .status()
         .context("failed to run executable")?;
 
-    println!(
-        "\n    Finished Execution completed in {:.3}s (exit code: {})",
-        start.elapsed().as_secs_f64(),
-        status.code().unwrap_or(-1)
-    );
+    if !quiet && verbose {
+        println!(
+            "\n    {} in {:.3}s (exit code: {})",
+            "Finished".green().bold(),
+            start.elapsed().as_secs_f64(),
+            status.code().unwrap_or(-1)
+        );
+    }
 
     if !status.success() {
         bail!("program exited with status: {}", status);
@@ -2407,3 +2653,4 @@ pub fn run_llvm(
 
     Ok(())
 }
+

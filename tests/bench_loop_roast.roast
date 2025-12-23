@@ -1,0 +1,14 @@
+# Benchmark: Loop computation (Roast)
+# Sum loop with modulo operation - 10 million iterations
+
+def benchmark() -> int:
+    total: int = 0
+    for i in range(10000000):
+        total = total + (i % 7)
+    return total
+
+def main():
+    result: int = benchmark()
+    print(f"Result = {result}")
+
+main()

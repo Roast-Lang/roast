@@ -1,0 +1,45 @@
+# Bug Hunt 4: Lists
+# Test list operations
+
+def test_list_creation() -> int:
+    empty: list = []
+    numbers: list = [1, 2, 3, 4, 5]
+    mixed: list = [1, "two", 3]
+    print("Empty list:", empty)
+    print("Numbers:", numbers)
+    print("Mixed:", mixed)
+    return 0
+
+def test_list_operations() -> int:
+    nums: list = [1, 2, 3]
+    
+    # Append
+    nums.append(4)
+    print("After append(4):", nums)
+    
+    # Access by index
+    first: int = nums[0]
+    last: int = nums[3]
+    print("First:", first, "Last:", last)
+    
+    # Length
+    length: int = len(nums)
+    print("Length:", length)
+    
+    return 0
+
+def test_list_iteration() -> int:
+    nums: list = [10, 20, 30, 40]
+    total: int = 0
+    for n in nums:
+        total = total + n
+    print("Sum of list:", total)
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 4: Lists ===")
+    test_list_creation()
+    test_list_operations()
+    test_list_iteration()
+    print("=== List tests passed! ===")
+    return 0

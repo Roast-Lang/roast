@@ -1,0 +1,254 @@
+# Advanced feature tests for bug hunting
+
+# === Test Inheritance ===
+class Animal:
+    def __init__(self, name: str):
+        self.name: str = name
+    
+    def speak(self) -> str:
+        return "..."
+    
+    def describe(self) -> str:
+        return f"Animal named {self.name}"
+
+class Cat(Animal):
+    def __init__(self, name: str, color: str):
+        self.name = name
+        self.color: str = color
+    
+    def speak(self) -> str:
+        return "Meow!"
+    
+    def describe(self) -> str:
+        return f"Cat ({self.color}) named {self.name}"
+
+def test_inheritance():
+    print("=== Testing Inheritance ===")
+    
+    cat = Cat("Whiskers", "orange")
+    
+    if cat.name == "Whiskers":
+        print("child attr: OK")
+    else:
+        print("child attr: FAIL - " + str(cat.name))
+    
+    if cat.color == "orange":
+        print("child specific attr: OK")
+    else:
+        print("child specific attr: FAIL")
+    
+    if cat.speak() == "Meow!":
+        print("method override: OK")
+    else:
+        print("method override: FAIL - " + cat.speak())
+    
+    expected: str = "Cat (orange) named Whiskers"
+    actual: str = cat.describe()
+    if actual == expected:
+        print("describe override: OK")
+    else:
+        print("describe override: FAIL - " + actual)
+    
+    print("")
+
+# === Test Tuple Operations ===
+def test_tuples():
+    print("=== Testing Tuples ===")
+    
+    # Basic tuple
+    t: tuple = (1, 2, 3)
+    if len(t) == 3:
+        print("tuple len: OK")
+    else:
+        print("tuple len: FAIL")
+    
+    if t[0] == 1 and t[2] == 3:
+        print("tuple indexing: OK")
+    else:
+        print("tuple indexing: FAIL")
+    
+    # Mixed tuple (avoid float for now - known bug)
+    mixed: tuple = (1, "hello", 42)
+    if mixed[1] == "hello":
+        print("mixed tuple: OK")
+    else:
+        print("mixed tuple: FAIL")
+    
+    print("")
+
+# === Test List Comprehensions ===
+def test_list_comprehension():
+    print("=== Testing List Comprehensions ===")
+    
+    # Basic comprehension
+    squares: list = [x * x for x in range(5)]
+    if squares[0] == 0 and squares[4] == 16:
+        print("basic comprehension: OK")
+    else:
+        print("basic comprehension: FAIL")
+    
+    # With filter
+    evens: list = [x for x in range(10) if x % 2 == 0]
+    if len(evens) == 5:
+        print("filtered comprehension: OK")
+    else:
+        print("filtered comprehension: FAIL - len=" + str(len(evens)))
+    
+    print("")
+
+# === Test Enumerate and Zip ===
+def test_enumerate_zip():
+    print("=== Testing Enumerate and Zip ===")
+    
+    # Enumerate test - use tuple indexing
+    items = [10, 20, 30]
+    enum_ok = True
+    expected_idx = 0
+    for pair in enumerate(items):
+        idx = pair[0]
+        val = pair[1]
+        if idx != expected_idx:
+            enum_ok = False
+        if val != items[expected_idx]:
+            enum_ok = False
+        expected_idx = expected_idx + 1
+    if enum_ok:
+        print("enumerate: OK")
+    else:
+        print("enumerate: FAIL")
+    
+    # Zip test - use tuple indexing
+    nums = [1, 2, 3]
+    letters = ["a", "b", "c"]
+    zip_ok = True
+    expected_n = 1
+    for pair in zip(nums, letters):
+        n = pair[0]
+        if n != expected_n:
+            zip_ok = False
+        expected_n = expected_n + 1
+    if zip_ok:
+        print("zip: OK")
+    else:
+        print("zip: FAIL")
+    
+    print("")
+
+# === Test Optional/None handling ===
+def test_optional():
+    print("=== Testing Optional/None ===")
+    
+    x = None
+    if x is None:
+        print("None assignment: OK")
+    else:
+        print("None assignment: FAIL")
+    
+    x = 42
+    if x == 42:
+        print("reassign from None: OK")
+    else:
+        print("reassign from None: FAIL")
+    
+    print("")
+
+# === Test Lambda (if supported) ===
+def test_lambda():
+    print("=== Testing Lambda ===")
+    
+    # Simple lambda - double
+    double = lambda x: x * 2
+    if double(5) == 10:
+        print("lambda multiply: OK")
+    else:
+        print("lambda multiply: FAIL - " + str(double(5)))
+    
+    # Identity lambda
+    identity = lambda x: x
+    if identity(42) == 42:
+        print("lambda identity: OK")
+    else:
+        print("lambda identity: FAIL")
+    
+    # Lambda add
+    add = lambda a: a + 10
+    if add(5) == 15:
+        print("lambda add: OK")
+    else:
+        print("lambda add: FAIL")
+    
+    print("")
+
+# === Test Arithmetic Edge Cases ===
+def test_arithmetic():
+    print("=== Testing Arithmetic Edge Cases ===")
+    
+    # Integer division
+    if 7 // 2 == 3:
+        print("int division: OK")
+    else:
+        print("int division: FAIL - " + str(7 // 2))
+    
+    # Modulo
+    if 7 % 3 == 1:
+        print("modulo: OK")
+    else:
+        print("modulo: FAIL")
+    
+    # Negative modulo
+    if -7 % 3 >= 0:
+        print("negative modulo: OK (Python-style)")
+    else:
+        print("negative modulo: FAIL (C-style)")
+    
+    # Power
+    if 2 ** 10 == 1024:
+        print("power: OK")
+    else:
+        print("power: FAIL - " + str(2 ** 10))
+    
+    print("")
+
+# === Test String Slicing ===
+def test_string_slicing():
+    print("=== Testing String Slicing ===")
+    
+    s: str = "Hello World"
+    
+    # Basic slice
+    sub: str = s[0:5]
+    if sub == "Hello":
+        print("basic slice: OK")
+    else:
+        print("basic slice: FAIL - " + sub)
+    
+    # Negative index
+    last: str = s[-1]
+    if last == "d":
+        print("negative index: OK")
+    else:
+        print("negative index: FAIL - " + last)
+    
+    print("")
+
+# === Main ===
+def main():
+    print("=" * 50)
+    print("ADVANCED FEATURE TESTS")
+    print("=" * 50)
+    print("")
+    
+    test_inheritance()
+    test_tuples()
+    test_list_comprehension()
+    test_enumerate_zip()
+    test_optional()
+    test_lambda()
+    test_arithmetic()
+    test_string_slicing()
+    
+    print("=" * 50)
+    print("ADVANCED TESTS COMPLETE")
+    print("=" * 50)
+
+main()

@@ -1,0 +1,13 @@
+# Test: Borrow checker should reject this code
+# Using a value after it's been moved
+
+def main():
+    data: list[int] = [1, 2, 3]
+    take_ownership(data)
+    # This should fail - data is moved
+    print(data)  # Use after move!
+
+def take_ownership(x: list[int]) -> None:
+    print(x)
+
+main()

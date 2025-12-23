@@ -613,6 +613,10 @@ mod backend {
                     // TODO: Implement proper In/NotIn operations via runtime calls
                     self.builder.ins().iconst(types::I64, 0)
                 }
+
+                // Identity comparison - check if two values are the same object
+                Is => self.builder.ins().icmp(IntCC::Equal, lhs, rhs),
+                IsNot => self.builder.ins().icmp(IntCC::NotEqual, lhs, rhs),
             })
         }
 
@@ -671,12 +675,20 @@ mod backend {
 
         fn store_place(&mut self, place: &MirPlace, value: Value) -> CodegenResult<()> {
             if let Some(&var) = self.variables.get(&place.local) {
+                // Get the expected type for this variable and convert if needed
+                let converted_value = if let Some(local_ty) = self.get_local_type(place.local) {
+                    let target_clif_ty = self.type_to_clif(local_ty);
+                    self.convert_to_type(value, target_clif_ty)
+                } else {
+                    value
+                };
+                
                 if place.projections.is_empty() {
-                    self.builder.def_var(var, value);
+                    self.builder.def_var(var, converted_value);
                 } else {
                     // Handle projections (would need memory stores)
                     // For now, just store to base
-                    self.builder.def_var(var, value);
+                    self.builder.def_var(var, converted_value);
                 }
             }
             Ok(())
@@ -877,6 +889,12 @@ mod backend {
                     self.builder.ins().jump(body_block, &[]);
                 }
 
+                MirTerminator::AsyncForIter { iter: _, loop_var: _, body, exit: _ } => {
+                    // AsyncForIter - same as ForIter placeholder for Cranelift
+                    let body_block = self.blocks[body];
+                    self.builder.ins().jump(body_block, &[]);
+                }
+
                 MirTerminator::Unreachable => {
                     self.builder.ins().trap(cranelift_codegen::ir::TrapCode::User(1));
                 }
@@ -912,6 +930,20 @@ mod backend {
                         self.builder.ins().jump(target_blk, &[]);
                     }
                 }
+                
+                MirTerminator::PythonCall { destination, target, .. } => {
+                    // Python FFI calls - not supported in Cranelift backend
+                    // Store 0 as result
+                    let dest_var = Variable::from_u32(destination.local);
+                    let zero = self.builder.ins().iconst(types::I64, 0);
+                    self.builder.def_var(dest_var, zero);
+                    
+                    // Jump to continuation
+                    if let Some(target_block) = target {
+                        let target_blk = self.blocks[target_block];
+                        self.builder.ins().jump(target_blk, &[]);
+                    }
+                }
             }
 
             Ok(())
@@ -935,6 +967,68 @@ mod backend {
                 Type::NoneType | Type::Unknown | Type::Never => types::I64,
                 _ => types::I64, // Default to i64 for complex types
             }
+        }
+
+        /// Get the type of a local variable by its ID.
+        fn get_local_type(&self, local_id: LocalId) -> Option<&Type> {
+            // Check in locals
+            for local in &self.body.locals {
+                if local.id == local_id {
+                    return Some(&local.ty);
+                }
+            }
+            // Check in params
+            for param in &self.body.params {
+                if param.local.id == local_id {
+                    return Some(&param.local.ty);
+                }
+            }
+            None
+        }
+
+        /// Convert a value to a target Cranelift type if needed.
+        fn convert_to_type(&mut self, value: Value, target_ty: ClifType) -> Value {
+            let value_ty = self.builder.func.dfg.value_type(value);
+            
+            if value_ty == target_ty {
+                return value;
+            }
+            
+            // Convert between integer types
+            if value_ty.is_int() && target_ty.is_int() {
+                let value_bits = value_ty.bits();
+                let target_bits = target_ty.bits();
+                
+                if target_bits > value_bits {
+                    // Extend
+                    return self.builder.ins().uextend(target_ty, value);
+                } else if target_bits < value_bits {
+                    // Reduce
+                    return self.builder.ins().ireduce(target_ty, value);
+                }
+            }
+            
+            // Convert between float types
+            if value_ty.is_float() && target_ty.is_float() {
+                if target_ty == types::F64 && value_ty == types::F32 {
+                    return self.builder.ins().fpromote(types::F64, value);
+                } else if target_ty == types::F32 && value_ty == types::F64 {
+                    return self.builder.ins().fdemote(types::F32, value);
+                }
+            }
+            
+            // Int to float
+            if value_ty.is_int() && target_ty.is_float() {
+                return self.builder.ins().fcvt_from_sint(target_ty, value);
+            }
+            
+            // Float to int
+            if value_ty.is_float() && target_ty.is_int() {
+                return self.builder.ins().fcvt_to_sint(target_ty, value);
+            }
+            
+            // Fallback: return original value
+            value
         }
     }
 

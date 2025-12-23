@@ -1,0 +1,29 @@
+# SQLite Database Example
+# Demonstrates SQLite database operations in Roast
+
+def main():
+    print("=== Roast SQLite Demo ===")
+    print("")
+    
+    # Create an in-memory database
+    db_path = ":memory:"
+    print(f"Opening database: {db_path}")
+    
+    # When fully integrated, usage will be:
+    # db = sqlite.connect(db_path)
+    # db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")
+    # db.execute("INSERT INTO users (name, age) VALUES ('Alice', 30)")
+    # db.execute("INSERT INTO users (name, age) VALUES ('Bob', 25)")
+    
+    # results = db.query("SELECT * FROM users")
+    # for row in results:
+    #     print(f"User: {row['name']}, Age: {row['age']}")
+    
+    # db.close()
+    
+    print("")
+    print("SQLite demo complete!")
+
+
+if __name__ == "__main__":
+    main()

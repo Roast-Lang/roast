@@ -265,6 +265,15 @@ impl<'a> EscapeAnalyzer<'a> {
                 self.mark_arg_escape(*loop_var);
             }
 
+            // AsyncForIter may cause iterator to escape to loop variable
+            MirTerminator::AsyncForIter { iter, loop_var, .. } => {
+                // Loop variable gets values from async iterator - mark as potential escape
+                if iter.projections.is_empty() {
+                    self.mark_arg_escape(iter.local);
+                }
+                self.mark_arg_escape(*loop_var);
+            }
+
             // Control flow doesn't cause escape
             MirTerminator::Goto(_) |
             MirTerminator::SwitchInt { .. } |
@@ -296,6 +305,17 @@ impl<'a> EscapeAnalyzer<'a> {
                     }
                 }
                 // Return value could be anything - escape to destination
+                self.mark_arg_escape(destination.local);
+            }
+
+            MirTerminator::PythonCall { args, destination, .. } => {
+                // Python FFI calls - arguments escape to Python runtime
+                for arg in args {
+                    if let Some(local) = self.operand_local(arg) {
+                        self.mark_global_escape(local); // Python FFI is conservatively global escape
+                    }
+                }
+                // Return value could be anything from Python
                 self.mark_arg_escape(destination.local);
             }
         }
@@ -414,14 +434,15 @@ pub fn escape_analysis_pass(body: &mut MirBody) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use roast_common::{Span, Symbol};
+    use roast_common::{Interner, Span};
     use roast_typer::Type;
 
     fn make_simple_body() -> MirBody {
+        let interner = Interner::new();
         MirBody {
-            name: Symbol::intern("test"),
+            name: interner.intern("test"),
             params: vec![],
-            return_ty: Type::Unit,
+            return_ty: Type::NoneType,
             locals: vec![
                 MirLocal { id: 0, name: None, ty: Type::Int, mutable: true },
                 MirLocal { id: 1, name: None, ty: Type::Int, mutable: false },

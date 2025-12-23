@@ -117,6 +117,50 @@ impl KitchenConfig {
     pub fn get_token(&self, registry: &str) -> Option<&str> {
         self.tokens.get(registry).map(|s| s.as_str())
     }
+
+    /// Get authentication token securely (checks env var first).
+    /// 
+    /// Priority:
+    /// 1. ROAST_REGISTRY_TOKEN environment variable  
+    /// 2. Registry-specific env var: ROAST_REGISTRY_TOKEN_{REGISTRY_HOST}
+    /// 3. Config file (with deprecation warning)
+    pub fn get_token_secure(&self, registry: &str) -> Option<String> {
+        // 1. Check global environment variable
+        if let Ok(token) = std::env::var("ROAST_REGISTRY_TOKEN") {
+            return Some(token);
+        }
+        
+        // 2. Check registry-specific environment variable
+        // Convert registry URL to env var name: https://registry.roast-lang.org -> ROAST_REGISTRY_TOKEN_REGISTRY_ROAST_LANG_ORG
+        let env_key = registry
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .replace(['.', '-', '/'], "_")
+            .to_uppercase();
+        let specific_env = format!("ROAST_REGISTRY_TOKEN_{}", env_key);
+        if let Ok(token) = std::env::var(&specific_env) {
+            return Some(token);
+        }
+        
+        // 3. Fall back to config file with deprecation warning
+        if let Some(token) = self.tokens.get(registry) {
+            eprintln!("⚠️  Warning: Using plaintext token from config file for {}", registry);
+            eprintln!("   Consider using environment variable ROAST_REGISTRY_TOKEN instead");
+            eprintln!("   Or run 'kitchen login' to securely store credentials");
+            return Some(token.clone());
+        }
+        
+        None
+    }
+
+    /// Set authentication token (stores in config for now, will support keyring later).
+    pub fn set_token_secure(&mut self, registry: &str, token: &str) -> Result<()> {
+        // TODO: In future, use keyring crate for secure storage
+        // For now, store in config with a note about where it's stored
+        self.tokens.insert(registry.to_string(), token.to_string());
+        eprintln!("ℹ️  Token stored in config file. Future versions will use system keychain.");
+        self.save()
+    }
 }
 
 /// GPU configuration.

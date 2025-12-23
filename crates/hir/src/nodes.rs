@@ -175,6 +175,7 @@ pub enum HirStmtKind {
         var_ty: Type,
         iter: HirExprId,
         body: HirBlock,
+        is_async: bool,
     },
     Break,
     Continue,
@@ -340,6 +341,7 @@ pub enum HirBinOp {
     Eq, Ne, Lt, Le, Gt, Ge,
     And, Or,
     In, NotIn,
+    Is, IsNot,
 }
 
 /// Unary operators.

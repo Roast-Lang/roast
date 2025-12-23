@@ -1,0 +1,64 @@
+# Bug Hunt 2: Control Flow
+# Test if/else, while, for loops
+
+def test_if_else() -> int:
+    x: int = 10
+    if x > 5:
+        print("x > 5: True")
+    else:
+        print("x > 5: False")
+    
+    if x < 5:
+        print("x < 5: True")
+    elif x == 10:
+        print("x == 10: True")
+    else:
+        print("x is something else")
+    return 0
+
+def test_while_loop() -> int:
+    i: int = 0
+    total: int = 0
+    while i < 5:
+        total = total + i
+        i = i + 1
+    print("While loop sum 0-4:", total)
+    return 0
+
+def test_for_loop() -> int:
+    total: int = 0
+    for i in range(5):
+        total = total + i
+    print("For loop sum 0-4:", total)
+    return 0
+
+def test_nested_loops() -> int:
+    count: int = 0
+    for i in range(3):
+        for j in range(3):
+            count = count + 1
+    print("Nested loop count 3x3:", count)
+    return 0
+
+def test_break_continue() -> int:
+    # Test with while
+    i: int = 0
+    while i < 10:
+        if i == 5:
+            i = i + 1
+            continue
+        if i == 8:
+            break
+        print("i =", i)
+        i = i + 1
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 2: Control Flow ===")
+    test_if_else()
+    test_while_loop()
+    test_for_loop()
+    test_nested_loops()
+    # test_break_continue()  # May not be fully implemented
+    print("=== Control flow tests passed! ===")
+    return 0

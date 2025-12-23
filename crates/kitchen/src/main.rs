@@ -1023,6 +1023,8 @@ fn update_lockfile(project: &Project) -> Result<()> {
             version,
             source,
             checksum: None,
+            signature: None,
+            publisher_fingerprint: None,
             dependencies: vec![],
             features: vec![],
         });
@@ -1411,6 +1413,27 @@ async fn cmd_publish(args: PublishArgs) -> Result<()> {
 
     std::fs::create_dir_all(project.target_dir())?;
     roast_kitchen::registry::create_tarball(&project.root, &tarball_path)?;
+
+    let mut config = KitchenConfig::load()?;
+    let registry_url = args.registry.unwrap_or_else(|| config.registry.clone());
+    let token = config
+        .get_token(&registry_url)
+        .ok_or_else(|| anyhow::anyhow!(
+            "Not logged in for registry {}. Run: kitchen login {}",
+            registry_url,
+            registry_url
+        ))?
+        .to_string();
+
+    // Ensure the active registry is reflected in config for future commands.
+    if config.registry != registry_url {
+        config.registry = registry_url.clone();
+        config.save()?;
+    }
+
+    let cache = Cache::new(config.cache_dir.clone());
+    let registry = Registry::new(&registry_url, cache).with_token(token);
+    registry.publish(&tarball_path).await?;
 
     println!("{} published!",
         "    Package".green().bold()

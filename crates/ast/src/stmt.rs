@@ -30,6 +30,7 @@ pub enum StmtKind {
         decorators: Vec<Decorator>,
         returns: Option<Box<TypeExpr>>,
         type_params: Vec<TypeParam>,
+        where_clause: Option<WhereClause>,
         is_async: bool,
     },
 
@@ -41,6 +42,7 @@ pub enum StmtKind {
         body: Vec<Stmt>,
         decorators: Vec<Decorator>,
         type_params: Vec<TypeParam>,
+        where_clause: Option<WhereClause>,
     },
 
     /// Return statement: return value
@@ -204,5 +206,25 @@ pub enum TypeParamKind {
     TypeVarTuple,
     /// Parameter specification: **P
     ParamSpec,
+}
+
+/// A where clause that adds trait bounds to type parameters.
+/// Example: `where T: Hashable + Eq, U: Printable`
+#[derive(Clone, Debug)]
+pub struct WhereClause {
+    /// Individual constraints in the where clause
+    pub constraints: Vec<WhereConstraint>,
+    pub span: Span,
+}
+
+/// A single constraint in a where clause.
+/// Example: `T: Hashable + Eq`
+#[derive(Clone, Debug)]
+pub struct WhereConstraint {
+    /// The type parameter being constrained (e.g., `T`)
+    pub type_param: Ident,
+    /// The trait/protocol bounds (e.g., `[Hashable, Eq]`)
+    pub bounds: Vec<TypeExpr>,
+    pub span: Span,
 }
 

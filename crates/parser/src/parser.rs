@@ -320,6 +320,13 @@ impl<'a> Parser<'a> {
             None
         };
 
+        // Parse optional where clause: where T: Bound, U: OtherBound
+        let where_clause = if matches!(self.peek(), TokenKind::Where) {
+            Some(self.parse_where_clause()?)
+        } else {
+            None
+        };
+
         self.expect(&TokenKind::Colon)?;
         let body = self.parse_block()?;
 
@@ -331,6 +338,7 @@ impl<'a> Parser<'a> {
                 decorators,
                 returns,
                 type_params,
+                where_clause,
                 is_async,
             },
             self.span_from(start),
@@ -583,6 +591,59 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
+    /// Parse a where clause: `where T: Bound + OtherBound, U: Protocol`
+    /// 
+    /// Syntax example:
+    /// ```text
+    /// where TypeParam: Bound1 + Bound2, OtherTypeParam: Bound3
+    /// ```
+    fn parse_where_clause(&mut self) -> Result<WhereClause, ParseError> {
+        let start = self.current().span;
+        self.expect(&TokenKind::Where)?;
+
+        let mut constraints = Vec::new();
+
+        loop {
+            let constraint_start = self.current().span;
+            
+            // Parse the type parameter name
+            let type_param = self.parse_ident()?;
+            
+            // Expect a colon
+            self.expect(&TokenKind::Colon)?;
+            
+            // Parse bounds separated by +
+            let mut bounds = Vec::new();
+            loop {
+                bounds.push(self.parse_type_expr()?);
+                
+                if matches!(self.peek(), TokenKind::Plus) {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+            
+            constraints.push(WhereConstraint {
+                type_param,
+                bounds,
+                span: self.span_from(constraint_start),
+            });
+            
+            // Multiple constraints separated by comma
+            if matches!(self.peek(), TokenKind::Comma) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
+        Ok(WhereClause {
+            constraints,
+            span: self.span_from(start),
+        })
+    }
+
     fn parse_class_def(&mut self, decorators: Vec<Decorator>) -> Result<Stmt, ParseError> {
         let start = self.current().span;
         self.expect(&TokenKind::Class)?;
@@ -625,6 +686,13 @@ impl<'a> Parser<'a> {
             self.expect(&TokenKind::RightParen)?;
         }
 
+        // Parse optional where clause: where T: Bound, U: OtherBound
+        let where_clause = if matches!(self.peek(), TokenKind::Where) {
+            Some(self.parse_where_clause()?)
+        } else {
+            None
+        };
+
         self.expect(&TokenKind::Colon)?;
         let body = self.parse_block()?;
 
@@ -636,6 +704,7 @@ impl<'a> Parser<'a> {
                 body,
                 decorators,
                 type_params,
+                where_clause,
             },
             self.span_from(start),
         ))
@@ -1203,16 +1272,33 @@ impl<'a> Parser<'a> {
 
     /// Parse a dotted name like `a.b.c` and return an Ident with the whole dotted string.
     /// Used for import statements where module paths can be dotted.
+    /// 
+    /// Also handles `py:` prefix for Python module imports:
+    /// - `py:numpy` -> imports numpy from Python
+    /// - `py:pandas.core` -> imports pandas.core from Python
     fn parse_dotted_name(&mut self) -> Result<Ident, ParseError> {
         let start = self.current().span;
         let first = self.parse_ident()?;
         
-        let mut name_parts = vec![
-            self.interner.resolve(first.name)
-                .unwrap_or("<unknown>")
-                .to_string()
-        ];
+        let first_name = self.interner.resolve(first.name)
+            .unwrap_or("<unknown>")
+            .to_string();
         
+        // Check for py: or python: prefix (e.g., py:numpy, python:pandas)
+        let (prefix, mut name_parts) = if (first_name == "py" || first_name == "python") 
+            && matches!(self.peek(), TokenKind::Colon) 
+        {
+            self.advance(); // consume ':'
+            let module_name = self.parse_ident()?;
+            let mod_name = self.interner.resolve(module_name.name)
+                .unwrap_or("<unknown>")
+                .to_string();
+            (Some(first_name), vec![mod_name])
+        } else {
+            (None, vec![first_name])
+        };
+        
+        // Continue parsing dotted parts (e.g., .submodule.subsubmodule)
         while matches!(self.peek(), TokenKind::Dot) {
             self.advance(); // consume '.'
             let part = self.parse_ident()?;
@@ -1223,7 +1309,13 @@ impl<'a> Parser<'a> {
             );
         }
         
-        let full_name = name_parts.join(".");
+        // Build the full name with prefix if present
+        let full_name = if let Some(p) = prefix {
+            format!("{}:{}", p, name_parts.join("."))
+        } else {
+            name_parts.join(".")
+        };
+        
         let sym = self.interner.intern(&full_name);
         
         Ok(Ident::new(sym, self.span_from(start)))
@@ -1586,7 +1678,9 @@ impl<'a> Parser<'a> {
                     self.advance();
                     if matches!(self.peek(), TokenKind::Not) {
                         self.advance();
-                        CmpOp::IsNot
+                        ops.push(CmpOp::IsNot);
+                        comparators.push(self.parse_bitor()?);
+                        continue;
                     } else {
                         ops.push(CmpOp::Is);
                         comparators.push(self.parse_bitor()?);

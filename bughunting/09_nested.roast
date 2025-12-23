@@ -1,0 +1,45 @@
+# Bug Hunt 9: Nested Structures
+# Test nested data structures
+
+def test_nested_lists() -> int:
+    # List of lists
+    matrix: list = [[1, 2], [3, 4], [5, 6]]
+    print("Matrix:", matrix)
+    
+    # Access nested elements
+    row1: list = matrix[0]
+    print("Row 1:", row1)
+    
+    elem: int = matrix[0][0]
+    print("Element [0][0]:", elem)
+    
+    return 0
+
+def test_list_of_dicts() -> int:
+    people: list = [
+        {"name": "Alice", "age": 30},
+        {"name": "Bob", "age": 25}
+    ]
+    print("People:", people)
+    
+    return 0
+
+def test_dict_of_lists() -> int:
+    data: dict = {
+        "numbers": [1, 2, 3],
+        "letters": ["a", "b", "c"]
+    }
+    print("Data:", data)
+    
+    numbers: list = data["numbers"]
+    print("Numbers:", numbers)
+    
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 9: Nested Structures ===")
+    test_nested_lists()
+    test_list_of_dicts()
+    test_dict_of_lists()
+    print("=== Nested tests done! ===")
+    return 0

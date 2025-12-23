@@ -1,0 +1,18 @@
+# Minimal test for nested function bug - with type annotations
+
+def outer() -> int:
+    print("outer start")
+    
+    def inner() -> int:
+        print("inner called")
+        return 42
+    
+    result: int = inner()
+    print("outer end, result = " + str(result))
+    return result
+
+def main():
+    x: int = outer()
+    print("main got: " + str(x))
+
+main()

@@ -1,0 +1,89 @@
+# Super() edge case tests - simpler version
+
+print("=== Testing super() Edge Cases ===")
+
+# Test 1: Three-level hierarchy with super().method()
+class Base:
+    def value(self) -> int:
+        return 10
+
+class Middle(Base):
+    def value(self) -> int:
+        return super().value() + 5
+
+class Top(Middle):
+    def value(self) -> int:
+        return super().value() * 2
+
+def test_three_level():
+    print("--- Test: Three-level super() ---")
+    t = Top()
+    v = t.value()
+    # Expected: (10 + 5) * 2 = 30
+    if v == 30:
+        print("three level: OK - " + str(v))
+    else:
+        print("three level: FAIL - got " + str(v))
+
+test_three_level()
+
+# Test 2: super() in __init__ with arguments - redeclare attrs
+class Animal:
+    def __init__(self, name: str):
+        self.name: str = name
+
+class Dog(Animal):
+    def __init__(self, name: str, breed: str):
+        super().__init__(name)
+        self.breed: str = breed
+        self.name: str = name  # Redeclare to satisfy type checker
+
+def test_super_init():
+    print("--- Test: super().__init__ with args ---")
+    d = Dog("Rex", "Labrador")
+    if d.name == "Rex":
+        print("super init name: OK")
+    else:
+        print("super init name: FAIL")
+    if d.breed == "Labrador":
+        print("child attr: OK")
+    else:
+        print("child attr: FAIL")
+
+test_super_init()
+
+# Test 3: Complex diamond with data
+class A:
+    def get_data(self) -> int:
+        return 1
+
+class B(A):
+    def get_data(self) -> int:
+        return super().get_data() + 10
+
+class C(A):
+    def get_data(self) -> int:
+        return super().get_data() + 100
+
+class D(B, C):
+    def get_data(self) -> int:
+        return super().get_data() + 1000
+
+def test_diamond_data():
+    print("--- Test: Diamond with data ---")
+    d = D()
+    v = d.get_data()
+    # MRO: D -> B -> C -> A
+    # D: super().get_data() + 1000 = B.get_data() + 1000
+    # B: super().get_data() + 10 = C.get_data() + 10  (C is next in MRO!)
+    # C: super().get_data() + 100 = A.get_data() + 100
+    # A: 1
+    # So: 1 + 100 + 10 + 1000 = 1111
+    if v == 1111:
+        print("diamond data: OK - " + str(v))
+    else:
+        print("diamond data: FAIL - got " + str(v) + " (expected 1111)")
+
+test_diamond_data()
+
+print("=== super() Edge Case Tests Complete ===")

@@ -1,0 +1,26 @@
+# Benchmark: Iterative Fibonacci (Roast)
+# Computes fib(90) using iterative approach with while loop
+
+def fib(n: int) -> int:
+    if n <= 1:
+        return n
+    a: int = 0
+    b: int = 1
+    i: int = 2
+    while i <= n:
+        temp: int = a + b
+        a = b
+        b = temp
+        i = i + 1
+    return b
+
+def main():
+    result: int = 0
+    i: int = 0
+    # Run 1 million times
+    while i < 1000000:
+        result = fib(90)
+        i = i + 1
+    print(f"fib(90) = {result}")
+
+main()

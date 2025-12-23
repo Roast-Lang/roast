@@ -39,6 +39,10 @@ pub struct MirBuilder<'a> {
     /// This is computed via C3 linearization and allows proper super() resolution
     /// in multiple inheritance scenarios.
     class_mro: Vec<String>,
+    /// Set of symbols that are module names (for static function calls)
+    modules: std::collections::HashSet<Symbol>,
+    /// Set of symbols that are Python modules (for py:* imports)
+    python_modules: std::collections::HashMap<Symbol, String>,
     /// Symbol for "super" builtin (for detecting super() calls)
     super_symbol: Option<Symbol>,
 }
@@ -59,8 +63,31 @@ impl<'a> MirBuilder<'a> {
             ownership_analyzer: OwnershipAnalyzer::new(),
             current_class: None,
             class_mro: Vec::new(),
+            modules: std::collections::HashSet::new(),
+            python_modules: std::collections::HashMap::new(),
             super_symbol: None,
         }
+    }
+
+    /// Register a symbol as a module name
+    pub fn register_module(&mut self, sym: Symbol) {
+        self.modules.insert(sym);
+    }
+
+    /// Register a symbol as a Python module (py:* import)
+    pub fn register_python_module(&mut self, sym: Symbol, python_name: String) {
+        self.python_modules.insert(sym, python_name);
+        self.modules.insert(sym); // Also treat as module for static dispatch
+    }
+
+    /// Check if a symbol is a Python module
+    pub fn is_python_module(&self, sym: &Symbol) -> bool {
+        self.python_modules.contains_key(sym)
+    }
+
+    /// Get the Python module name for a symbol
+    pub fn get_python_module_name(&self, sym: &Symbol) -> Option<&str> {
+        self.python_modules.get(sym).map(|s| s.as_str())
     }
 
     /// Register a symbol as a class name (for tracking constructor calls)
@@ -521,7 +548,7 @@ impl<'a> MirBuilder<'a> {
                 // Continue from exit
                 self.current_block = exit_bb;
             }
-            HirStmtKind::For { var, iter, body, .. } => {
+            HirStmtKind::For { var, iter, body, is_async, .. } => {
                 // Build iterator expression (e.g., range(0, 5) or a list)
                 let iter_op = self.build_expr(iter);
                 let source_local = self.new_temp(Type::Unknown);
@@ -558,24 +585,34 @@ impl<'a> MirBuilder<'a> {
                 // Jump to init block from entry block
                 self.blocks[entry_block as usize].terminator = MirTerminator::Goto(init_bb);
 
-                // Init block: call __make_iter__ intrinsic to wrap the source into an iterator
+                // Init block: call __make_iter__ or __aiter__ intrinsic to wrap the source into an iterator
                 self.current_block = init_bb;
+                let iter_intrinsic = if *is_async { Symbol::MAKE_AITER } else { Symbol::MAKE_ITER };
                 self.set_terminator(MirTerminator::Call {
-                    func: MirOperand::Global(Symbol::MAKE_ITER),
+                    func: MirOperand::Global(iter_intrinsic),
                     args: vec![MirOperand::Move(MirPlace::local(source_local))],
                     destination: MirPlace::local(iter_local),
                     target: Some(header_bb),
                     unwind: None,
                 });
 
-                // Header: ForIter handles getting next item and jumping
+                // Header: ForIter or AsyncForIter handles getting next item and jumping
                 self.current_block = header_bb;
-                self.set_terminator(MirTerminator::ForIter {
-                    iter: MirPlace::local(iter_local),
-                    loop_var: loop_var_id,
-                    body: body_bb,
-                    exit: exit_bb,
-                });
+                if *is_async {
+                    self.set_terminator(MirTerminator::AsyncForIter {
+                        iter: MirPlace::local(iter_local),
+                        loop_var: loop_var_id,
+                        body: body_bb,
+                        exit: exit_bb,
+                    });
+                } else {
+                    self.set_terminator(MirTerminator::ForIter {
+                        iter: MirPlace::local(iter_local),
+                        loop_var: loop_var_id,
+                        body: body_bb,
+                        exit: exit_bb,
+                    });
+                }
 
                 // Body
                 self.current_block = body_bb;
@@ -1112,6 +1149,7 @@ impl<'a> MirBuilder<'a> {
                         MirOperand::Move(MirPlace::local(local_id))
                     }
                 } else {
+
                     // Global/builtin - emit as a global reference
                     MirOperand::Global(*name)
                 }
@@ -1124,9 +1162,70 @@ impl<'a> MirBuilder<'a> {
                 let result_temp = self.new_temp(expr.ty.clone());
 
                 if let HirExprKind::Field { base, field } = &callee_expr.kind {
-                    // This is a method call: obj.method(args)
-                    // Get the receiver's type to determine the class for static dispatch
+                    // Check if base is a module - if so, this is a static function call, not a method call
                     let base_expr = self.expr_arena.get(*base).expect("base expression");
+                    let (is_module, is_python, python_module_name) = if let HirExprKind::Var(sym) = &base_expr.kind {
+                        let is_mod = self.modules.contains(sym);
+                        let is_py = self.is_python_module(sym);
+                        let py_name = self.get_python_module_name(sym).map(|s| s.to_string());
+                        (is_mod, is_py, py_name)
+                    } else {
+                        (false, false, None)
+                    };
+
+                    if is_python {
+                        // Python module function call - generate PythonCall terminator
+                        
+                        // Build all arguments
+                        let arg_ops: Vec<_> = args.iter()
+                            .map(|arg| self.build_expr_as_copy(arg))
+                            .collect();
+
+                        // NOW get return block and create next block
+                        let return_block = self.current_block;
+                        let next_block = self.new_block();
+                        self.current_block = return_block;
+
+                        self.blocks[return_block as usize].terminator = MirTerminator::PythonCall {
+                            module: python_module_name.unwrap_or_default(),
+                            func: *field,
+                            args: arg_ops,
+                            destination: MirPlace::local(result_temp),
+                            target: Some(next_block),
+                        };
+
+                        self.current_block = next_block;
+                        return MirOperand::Move(MirPlace::local(result_temp));
+                    }
+
+                    if is_module {
+                        // Static function call to module member
+                        // Compile as direct call to global symbol
+                        let callee_op = MirOperand::Global(*field);
+                        
+                        // Build all arguments
+                        let arg_ops: Vec<_> = args.iter()
+                            .map(|arg| self.build_expr_as_copy(arg))
+                            .collect();
+
+                        // NOW get return block and create next block
+                        let return_block = self.current_block;
+                        let next_block = self.new_block();
+                        self.current_block = return_block;
+
+                        self.blocks[return_block as usize].terminator = MirTerminator::Call {
+                            func: callee_op,
+                            args: arg_ops,
+                            destination: MirPlace::local(result_temp),
+                            target: Some(next_block),
+                            unwind: None,
+                        };
+
+                        self.current_block = next_block;
+                        return MirOperand::Move(MirPlace::local(result_temp));
+                    }
+
+                    // This is a method call: obj.method(args)
 
                     // Check if this is a super().method() call
                     // Supports both super() and super(ClassName, self) forms
@@ -1223,14 +1322,16 @@ impl<'a> MirBuilder<'a> {
                 } else {
                     // Regular function call
                     // Build callee and args BEFORE creating next_block
+                    // IMPORTANT: building args may create new blocks (for method calls in args)
+                    // so we capture return_block AFTER building all args
                     let callee_op = self.build_expr(callee);
 
-                    // Build all arguments
+                    // Build all arguments - this may create new blocks for method calls
                     let arg_ops: Vec<_> = args.iter()
                         .map(|arg| self.build_expr_as_copy(arg))
                         .collect();
 
-                    // NOW get return block and create next block
+                    // NOW get return block AFTER args are built (current_block may have changed)
                     let return_block = self.current_block;
                     let next_block = self.new_block();
                     // Restore current_block to return_block so terminator is set correctly
@@ -1273,6 +1374,8 @@ impl<'a> MirBuilder<'a> {
                     HirBinOp::Ge => MirBinOp::Ge,
                     HirBinOp::In => MirBinOp::In,
                     HirBinOp::NotIn => MirBinOp::NotIn,
+                    HirBinOp::Is => MirBinOp::Is,
+                    HirBinOp::IsNot => MirBinOp::IsNot,
                     HirBinOp::BitAnd => MirBinOp::BitAnd,
                     HirBinOp::BitOr => MirBinOp::BitOr,
                     HirBinOp::BitXor => MirBinOp::BitXor,
@@ -1290,7 +1393,46 @@ impl<'a> MirBuilder<'a> {
                     _ => MirBinOp::Add, // Fallback for Is/IsNot
                 };
 
-                let temp = self.new_temp(expr.ty.clone());
+                // Determine result type - use expr.ty if available, otherwise infer from operands/operation
+                let result_ty = if matches!(expr.ty, Type::Unknown) {
+                    // First check if this is a comparison operation - always returns Bool
+                    if matches!(mir_op, 
+                        MirBinOp::Eq | MirBinOp::Ne | MirBinOp::Lt | MirBinOp::Le | 
+                        MirBinOp::Gt | MirBinOp::Ge | MirBinOp::In | MirBinOp::NotIn |
+                        MirBinOp::Is | MirBinOp::IsNot
+                    ) {
+                        Type::Bool
+                    } else {
+                        // Fallback: infer type from operands' MIR types
+                        let l_is_float = match &l {
+                            MirOperand::Copy(place) | MirOperand::Move(place) => {
+                                self.locals.get(place.local as usize)
+                                    .map(|local| local.ty.is_float())
+                                    .unwrap_or(false)
+                            }
+                            MirOperand::Constant(MirConstant::Float(_)) => true,
+                            _ => false,
+                        };
+                        let r_is_float = match &r {
+                            MirOperand::Copy(place) | MirOperand::Move(place) => {
+                                self.locals.get(place.local as usize)
+                                    .map(|local| local.ty.is_float())
+                                    .unwrap_or(false)
+                            }
+                            MirOperand::Constant(MirConstant::Float(_)) => true,
+                            _ => false,
+                        };
+                        if l_is_float || r_is_float {
+                            Type::Float
+                        } else {
+                            expr.ty.clone()
+                        }
+                    }
+                } else {
+                    expr.ty.clone()
+                };
+
+                let temp = self.new_temp(result_ty);
                 let rvalue = MirRvalue::BinaryOp(mir_op, l, r);
                 self.push_stmt(MirStmt {
                     kind: MirStmtKind::Assign {
@@ -1300,6 +1442,7 @@ impl<'a> MirBuilder<'a> {
                     span: expr.span,
                 });
                 MirOperand::Move(MirPlace::local(temp))
+
             }
             HirExprKind::Unary { op, operand } => {
                 let inner = self.build_expr(operand);
@@ -1428,13 +1571,17 @@ impl<'a> MirBuilder<'a> {
                 // Check if the index is a slice expression
                 let index_expr = self.expr_arena.get(*index).expect("index expression");
                 if let HirExprKind::Slice { lower, upper, step } = &index_expr.kind {
-                    // Build slice bounds
+                    // Sentinel value for omitted slice bounds - runtime checks for this
+                    // and substitutes appropriate defaults (0 for start, len for end, 1 for step)
+                    const SLICE_SENTINEL: i128 = 4611686018427387903; // i64::MAX / 2
+                    
+                    // Build slice bounds - use sentinel for None
                     let lower_op = lower.as_ref().map(|e| self.build_expr(e))
-                        .unwrap_or(MirOperand::Constant(MirConstant::None));
+                        .unwrap_or(MirOperand::Constant(MirConstant::Int(SLICE_SENTINEL)));
                     let upper_op = upper.as_ref().map(|e| self.build_expr(e))
-                        .unwrap_or(MirOperand::Constant(MirConstant::None));
+                        .unwrap_or(MirOperand::Constant(MirConstant::Int(SLICE_SENTINEL)));
                     let step_op = step.as_ref().map(|e| self.build_expr(e))
-                        .unwrap_or(MirOperand::Constant(MirConstant::None));
+                        .unwrap_or(MirOperand::Constant(MirConstant::Int(SLICE_SENTINEL)));
 
                     // Store each bound in temps
                     let lower_temp = self.new_temp(Type::Unknown);
@@ -1504,6 +1651,51 @@ impl<'a> MirBuilder<'a> {
                     span: expr.span,
                 });
                 MirOperand::Copy(MirPlace::local(result_temp))
+            }
+            HirExprKind::MethodCall { receiver, method, args } => {
+                // Direct method call expression (e.g., s.upper())
+                // Create a temp for the result
+                let result_temp = self.new_temp(expr.ty.clone());
+                
+                // Build receiver as copy (we borrow for method call, don't move)
+                let receiver_op = self.build_expr_as_copy(receiver);
+                
+                // Get receiver type for method dispatch
+                let receiver_expr = self.expr_arena.get(*receiver).expect("receiver expr");
+                let receiver_type = Some(receiver_expr.ty.clone());
+                
+                // Determine receiver class for static dispatch if known
+                let receiver_class = if let Type::Class(class_type) = &receiver_expr.ty {
+                    Some(class_type.name.clone())
+                } else {
+                    None
+                };
+                
+                // Build arguments
+                let arg_ops: Vec<_> = args.iter()
+                    .map(|arg| self.build_expr_as_copy(arg))
+                    .collect();
+                
+                // Get current block and create next block for after method call
+                let return_block = self.current_block;
+                let next_block = self.new_block();
+                self.current_block = return_block;
+                
+                // Set MethodCall terminator
+                self.blocks[return_block as usize].terminator = MirTerminator::MethodCall {
+                    receiver: receiver_op,
+                    receiver_class,
+                    receiver_type,
+                    method: *method,
+                    args: arg_ops,
+                    destination: MirPlace::local(result_temp),
+                    target: Some(next_block),
+                };
+                
+                // Continue in the next block
+                self.current_block = next_block;
+                
+                MirOperand::Move(MirPlace::local(result_temp))
             }
             // Try expression (? operator): unwrap Result/Option or early return
             HirExprKind::Try { expr: inner_expr } => {
@@ -1835,11 +2027,14 @@ impl<'a> MirBuilder<'a> {
             HirExprKind::Var(name) => {
                 // Look up variable in locals map - always use Copy
                 if let Some(&local_id) = self.name_to_local.get(name) {
-                    MirOperand::Copy(MirPlace::local(local_id))
+                    let result = MirOperand::Copy(MirPlace::local(local_id));
+                    result
                 } else {
                     MirOperand::Global(*name)
                 }
             }
+
+
             // For other expression kinds, delegate to normal build_expr
             _ => self.build_expr(expr_id),
         }

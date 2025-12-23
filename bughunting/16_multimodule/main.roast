@@ -1,0 +1,112 @@
+# main.roast - Multi-module project entry point
+# Tests: cross-folder imports, classes from multiple modules, inheritance across files
+
+from core.engine import Engine, run_factorial_test, run_string_test
+from utils.math_ops import add, multiply, Calculator
+from utils.strings import concat, uppercase
+from models.person import Person, Employee
+from models.product import Product
+
+def test_utils():
+    print("=== Test 1: Utils Module ===")
+    
+    # Math ops
+    r1 = add(10, 20)
+    r2 = multiply(5, 6)
+    if r1 == 30 and r2 == 30:
+        print("  Math ops: OK")
+    else:
+        print("  Math ops: FAIL")
+    
+    # String ops
+    r3 = concat("Hello", "World")
+    r4 = uppercase("test")
+    if r3 == "HelloWorld" and r4 == "TEST":
+        print("  String ops: OK")
+    else:
+        print("  String ops: FAIL (" + r3 + ", " + r4 + ")")
+    
+    # Calculator class
+    calc = Calculator()
+    calc.compute("add", 5, 3)
+    calc.compute("mul", 4, 4)
+    if calc.get_last() == 16:
+        print("  Calculator class: OK")
+    else:
+        print("  Calculator class: FAIL")
+
+def test_models():
+    print("=== Test 2: Models Module ===")
+    
+    # Person
+    p = Person("Alice", 30)
+    if p.greet() == "Hello, I am Alice":
+        print("  Person: OK")
+    else:
+        print("  Person: FAIL")
+    
+    # Employee (inheritance)
+    e = Employee("Bob", 25, "Engineer")
+    greeting = e.greet()
+    if "Bob" in greeting and "Engineer" in greeting:
+        print("  Employee (inheritance): OK")
+    else:
+        print("  Employee (inheritance): FAIL -> " + greeting)
+    
+    # Product (cross-folder import)
+    prod = Product("Widget", 10, 5)
+    if prod.total_value() == 50:
+        print("  Product (cross-folder import): OK")
+    else:
+        print("  Product: FAIL -> " + str(prod.total_value()))
+
+def test_engine():
+    print("=== Test 3: Core Engine (Multi-Import) ===")
+    
+    engine = Engine()
+    engine.add_employee("Charlie", 35, "Manager")
+    engine.add_employee("Diana", 28, "Developer")
+    engine.add_product("Laptop", 1000, 5)
+    engine.add_product("Mouse", 25, 100)
+
+    total = engine.compute_total_inventory()
+    # 1000*5 + 25*100 = 5000 + 2500 = 7500
+    if total == 7500:
+        print("  Inventory calculation: OK")
+    else:
+        print("  Inventory calculation: FAIL -> " + str(total))
+    
+    report = engine.generate_report()
+    if "Charlie" in report and "Laptop" in report:
+        print("  Report generation: OK")
+    else:
+        print("  Report generation: FAIL")
+
+def test_cross_module_functions():
+    print("=== Test 4: Cross-Module Functions ===")
+    
+    # Factorial from core/engine importing utils/math_ops
+    fact5 = run_factorial_test(5)
+    if fact5 == 120:
+        print("  Factorial (recursive, imported): OK")
+    else:
+        print("  Factorial: FAIL -> " + str(fact5))
+    
+    # Reverse string
+    rev = run_string_test("hello")
+    if rev == "olleh":
+        print("  String reverse: OK")
+    else:
+        print("  String reverse: FAIL -> " + rev)
+
+def main():
+    print("=== Multi-Module Project Test ===\n")
+    
+    test_utils()
+    test_models()
+    test_engine()
+    test_cross_module_functions()
+    
+    print("\n=== All Tests Complete ===")
+
+main()

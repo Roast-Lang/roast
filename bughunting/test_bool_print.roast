@@ -1,0 +1,16 @@
+# Test boolean printing
+
+def main():
+    print("Boolean print test:")
+    x: bool = True
+    y: bool = False
+    print(x)
+    print(y)
+    
+    # Explicit cast for comparisons
+    a: bool = 5 > 3
+    b: bool = 3 > 5
+    print(a)
+    print(b)
+
+main()

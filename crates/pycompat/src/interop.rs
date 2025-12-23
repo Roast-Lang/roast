@@ -312,6 +312,7 @@ impl Default for Importer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
 
     #[test]
     fn test_roast_to_python() {
@@ -343,10 +344,10 @@ mod tests {
         assert!(matches!(converted, Value::Int(42)));
 
         // List roundtrip
-        let original = Value::List(Arc::new(vec![Value::Int(1), Value::Int(2)]));
+        let original = Value::List(Arc::new(Mutex::new(vec![Value::Int(1), Value::Int(2)])));
         let converted = original.to_python().to_roast();
         if let Value::List(l) = converted {
-            assert_eq!(l.len(), 2);
+            assert_eq!(l.lock().unwrap().len(), 2);
         } else {
             panic!("Expected list");
         }

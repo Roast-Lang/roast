@@ -152,6 +152,7 @@ fn successor_blocks(term: &MirTerminator) -> Vec<BlockId> {
         }
         MirTerminator::Assert { target, .. } => vec![*target],
         MirTerminator::ForIter { body, exit, .. } => vec![*body, *exit],
+        MirTerminator::AsyncForIter { body, exit, .. } => vec![*body, *exit],
         MirTerminator::Return(_) | MirTerminator::Unreachable => vec![],
         MirTerminator::TryBegin { body: try_body, handlers, finally, exit } => {
             let mut succs = vec![*try_body, *exit];
@@ -165,6 +166,13 @@ fn successor_blocks(term: &MirTerminator) -> Vec<BlockId> {
         }
         MirTerminator::Raise { .. } => vec![],
         MirTerminator::MethodCall { target, .. } => {
+            let mut succs = Vec::new();
+            if let Some(t) = target {
+                succs.push(*t);
+            }
+            succs
+        }
+        MirTerminator::PythonCall { target, .. } => {
             let mut succs = Vec::new();
             if let Some(t) = target {
                 succs.push(*t);
@@ -389,10 +397,12 @@ fn estimate_terminator_cost(term: &MirTerminator) -> u32 {
         MirTerminator::Drop { .. } => 5,
         MirTerminator::Assert { .. } => 2,
         MirTerminator::ForIter { .. } => 8,  // ForIter includes call-like overhead
+        MirTerminator::AsyncForIter { .. } => 12,  // AsyncForIter has higher cost due to async operations
         MirTerminator::Return(_) => 1,
         MirTerminator::Unreachable => 0,
         MirTerminator::TryBegin { handlers, .. } => 10 + handlers.len() as u32 * 5,
         MirTerminator::Raise { .. } => 5,
         MirTerminator::MethodCall { args, .. } => 12 + args.len() as u32 * 2, // Slightly higher than Call due to method lookup
+        MirTerminator::PythonCall { args, .. } => 15 + args.len() as u32 * 2, // Higher cost due to Python FFI overhead
     }
 }

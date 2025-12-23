@@ -492,6 +492,13 @@ impl<'a> LoopUnroller<'a> {
                     }
                 }
             }
+            MirTerminator::PythonCall { target, .. } => {
+                if let Some(t) = target {
+                    if *t == from {
+                        *t = to;
+                    }
+                }
+            }
             _ => {}
         }
     }

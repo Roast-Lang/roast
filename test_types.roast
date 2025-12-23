@@ -1,0 +1,7 @@
+
+def main():
+    a: int = 10
+    b: i8 = 20
+    c: u8 = 30
+    d: int8 = 40
+    print(a, b, c, d)

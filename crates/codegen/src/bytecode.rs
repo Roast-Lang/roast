@@ -547,6 +547,8 @@ impl<'a> BytecodeBuilder<'a> {
                     MirBinOp::Ge => OpCode::Ge,
                     MirBinOp::In => OpCode::In,
                     MirBinOp::NotIn => OpCode::NotIn,
+                    MirBinOp::Is => OpCode::Is,
+                    MirBinOp::IsNot => OpCode::IsNot,
                 };
                 self.emit(Instruction::new(opcode));
             }
@@ -880,6 +882,43 @@ impl<'a> BytecodeBuilder<'a> {
                 let body_offset = self.emit(Instruction::with_operand(OpCode::Jump, Operand::I16(0)));
                 self.pending_jumps.push((body_offset, *body));
             }
+            MirTerminator::AsyncForIter { iter, loop_var, body, exit } => {
+                // Async for loop - same as ForIter for bytecode VM
+                // The async behavior is handled at the runtime level
+                let iter_slot = self.get_local(iter.local);
+                if iter_slot < 256 {
+                    self.emit(Instruction::with_operand(OpCode::LoadFast, Operand::U8(iter_slot as u8)));
+                } else {
+                    self.emit(Instruction::with_operand(OpCode::LoadLocal, Operand::U16(iter_slot)));
+                }
+
+                self.emit(Instruction::new(OpCode::GetIter));
+
+                if iter_slot < 256 {
+                    self.emit(Instruction::with_operand(OpCode::StoreFast, Operand::U8(iter_slot as u8)));
+                } else {
+                    self.emit(Instruction::with_operand(OpCode::StoreLocal, Operand::U16(iter_slot)));
+                }
+
+                if iter_slot < 256 {
+                    self.emit(Instruction::with_operand(OpCode::LoadFast, Operand::U8(iter_slot as u8)));
+                } else {
+                    self.emit(Instruction::with_operand(OpCode::LoadLocal, Operand::U16(iter_slot)));
+                }
+
+                let for_iter_offset = self.emit(Instruction::with_operand(OpCode::ForIter, Operand::I16(0)));
+                self.pending_jumps.push((for_iter_offset, *exit));
+
+                let var_slot = self.get_local(*loop_var);
+                if var_slot < 256 {
+                    self.emit(Instruction::with_operand(OpCode::StoreFast, Operand::U8(var_slot as u8)));
+                } else {
+                    self.emit(Instruction::with_operand(OpCode::StoreLocal, Operand::U16(var_slot)));
+                }
+
+                let body_offset = self.emit(Instruction::with_operand(OpCode::Jump, Operand::I16(0)));
+                self.pending_jumps.push((body_offset, *body));
+            }
             MirTerminator::Unreachable => {
                 self.emit(Instruction::new(OpCode::Halt));
             }
@@ -914,6 +953,21 @@ impl<'a> BytecodeBuilder<'a> {
                     // Store to local
                     self.emit(Instruction::with_operand(OpCode::StoreLocal, Operand::U8(destination.local as u8)));
                 }
+                // Jump to continuation
+                if let Some(target_block) = target {
+                    let offset = self.emit(Instruction::with_operand(OpCode::Jump, Operand::I16(0)));
+                    self.pending_jumps.push((offset, *target_block));
+                }
+            }
+            MirTerminator::PythonCall { args, destination, target, .. } => {
+                // Python FFI calls - push arguments and call
+                for arg in args {
+                    self.compile_operand(arg);
+                }
+                // For bytecode, we'd need a special opcode for Python calls
+                // For now, just store null and continue
+                self.emit(Instruction::new(OpCode::LoadNone));
+                self.emit(Instruction::with_operand(OpCode::StoreLocal, Operand::U8(destination.local as u8)));
                 // Jump to continuation
                 if let Some(target_block) = target {
                     let offset = self.emit(Instruction::with_operand(OpCode::Jump, Operand::I16(0)));

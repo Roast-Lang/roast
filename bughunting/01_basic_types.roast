@@ -1,0 +1,58 @@
+# Bug Hunt 1: Basic Types and Operations
+# Test all basic types and operations
+
+def test_integers() -> int:
+    a: int = 10
+    b: int = 20
+    c: int = a + b
+    d: int = a - b
+    e: int = a * b
+    f: int = b // a
+    g: int = b % a
+    print("Integers:", a, b, c, d, e, f, g)
+    return 0
+
+def test_floats() -> int:
+    a: float = 3.14
+    b: float = 2.71
+    c: float = a + b
+    d: float = a * b
+    print("Floats:", a, b, c, d)
+    return 0
+
+def test_strings() -> int:
+    s1: str = "Hello"
+    s2: str = "World"
+    s3: str = s1 + " " + s2
+    print("Strings:", s1, s2, s3)
+    return 0
+
+def test_booleans() -> int:
+    a: bool = True
+    b: bool = False
+    c: bool = a and b
+    d: bool = a or b
+    e: bool = not a
+    print("Booleans:", a, b, c, d, e)
+    return 0
+
+def test_comparisons() -> int:
+    a: int = 5
+    b: int = 10
+    print("5 < 10:", a < b)
+    print("5 > 10:", a > b)
+    print("5 == 10:", a == b)
+    print("5 != 10:", a != b)
+    print("5 <= 10:", a <= b)
+    print("5 >= 10:", a >= b)
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 1: Basic Types ===")
+    test_integers()
+    test_floats()
+    test_strings()
+    test_booleans()
+    test_comparisons()
+    print("=== All basic type tests passed! ===")
+    return 0

@@ -1,0 +1,12 @@
+# Simpler lambda test - identity function
+
+def main():
+    print("Testing identity lambda")
+    
+    # Identity lambda - just returns the argument
+    identity = lambda x: x
+    result: int = identity(42)
+    
+    print("identity(42) = " + str(result))
+
+main()

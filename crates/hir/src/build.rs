@@ -1854,7 +1854,7 @@ impl<'a> HirBuilder<'a> {
                 let body = self.build_block(body, stmt.span);
                 HirStmtKind::While { cond, body }
             }
-            StmtKind::For { target, iter, body, target_annotation, .. } => {
+            StmtKind::For { target, iter, body, target_annotation, is_async, .. } => {
                 if let ExprKind::Name { id, .. } = &target.kind {
                     // Simple case: `for x in items:`
                     let var_ty = target_annotation.as_ref()
@@ -1867,6 +1867,7 @@ impl<'a> HirBuilder<'a> {
                         var_ty,
                         iter: iter_expr,
                         body,
+                        is_async: *is_async,
                     }
                 } else if let ExprKind::Tuple { elts, .. } = &target.kind {
                     // Tuple unpacking case: `for x, y in pairs:`
@@ -1927,6 +1928,7 @@ impl<'a> HirBuilder<'a> {
                         var_ty: Type::Unknown,
                         iter: iter_expr,
                         body: new_body,
+                        is_async: *is_async,
                     }
                 } else {
                     return vec![];
@@ -2210,7 +2212,7 @@ impl<'a> HirBuilder<'a> {
                     result = self.expr_arena.alloc(HirExpr {
                         kind: HirExprKind::Binary { op: hir_op, left: result, right },
                         span: expr.span,
-                        ty: Type::Unknown,
+                        ty: Type::Bool,
                     });
                 }
 
@@ -2358,7 +2360,7 @@ impl<'a> HirBuilder<'a> {
                         let cmp = self.expr_arena.alloc(HirExpr {
                             kind: HirExprKind::Binary { op: hir_op, left: left_expr, right: right_expr },
                             span: expr.span,
-                            ty: Type::Unknown,
+                            ty: Type::Bool,
                         });
                         comparisons.push(cmp);
                     }
@@ -2369,7 +2371,7 @@ impl<'a> HirBuilder<'a> {
                         result = self.expr_arena.alloc(HirExpr {
                             kind: HirExprKind::Binary { op: HirBinOp::And, left: result, right: comparisons[i] },
                             span: expr.span,
-                            ty: Type::Unknown,
+                            ty: Type::Bool,
                         });
                     }
 

@@ -1,0 +1,25 @@
+
+# Simple multi-module test
+
+from utils.math_ops import add, multiply
+
+def main():
+    print("=== Simple Multi-Module Test ===")
+    
+    # Test simple function imports (should work)
+    r1 = add(10, 20)
+    r2 = multiply(5, 6)
+    
+    if r1 == 30:
+        print("add: OK")
+    else:
+        print("add: FAIL")
+    
+    if r2 == 30:
+        print("multiply: OK")
+    else:
+        print("multiply: FAIL")
+    
+    print("=== Done ===")
+
+main()

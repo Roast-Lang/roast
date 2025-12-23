@@ -1,0 +1,1861 @@
+warning: unused import: `std::collections::HashMap`
+  --> crates/common/src/error_codes.rs:12:5
+   |
+12 | use std::collections::HashMap;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: variable does not need to be mutable
+  --> crates/common/src/interner.rs:23:13
+   |
+23 |         let mut interner = Self {
+   |             ----^^^^^^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: `roast-common` (lib) generated 2 warnings (run `cargo fix --lib -p roast-common` to apply 2 suggestions)
+warning: unused import: `Ident`
+ --> crates/ast/src/macros.rs:5:40
+  |
+5 | use crate::{Decorator, Expr, ExprKind, Ident, Keyword};
+  |                                        ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `roast-ast` (lib) generated 1 warning (run `cargo fix --lib -p roast-ast` to apply 1 suggestion)
+warning: unused import: `roast_common::Symbol`
+ --> crates/typer/src/builtins.rs:4:5
+  |
+4 | use roast_common::Symbol;
+  |     ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `roast_common::Symbol`
+ --> crates/typer/src/ownership.rs:7:5
+  |
+7 | use roast_common::Symbol;
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> crates/typer/src/ownership.rs:9:5
+  |
+9 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused import: `ClassType`
+ --> crates/typer/src/mro.rs:6:26
+  |
+6 | use crate::types::{Type, ClassType};
+  |                          ^^^^^^^^^
+
+warning: unused import: `roast_common::prelude::*`
+  --> crates/typer/src/lib.rs:27:5
+   |
+27 | use roast_common::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unreachable pattern
+  --> crates/typer/src/infer.rs:67:9
+   |
+44 |         (t, Type::Optional(inner)) => unify(ctx, t, inner),
+   |         -------------------------- matches all the relevant values
+...
+67 |         (Type::Optional(a), Type::Optional(b)) => unify(ctx, a, b),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
+   |
+   = note: `#[warn(unreachable_patterns)]` on by default
+
+warning: unreachable pattern
+    --> crates/typer/src/checker.rs:1239:56
+     |
+1146 | ...   PatternKind::MatchValue { value } => {
+     |       --------------------------------- matches all the relevant values
+...
+1239 | ...   PatternKind::MatchSingleton { value: _ } | PatternKind::MatchValue { value: _ } if matches!(subject_type, Type::O...
+     |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
+
+warning: unused variable: `cls`
+   --> crates/typer/src/ownership.rs:329:25
+    |
+329 |             Type::Class(cls) => {
+    |                         ^^^ help: if this is intentional, prefix it with an underscore: `_cls`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `keys`
+   --> crates/typer/src/exhaustiveness.rs:198:41
+    |
+198 |             PatternKind::MatchMapping { keys, patterns, rest } => {
+    |                                         ^^^^ help: try ignoring the field: `keys: _`
+
+warning: unused variable: `rest`
+   --> crates/typer/src/exhaustiveness.rs:198:57
+    |
+198 |             PatternKind::MatchMapping { keys, patterns, rest } => {
+    |                                                         ^^^^ help: try ignoring the field: `rest: _`
+
+warning: unused variable: `arity`
+   --> crates/typer/src/exhaustiveness.rs:300:13
+    |
+300 |         let arity = ctor.arity();
+    |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_arity`
+
+warning: unused variable: `n1`
+   --> crates/typer/src/exhaustiveness.rs:378:35
+    |
+378 |         (Constructor::ListAtLeast(n1), Constructor::ListAtLeast(n2)) => true,
+    |                                   ^^ help: if this is intentional, prefix it with an underscore: `_n1`
+
+warning: unused variable: `n2`
+   --> crates/typer/src/exhaustiveness.rs:378:65
+    |
+378 |         (Constructor::ListAtLeast(n1), Constructor::ListAtLeast(n2)) => true,
+    |                                                                 ^^ help: if this is intentional, prefix it with an underscore: `_n2`
+
+warning: unused variable: `cls`
+   --> crates/typer/src/exhaustiveness.rs:487:21
+    |
+487 |         Type::Class(cls) => {
+    |                     ^^^ help: if this is intentional, prefix it with an underscore: `_cls`
+
+warning: unused variable: `sub_witness`
+   --> crates/typer/src/exhaustiveness.rs:606:29
+    |
+606 |                 if let Some(sub_witness) = compute_usefulness(&specialized, &witness_fields, ty) {
+    |                             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_sub_witness`
+
+warning: unused variable: `sub_witness`
+   --> crates/typer/src/exhaustiveness.rs:621:29
+    |
+621 |                 if let Some(sub_witness) = compute_usefulness(&specialized, &witness_fields, ty) {
+    |                             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_sub_witness`
+
+warning: unused variable: `has_guard`
+   --> crates/typer/src/exhaustiveness.rs:648:13
+    |
+648 |     let mut has_guard = false;
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_has_guard`
+
+warning: variable does not need to be mutable
+   --> crates/typer/src/exhaustiveness.rs:648:9
+    |
+648 |     let mut has_guard = false;
+    |         ----^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: method `is_exhaustive` is never used
+   --> crates/typer/src/exhaustiveness.rs:475:8
+    |
+403 | impl ConstructorSet {
+    | ------------------- method in this implementation
+...
+475 |     fn is_exhaustive(&self, covered: &[Constructor]) -> bool {
+    |        ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: unused import: `Symbol`
+ --> crates/parser/src/parser.rs:5:76
+  |
+5 | use roast_common::{Diagnostic, DiagnosticSink, Interner, SourceFile, Span, Symbol};
+  |                                                                            ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: value assigned to `closed` is never read
+   --> crates/parser/src/lexer.rs:445:17
+    |
+445 |         let mut closed = false;
+    |                 ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` on by default
+
+warning: unused variable: `c`
+   --> crates/parser/src/lexer.rs:510:34
+    |
+510 | ...                   Some(c) => {
+    |                            ^ help: if this is intentional, prefix it with an underscore: `_c`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: variable `seen_double_star` is assigned to, but never used
+   --> crates/parser/src/parser.rs:344:17
+    |
+344 |         let mut seen_double_star = false;
+    |                 ^^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_seen_double_star` instead
+
+warning: value assigned to `seen_double_star` is never read
+   --> crates/parser/src/parser.rs:361:17
+    |
+361 |                 seen_double_star = true;
+    |                 ^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: variable `seen_double_star` is assigned to, but never used
+   --> crates/parser/src/parser.rs:398:17
+    |
+398 |         let mut seen_double_star = false;
+    |                 ^^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_seen_double_star` instead
+
+warning: value assigned to `seen_double_star` is never read
+   --> crates/parser/src/parser.rs:416:17
+    |
+416 |                 seen_double_star = true;
+    |                 ^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: variable does not need to be mutable
+    --> crates/parser/src/parser.rs:2504:13
+     |
+2504 |         let mut lexer = Lexer::new(&temp_source, self.interner);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `kw`
+  --> crates/parser/src/token.rs:22:30
+   |
+22 |     pub fn is_keyword(&self, kw: &str) -> bool {
+   |                              ^^ help: if this is intentional, prefix it with an underscore: `_kw`
+
+warning: field `source` is never read
+  --> crates/parser/src/lexer.rs:12:5
+   |
+11 | pub struct Lexer<'src> {
+   |            ----- field in this struct
+12 |     source: &'src str,
+   |     ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: method `at_any` is never used
+  --> crates/parser/src/parser.rs:82:8
+   |
+45 | impl<'a> Parser<'a> {
+   | ------------------- method in this implementation
+...
+82 |     fn at_any(&self, kinds: &[TokenKind]) -> bool {
+   |        ^^^^^^
+
+warning: `roast-typer` (lib) generated 19 warnings (run `cargo fix --lib -p roast-typer` to apply 6 suggestions)
+warning: `roast-parser` (lib) generated 11 warnings (run `cargo fix --lib -p roast-parser` to apply 2 suggestions)
+warning: unused import: `roast_common::prelude::*`
+  --> crates/hir/src/lib.rs:11:5
+   |
+11 | use roast_common::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `concrete_methods`
+    --> crates/hir/src/build.rs:1723:13
+     |
+1723 |         let concrete_methods: std::collections::HashSet<String> = members.iter()
+     |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_concrete_methods`
+     |
+     = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `id`
+    --> crates/hir/src/build.rs:1937:41
+     |
+1937 |                 if let ExprKind::Name { id, .. } = &target.kind {
+     |                                         ^^-
+     |                                         |
+     |                                         help: try removing the field
+
+warning: `roast-hir` (lib) generated 3 warnings (run `cargo fix --lib -p roast-hir` to apply 2 suggestions)
+warning: unused import: `id_arena::Id`
+ --> crates/mir/src/nodes.rs:3:5
+  |
+3 | use id_arena::Id;
+  |     ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unreachable pattern
+   --> crates/mir/src/build.rs:686:13
+    |
+686 |             _ => {}
+    |             ^ no value can reach this
+    |
+note: multiple earlier patterns match some of the same values
+   --> crates/mir/src/build.rs:686:13
+    |
+246 |             HirStmtKind::Let { name, ty, init, mutable } => {
+    |             -------------------------------------------- matches some of the same values
+...
+301 |             HirStmtKind::Assign { target, value } => {
+    |             ------------------------------------- matches some of the same values
+...
+384 |             HirStmtKind::Expr(expr_id) => {
+    |             -------------------------- matches some of the same values
+...
+389 |             HirStmtKind::Return(expr) => {
+    |             ------------------------- matches some of the same values
+...
+686 |             _ => {}
+    |             ^ ...and 10 other patterns collectively make this unreachable
+    = note: `#[warn(unreachable_patterns)]` on by default
+
+warning: unused variable: `i`
+   --> crates/mir/src/build.rs:858:14
+    |
+858 |         for (i, arm) in arms.iter().enumerate() {
+    |              ^ help: if this is intentional, prefix it with an underscore: `_i`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unreachable pattern
+    --> crates/mir/src/build.rs:1331:21
+     |
+1331 |                     _ => MirBinOp::Add, // Fallback for Is/IsNot
+     |                     ^ no value can reach this
+     |
+note: multiple earlier patterns match some of the same values
+    --> crates/mir/src/build.rs:1331:21
+     |
+1302 |                     HirBinOp::Add => MirBinOp::Add,
+     |                     ------------- matches some of the same values
+1303 |                     HirBinOp::Sub => MirBinOp::Sub,
+     |                     ------------- matches some of the same values
+1304 |                     HirBinOp::Mul => MirBinOp::Mul,
+     |                     ------------- matches some of the same values
+1305 |                     HirBinOp::Div => MirBinOp::Div,
+     |                     ------------- matches some of the same values
+...
+1331 |                     _ => MirBinOp::Add, // Fallback for Is/IsNot
+     |                     ^ ...and 17 other patterns collectively make this unreachable
+
+warning: `roast-mir` (lib) generated 4 warnings (run `cargo fix --lib -p roast-mir` to apply 1 suggestion)
+warning: unused import: `CodegenError`
+ --> crates/codegen/src/emit.rs:5:28
+  |
+5 | use crate::{CodeGenerator, CodegenError, CodegenResult};
+  |                            ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `object`
+   --> crates/codegen/src/bytecode.rs:483:36
+    |
+483 |             MirStmtKind::SetAttr { object, attr, value } => {
+    |                                    ^^^^^^ help: try ignoring the field: `object: _`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `attr`
+   --> crates/codegen/src/bytecode.rs:483:44
+    |
+483 |             MirStmtKind::SetAttr { object, attr, value } => {
+    |                                            ^^^^ help: try ignoring the field: `attr: _`
+
+warning: unused variable: `value`
+   --> crates/codegen/src/bytecode.rs:483:50
+    |
+483 |             MirStmtKind::SetAttr { object, attr, value } => {
+    |                                                  ^^^^^ help: try ignoring the field: `value: _`
+
+warning: unused variable: `index`
+   --> crates/codegen/src/bytecode.rs:486:55
+    |
+486 |             MirStmtKind::SetAttrIndex { object, attr, index, value } => {
+    |                                                       ^^^^^ help: try ignoring the field: `index: _`
+
+warning: field `config` is never read
+  --> crates/codegen/src/emit.rs:11:5
+   |
+10 | pub struct CodeEmitter {
+   |            ----------- field in this struct
+11 |     config: TargetConfig,
+   |     ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: unused import: `FxHashMap`
+ --> crates/optimizer/src/loop_opt.rs:4:18
+  |
+4 | use rustc_hash::{FxHashMap, FxHashSet};
+  |                  ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `FxHashMap`
+  --> crates/optimizer/src/unroll.rs:20:18
+   |
+20 | use rustc_hash::{FxHashMap, FxHashSet};
+   |                  ^^^^^^^^^
+
+warning: unused import: `FxHashMap`
+  --> crates/optimizer/src/fusion.rs:34:18
+   |
+34 | use rustc_hash::{FxHashMap, FxHashSet};
+   |                  ^^^^^^^^^
+
+warning: unused imports: `CachedMethod` and `InlineCache`
+  --> crates/optimizer/src/pgo.rs:19:27
+   |
+19 | use crate::inline_cache::{InlineCache, InlineCacheManager, ICState, ShapeId, MethodTarget, CachedMethod};
+   |                           ^^^^^^^^^^^                                                      ^^^^^^^^^^^^
+
+warning: unused import: `roast_typer::Type`
+  --> crates/optimizer/src/pgo.rs:21:5
+   |
+21 | use roast_typer::Type;
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `FxHashSet`
+  --> crates/optimizer/src/pgo.rs:22:29
+   |
+22 | use rustc_hash::{FxHashMap, FxHashSet};
+   |                             ^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+  --> crates/optimizer/src/pgo.rs:23:5
+   |
+23 | use std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+
+warning: unused variable: `body`
+  --> crates/optimizer/src/loop_opt.rs:54:5
+   |
+54 |     body: &MirBody,
+   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `iv_local`
+   --> crates/optimizer/src/unroll.rs:536:49
+    |
+536 |     fn offset_iv_uses(&self, mut stmt: MirStmt, iv_local: LocalId, offset: i128) -> MirStmt {
+    |                                                 ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_iv_local`
+
+warning: unused variable: `offset`
+   --> crates/optimizer/src/unroll.rs:536:68
+    |
+536 |     fn offset_iv_uses(&self, mut stmt: MirStmt, iv_local: LocalId, offset: i128) -> MirStmt {
+    |                                                                    ^^^^^^ help: if this is intentional, prefix it with an underscore: `_offset`
+
+warning: variable does not need to be mutable
+   --> crates/optimizer/src/unroll.rs:536:30
+    |
+536 |     fn offset_iv_uses(&self, mut stmt: MirStmt, iv_local: LocalId, offset: i128) -> MirStmt {
+    |                              ----^^^^
+    |                              |
+    |                              help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `place`
+   --> crates/optimizer/src/fusion.rs:229:38
+    |
+229 |         if let MirStmtKind::Assign { place, value } = &stmt.kind {
+    |                                      ^^^^^ help: try ignoring the field: `place: _`
+
+warning: variable does not need to be mutable
+   --> crates/optimizer/src/fusion.rs:324:13
+    |
+324 |         let mut stmts = Vec::new();
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `f`
+   --> crates/optimizer/src/fusion.rs:352:18
+    |
+352 | pub fn fuse_maps(f: &LambdaCapture, g: &LambdaCapture) -> Option<LambdaCapture> {
+    |                  ^ help: if this is intentional, prefix it with an underscore: `_f`
+
+warning: unused variable: `g`
+   --> crates/optimizer/src/fusion.rs:352:37
+    |
+352 | pub fn fuse_maps(f: &LambdaCapture, g: &LambdaCapture) -> Option<LambdaCapture> {
+    |                                     ^ help: if this is intentional, prefix it with an underscore: `_g`
+
+warning: unused variable: `p`
+   --> crates/optimizer/src/fusion.rs:367:21
+    |
+367 | pub fn fuse_filters(p: &LambdaCapture, q: &LambdaCapture) -> Option<LambdaCapture> {
+    |                     ^ help: if this is intentional, prefix it with an underscore: `_p`
+
+warning: unused variable: `q`
+   --> crates/optimizer/src/fusion.rs:367:40
+    |
+367 | pub fn fuse_filters(p: &LambdaCapture, q: &LambdaCapture) -> Option<LambdaCapture> {
+    |                                        ^ help: if this is intentional, prefix it with an underscore: `_q`
+
+warning: unused variable: `func`
+   --> crates/optimizer/src/pgo.rs:396:42
+    |
+396 |             if let MirTerminator::Call { func, target, .. } = &mut block.terminator {
+    |                                          ^^^^-
+    |                                          |
+    |                                          help: try removing the field
+
+warning: unused variable: `target`
+   --> crates/optimizer/src/pgo.rs:396:48
+    |
+396 |             if let MirTerminator::Call { func, target, .. } = &mut block.terminator {
+    |                                                ^^^^^^-
+    |                                                |
+    |                                                help: try removing the field
+
+warning: unused variable: `candidate`
+   --> crates/optimizer/src/pgo.rs:393:32
+    |
+393 |     fn devirtualize(&mut self, candidate: DevirtCandidate) {
+    |                                ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_candidate`
+
+warning: field `post_dominators` is never read
+  --> crates/optimizer/src/analysis.rs:12:5
+   |
+7  | pub struct CfgAnalysis<'a> {
+   |            ----------- field in this struct
+...
+12 |     post_dominators: FxHashMap<BlockId, BlockId>,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: fields `init` and `step` are never read
+   --> crates/optimizer/src/loop_opt.rs:271:5
+    |
+269 | struct InductionVariable {
+    |        ----------------- fields in this struct
+270 |     local: LocalId,
+271 |     init: MirConstant,
+    |     ^^^^
+272 |     step: MirConstant,
+    |     ^^^^
+    |
+    = note: `InductionVariable` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: fields `next_block_id` and `next_local_id` are never read
+   --> crates/optimizer/src/unroll.rs:280:5
+    |
+277 | pub struct LoopUnroller<'a> {
+    |            ------------ fields in this struct
+...
+280 |     next_block_id: BlockId,
+    |     ^^^^^^^^^^^^^
+281 |     next_local_id: LocalId,
+    |     ^^^^^^^^^^^^^
+
+warning: methods `alloc_block_id` and `alloc_local_id` are never used
+   --> crates/optimizer/src/unroll.rs:543:8
+    |
+284 | impl<'a> LoopUnroller<'a> {
+    | ------------------------- methods in this implementation
+...
+543 |     fn alloc_block_id(&mut self) -> BlockId {
+    |        ^^^^^^^^^^^^^^
+...
+549 |     fn alloc_local_id(&mut self) -> LocalId {
+    |        ^^^^^^^^^^^^^^
+
+warning: methods `get_field_name` and `extract_field_path` are never used
+   --> crates/optimizer/src/sroa.rs:158:8
+    |
+91  | impl<'a> SroaPass<'a> {
+    | --------------------- methods in this implementation
+...
+158 |     fn get_field_name(&self, ty: &Type, field_idx: u32) -> Option<String> {
+    |        ^^^^^^^^^^^^^^
+...
+305 |     fn extract_field_path(&self, projections: &[MirProjection]) -> Vec<u32> {
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: field `next_local_id` is never read
+   --> crates/optimizer/src/fusion.rs:254:5
+    |
+251 | pub struct FusionTransformer<'a> {
+    |            ----------------- field in this struct
+...
+254 |     next_local_id: LocalId,
+    |     ^^^^^^^^^^^^^
+
+warning: method `alloc_local_id` is never used
+   --> crates/optimizer/src/fusion.rs:344:8
+    |
+258 | impl<'a> FusionTransformer<'a> {
+    | ------------------------------ method in this implementation
+...
+344 |     fn alloc_local_id(&mut self) -> LocalId {
+    |        ^^^^^^^^^^^^^^
+
+warning: fields `site_id`, `shape`, `target`, and `confidence` are never read
+   --> crates/optimizer/src/pgo.rs:415:5
+    |
+414 | struct DevirtCandidate {
+    |        --------------- fields in this struct
+415 |     site_id: u32,
+    |     ^^^^^^^
+416 |     shape: ShapeId,
+    |     ^^^^^
+417 |     target: MethodTarget,
+    |     ^^^^^^
+418 |     confidence: f64,
+    |     ^^^^^^^^^^
+    |
+    = note: `DevirtCandidate` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `body` is never read
+   --> crates/optimizer/src/pgo.rs:427:5
+    |
+426 | pub struct SpeculativeInliner<'a> {
+    |            ------------------ field in this struct
+427 |     body: &'a mut MirBody,
+    |     ^^^^
+
+warning: field `site_id` is never read
+   --> crates/optimizer/src/pgo.rs:547:5
+    |
+546 | struct InlineCandidate {
+    |        --------------- field in this struct
+547 |     site_id: u32,
+    |     ^^^^^^^
+    |
+    = note: `InlineCandidate` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+   Compiling roast-llvm-backend v0.1.0 (/home/swadhin/lang/roast/crates/llvm_backend)
+warning: unused imports: `DiGraph` and `NodeIndex`
+ --> crates/borrowck/src/dataflow.rs:6:23
+  |
+6 | use petgraph::graph::{DiGraph, NodeIndex};
+  |                       ^^^^^^^  ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `std::hash::Hash`
+  --> crates/borrowck/src/dataflow.rs:10:5
+   |
+10 | use std::hash::Hash;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `PlaceId`
+ --> crates/borrowck/src/moves.rs:6:28
+  |
+6 | use crate::places::{Place, PlaceId};
+  |                            ^^^^^^^
+
+warning: unused import: `bitflags::bitflags`
+ --> crates/borrowck/src/regions.rs:7:5
+  |
+7 | use bitflags::bitflags;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `ControlFlowGraph`, `LivenessAnalysis`, `StatementRhs`, `Statement`, and `self`
+ --> crates/borrowck/src/checker.rs:3:23
+  |
+3 | use crate::dataflow::{self, ControlFlowGraph, LivenessAnalysis, Statement, StatementRhs};
+  |                       ^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^  ^^^^^^^^^^^^
+
+warning: unused imports: `AllFacts` and `OutputFacts`
+ --> crates/borrowck/src/checker.rs:5:20
+  |
+5 | use crate::facts::{AllFacts, FactGenerator, OutputFacts};
+  |                    ^^^^^^^^                 ^^^^^^^^^^^
+
+warning: unused import: `LifetimeId`
+ --> crates/borrowck/src/checker.rs:6:40
+  |
+6 | use crate::lifetime::{LifetimeContext, LifetimeId};
+  |                                        ^^^^^^^^^^
+
+warning: unused import: `MoveError`
+ --> crates/borrowck/src/checker.rs:8:42
+  |
+8 | use crate::moves::{InitStatus, MoveData, MoveError};
+  |                                          ^^^^^^^^^
+
+warning: unused imports: `PlaceElem` and `PlaceSet`
+ --> crates/borrowck/src/checker.rs:9:28
+  |
+9 | use crate::places::{Place, PlaceElem, PlaceId, PlaceSet};
+  |                            ^^^^^^^^^           ^^^^^^^^
+
+warning: unused imports: `ConstraintKind`, `ConstraintOrigin`, and `RegionId`
+  --> crates/borrowck/src/checker.rs:10:22
+   |
+10 | use crate::regions::{ConstraintKind, ConstraintOrigin, RegionId, RegionInference};
+   |                      ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^
+
+warning: unused imports: `Loan` and `Location`
+ --> crates/borrowck/src/diagnostics.rs:3:20
+  |
+3 | use crate::loans::{Loan, LoanKind, Location};
+  |                    ^^^^            ^^^^^^^^
+
+warning: unused import: `DiagnosticKind`
+ --> crates/borrowck/src/diagnostics.rs:7:32
+  |
+7 | use roast_common::{Diagnostic, DiagnosticKind, Span};
+  |                                ^^^^^^^^^^^^^^
+
+warning: unused import: `roast_common::prelude::*`
+  --> crates/borrowck/src/lib.rs:33:5
+   |
+33 | use roast_common::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `idx`
+   --> crates/borrowck/src/places.rs:115:34
+    |
+115 |                 PlaceElem::Field(idx, Some(sym)) => write!(f, ".{}", sym.as_raw())?,
+    |                                  ^^^ help: if this is intentional, prefix it with an underscore: `_idx`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `body`
+   --> crates/borrowck/src/checker.rs:175:78
+    |
+175 |     fn check_terminator(&mut self, term: &MirTerminator, location: Location, body: &MirBody, span: Span) {
+    |                                                                              ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: unused variable: `location`
+   --> crates/borrowck/src/checker.rs:342:51
+    |
+342 |     fn check_read_place(&mut self, place: &Place, location: Location, span: Span) {
+    |                                                   ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_location`
+
+warning: unused variable: `location`
+   --> crates/borrowck/src/checker.rs:377:70
+    |
+377 |     fn check_write_place(&mut self, mir_place: &roast_mir::MirPlace, location: Location, span: Span) {
+    |                                                                      ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_location`
+
+warning: field `interner` is never read
+  --> crates/borrowck/src/checker.rs:31:5
+   |
+17 | pub struct BorrowChecker<'a> {
+   |            ------------- field in this struct
+...
+31 |     interner: &'a Interner,
+   |     ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: `roast-codegen` (lib) generated 6 warnings (run `cargo fix --lib -p roast-codegen` to apply 1 suggestion)
+warning: `roast-optimizer` (lib) generated 30 warnings (run `cargo fix --lib -p roast-optimizer` to apply 11 suggestions)
+warning: `roast-borrowck` (lib) generated 18 warnings (run `cargo fix --lib -p roast-borrowck` to apply 13 suggestions)
+warning: unused import: `std::cell::RefCell`
+ --> crates/runtime/src/executor.rs:5:5
+  |
+5 | use std::cell::RefCell;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused doc comment
+    --> crates/runtime/src/native_full.rs:4246:1
+     |
+4246 | /// Thread-local exception state
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for macro invocations
+     |
+     = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
+     = note: `#[warn(unused_doc_comments)]` on by default
+
+warning: unused import: `BufReader`
+    --> crates/runtime/src/native_full.rs:4609:37
+     |
+4609 | use std::io::{Read, Write, BufRead, BufReader};
+     |                                     ^^^^^^^^^
+
+warning: unused import: `BufRead`
+    --> crates/runtime/src/native_full.rs:4609:28
+     |
+4609 | use std::io::{Read, Write, BufRead, BufReader};
+     |                            ^^^^^^^
+
+warning: unused variable: `result`
+    --> crates/runtime/src/native_full.rs:2449:25
+     |
+2449 |                     let result = method_fn(obj);
+     |                         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_result`
+     |
+     = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `args`
+    --> crates/runtime/src/native_full.rs:3095:5
+     |
+3095 |     args: *const c_long,
+     |     ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `nargs`
+    --> crates/runtime/src/native_full.rs:3096:5
+     |
+3096 |     nargs: c_long,
+     |     ^^^^^ help: if this is intentional, prefix it with an underscore: `_nargs`
+
+warning: unused variable: `obj`
+    --> crates/runtime/src/native_full.rs:3219:66
+     |
+3219 | pub extern "C" fn roast_property_get(prop: *const RoastProperty, obj: c_long) -> c_long {
+     |                                                                  ^^^ help: if this is intentional, prefix it with an underscore: `_obj`
+
+warning: unused variable: `obj`
+    --> crates/runtime/src/native_full.rs:3236:66
+     |
+3236 | pub extern "C" fn roast_property_set(prop: *const RoastProperty, obj: c_long, value: c_long) {
+     |                                                                  ^^^ help: if this is intentional, prefix it with an underscore: `_obj`
+
+warning: unused variable: `value`
+    --> crates/runtime/src/native_full.rs:3236:79
+     |
+3236 | pub extern "C" fn roast_property_set(prop: *const RoastProperty, obj: c_long, value: c_long) {
+     |                                                                               ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`
+
+warning: unused variable: `exc`
+    --> crates/runtime/src/native_full.rs:4508:43
+     |
+4508 | pub extern "C" fn roast_exception_matches(exc: c_long, type_name: *const c_char) -> c_long {
+     |                                           ^^^ help: if this is intentional, prefix it with an underscore: `_exc`
+
+warning: field `roots` is never read
+  --> crates/runtime/src/gc.rs:73:5
+   |
+72 | pub struct CycleCollector {
+   |            -------------- field in this struct
+73 |     roots: Mutex<Vec<*const ()>>,
+   |     ^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: fields `exception_type` and `exception_value` are never read
+    --> crates/runtime/src/native_full.rs:4232:5
+     |
+4230 | struct ExceptionFrame {
+     |        -------------- fields in this struct
+4231 |     jmp_buf: JmpBuf,
+4232 |     exception_type: c_long,
+     |     ^^^^^^^^^^^^^^
+4233 |     exception_value: c_long,
+     |     ^^^^^^^^^^^^^^^
+
+warning: constant `FILE_TAG` is never used
+    --> crates/runtime/src/native_full.rs:4621:7
+     |
+4621 | const FILE_TAG: u8 = 20;
+     |       ^^^^^^^^
+
+warning: function `setjmp` is never used
+    --> crates/runtime/src/native_full.rs:4137:8
+     |
+4137 |     fn setjmp(env: *mut JmpBuf) -> c_int;
+     |        ^^^^^^
+
+warning: `roast-runtime` (lib) generated 15 warnings (run `cargo fix --lib -p roast-runtime` to apply 2 suggestions)
+warning: unused import: `FrameState`
+ --> crates/vm/src/interpreter.rs:3:49
+  |
+3 | use crate::frame::{CallFrame, ExceptionHandler, FrameState};
+  |                                                 ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `HeapId`
+ --> crates/vm/src/interpreter.rs:4:25
+  |
+4 | use crate::heap::{Heap, HeapId};
+  |                         ^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+ --> crates/vm/src/heap.rs:5:5
+  |
+5 | use std::cell::RefCell;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::rc::Rc`
+ --> crates/vm/src/heap.rs:6:5
+  |
+6 | use std::rc::Rc;
+  |     ^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> crates/vm/src/builtins.rs:4:5
+  |
+4 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused variable: `frame`
+   --> crates/vm/src/interpreter.rs:224:32
+    |
+224 |         let func = if let Some(frame) = self.frames.last() {
+    |                                ^^^^^ help: if this is intentional, prefix it with an underscore: `_frame`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: variable does not need to be mutable
+   --> crates/vm/src/interpreter.rs:970:29
+    |
+970 |                         let mut gen_state = gen.lock().unwrap();
+    |                             ----^^^^^^^^^
+    |                             |
+    |                             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `code`
+    --> crates/vm/src/interpreter.rs:1559:28
+     |
+1559 |             Constant::Code(code) => Value::None, // Functions are more complex
+     |                            ^^^^ help: if this is intentional, prefix it with an underscore: `_code`
+
+warning: unused variable: `s`
+    --> crates/vm/src/interpreter.rs:1711:24
+     |
+1711 |             Value::Str(s) => match name {
+     |                        ^ help: if this is intentional, prefix it with an underscore: `_s`
+
+warning: value assigned to `type_char` is never read
+   --> crates/vm/src/builtins.rs:325:17
+    |
+325 |         let mut type_char = None;
+    |                 ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` on by default
+
+warning: field `heap` is never read
+   --> crates/vm/src/interpreter.rs:103:5
+    |
+91  | pub struct VM {
+    |            -- field in this struct
+...
+103 |     heap: Heap,
+    |     ^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: variant `Await` is never constructed
+    --> crates/vm/src/interpreter.rs:1788:5
+     |
+1783 | enum ExecResult {
+     |      ---------- variant in this enum
+...
+1788 |     Await(Value),
+     |     ^^^^^
+
+warning: field `duration_ms` is never read
+   --> crates/vm/src/async_rt.rs:182:5
+    |
+181 | pub struct Sleep {
+    |            ----- field in this struct
+182 |     duration_ms: u64,
+    |     ^^^^^^^^^^^
+
+warning: field `inner` is never read
+   --> crates/vm/src/async_rt.rs:211:5
+    |
+210 | pub struct Channel<T> {
+    |            ------- field in this struct
+211 |     inner: Arc<Mutex<ChannelInner<T>>>,
+    |     ^^^^^
+
+warning: field `send_wakers` is never read
+   --> crates/vm/src/async_rt.rs:217:5
+    |
+214 | struct ChannelInner<T> {
+    |        ------------ field in this struct
+...
+217 |     send_wakers: Vec<Waker>,
+    |     ^^^^^^^^^^^
+
+warning: unused imports: `BufReader` and `BufWriter`
+ --> crates/stdlib/src/fs.rs:6:34
+  |
+6 | use std::io::{self, Read, Write, BufReader, BufWriter};
+  |                                  ^^^^^^^^^  ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `BufReader`
+ --> crates/stdlib/src/http.rs:6:43
+  |
+6 | use std::io::{self, Read, Write, BufRead, BufReader};
+  |                                           ^^^^^^^^^
+
+warning: unused imports: `Arc` and `AtomicUsize`
+ --> crates/stdlib/src/sync.rs:6:5
+  |
+6 |     Arc, Mutex as StdMutex, RwLock as StdRwLock,
+  |     ^^^
+7 |     atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering},
+  |                                     ^^^^^^^^^^^
+
+warning: unused import: `std::cell::UnsafeCell`
+  --> crates/stdlib/src/sync.rs:10:5
+   |
+10 | use std::cell::UnsafeCell;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::cmp::Ordering`
+ --> crates/stdlib/src/heap.rs:5:5
+  |
+5 | use std::cmp::Ordering;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `CoverageCollector` and `CoverageSummary`
+ --> crates/stdlib/src/testing.rs:9:23
+  |
+9 | use crate::coverage::{CoverageCollector, CoverageSummary, SharedCoverage};
+  |                       ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+
+warning: unused imports: `BTreeMap` and `BTreeSet`
+ --> crates/stdlib/src/coverage.rs:5:42
+  |
+5 | use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
+  |                                          ^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> crates/stdlib/src/itertools.rs:5:5
+  |
+5 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Peekable`
+ --> crates/stdlib/src/itertools.rs:7:23
+  |
+7 | use std::iter::{self, Peekable};
+  |                       ^^^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+ --> crates/stdlib/src/functools.rs:5:5
+  |
+5 | use std::cell::RefCell;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::rc::Rc`
+ --> crates/stdlib/src/functools.rs:8:5
+  |
+8 | use std::rc::Rc;
+  |     ^^^^^^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+ --> crates/stdlib/src/profiler.rs:5:5
+  |
+5 | use std::cell::RefCell;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `AtomicUsize`
+ --> crates/stdlib/src/profiler.rs:7:36
+  |
+7 | use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+  |                                    ^^^^^^^^^^^
+
+warning: unused import: `Arc`
+ --> crates/stdlib/src/profiler.rs:8:17
+  |
+8 | use std::sync::{Arc, Mutex};
+  |                 ^^^
+
+warning: unused import: `std::path::Path`
+ --> crates/stdlib/src/database.rs:6:5
+  |
+6 | use std::path::Path;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `ExitStatus`
+ --> crates/stdlib/src/subprocess.rs:9:74
+  |
+9 | use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
+  |                                                                          ^^^^^^^^^^
+
+warning: unused imports: `Arc` and `Mutex`
+  --> crates/stdlib/src/subprocess.rs:10:17
+   |
+10 | use std::sync::{Arc, Mutex};
+   |                 ^^^  ^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> crates/stdlib/src/web.rs:9:5
+  |
+9 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused imports: `Duration` and `Instant`
+   --> crates/stdlib/src/web.rs:793:17
+    |
+793 | use std::time::{Duration, Instant};
+    |                 ^^^^^^^^  ^^^^^^^
+
+warning: unused import: `Metadata`
+ --> crates/stdlib/src/shutil.rs:5:27
+  |
+5 | use std::fs::{self, File, Metadata};
+  |                           ^^^^^^^^
+
+warning: unused import: `Path`
+ --> crates/stdlib/src/doc.rs:8:17
+  |
+8 | use std::path::{Path, PathBuf};
+  |                 ^^^^
+
+warning: unused import: `Read`
+ --> crates/stdlib/src/xml.rs:6:15
+  |
+6 | use std::io::{Read, Write};
+  |               ^^^^
+
+warning: unused import: `std::cmp::Ordering`
+ --> crates/stdlib/src/heapq.rs:5:5
+  |
+5 | use std::cmp::Ordering;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::mem`
+   --> crates/stdlib/src/signal.rs:268:13
+    |
+268 |         use std::mem;
+    |             ^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> crates/stdlib/src/timezone.rs:5:5
+  |
+5 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Duration`
+ --> crates/stdlib/src/timezone.rs:6:17
+  |
+6 | use std::time::{Duration, SystemTime, UNIX_EPOCH};
+  |                 ^^^^^^^^
+
+warning: unused variable: `fut2`
+   --> crates/stdlib/src/async_utils.rs:186:48
+    |
+186 | pub async fn select_first<T, F1, F2>(fut1: F1, fut2: F2) -> T
+    |                                                ^^^^ help: if this is intentional, prefix it with an underscore: `_fut2`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `future`
+   --> crates/stdlib/src/async_io.rs:360:13
+    |
+360 |     let mut future = Box::pin(future);
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_future`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/async_io.rs:360:9
+    |
+360 |     let mut future = Box::pin(future);
+    |         ----^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: unused import: `Read`
+ --> crates/stdlib/src/http.rs:6:21
+  |
+6 | use std::io::{self, Read, Write, BufRead, BufReader};
+  |                     ^^^^
+
+warning: unused import: `Write`
+ --> crates/stdlib/src/http.rs:6:27
+  |
+6 | use std::io::{self, Read, Write, BufRead, BufReader};
+  |                           ^^^^^
+
+warning: unused import: `BufRead`
+ --> crates/stdlib/src/http.rs:6:34
+  |
+6 | use std::io::{self, Read, Write, BufRead, BufReader};
+  |                                  ^^^^^^^
+
+warning: unused import: `Write`
+ --> crates/stdlib/src/xml.rs:6:21
+  |
+6 | use std::io::{Read, Write};
+  |                     ^^^^^
+
+warning: unused variable: `t`
+  --> crates/stdlib/src/collections.rs:80:33
+   |
+80 |                 ValueKey::Tuple(t) => {
+   |                                 ^ help: if this is intentional, prefix it with an underscore: `_t`
+
+warning: unused variable: `request`
+   --> crates/stdlib/src/http.rs:280:24
+    |
+280 |     pub fn send(&self, request: Request) -> io::Result<Response> {
+    |                        ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
+
+warning: variable does not need to be mutable
+  --> crates/stdlib/src/heap.rs:24:21
+   |
+24 |     pub fn from_vec(mut vec: Vec<T>) -> Self {
+   |                     ----^^^
+   |                     |
+   |                     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/heap.rs:144:21
+    |
+144 |     pub fn from_vec(mut vec: Vec<T>) -> Self {
+    |                     ----^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: unused variable: `leap`
+   --> crates/stdlib/src/time.rs:197:9
+    |
+197 |     let leap = is_leap_year(year);
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_leap`
+
+warning: unused variable: `e`
+  --> crates/stdlib/src/testing.rs:72:18
+   |
+72 |             (Err(e), true) => TestResult::Passed,
+   |                  ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/fmt.rs:191:9
+    |
+191 |     let mut s = n.abs().to_string();
+    |         ----^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/itertools.rs:241:13
+    |
+241 |         let mut remaining: Vec<_> = items.iter()
+    |             ----^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/stdlib/src/itertools.rs:429:9
+    |
+429 |     let mut result = Vec::new();
+    |         ----^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `id` is never read
+   --> crates/stdlib/src/thread.rs:193:5
+    |
+192 | struct Worker {
+    |        ------ field in this struct
+193 |     id: usize,
+    |     ^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: fields `future` and `deadline` are never read
+   --> crates/stdlib/src/async_utils.rs:224:5
+    |
+223 | pub struct Timeout<F> {
+    |            ------- fields in this struct
+224 |     future: F,
+    |     ^^^^^^
+225 |     deadline: std::time::Instant,
+    |     ^^^^^^^^
+
+warning: fields `func` and `args` are never read
+  --> crates/stdlib/src/functools.rs:46:5
+   |
+45 | pub struct Partial<F, A> {
+   |            ------- fields in this struct
+46 |     func: F,
+   |     ^^^^
+47 |     args: A,
+   |     ^^^^
+
+warning: field `interval` is never read
+   --> crates/stdlib/src/profiler.rs:480:5
+    |
+474 | pub struct SamplingProfiler {
+    |            ---------------- field in this struct
+...
+480 |     interval: Duration,
+    |     ^^^^^^^^
+
+warning: field `args` is never read
+   --> crates/stdlib/src/subprocess.rs:100:5
+    |
+98  | pub struct Popen {
+    |            ----- field in this struct
+99  |     child: Child,
+100 |     args: Vec<String>,
+    |     ^^^^
+
+warning: field `middleware` is never read
+   --> crates/stdlib/src/web.rs:388:5
+    |
+386 | pub struct App {
+    |            --- field in this struct
+387 |     router: Router,
+388 |     middleware: Vec<Box<dyn Fn(Request, Box<dyn Fn(Request) -> Response>) -> Response + Send + Sync>>,
+    |     ^^^^^^^^^^
+
+warning: function `encode` is never used
+   --> crates/stdlib/src/web.rs:260:12
+    |
+260 |     pub fn encode(s: &str) -> String {
+    |            ^^^^^^
+
+warning: fields `buf`, `pos`, and `cap` are never read
+   --> crates/stdlib/src/async_io.rs:473:5
+    |
+471 | pub struct BufReader<R> {
+    |            --------- fields in this struct
+472 |     inner: R,
+473 |     buf: Vec<u8>,
+    |     ^^^
+474 |     pos: usize,
+    |     ^^^
+475 |     cap: usize,
+    |     ^^^
+
+warning: fields `reader` and `buf` are never read
+   --> crates/stdlib/src/async_io.rs:567:5
+    |
+566 | pub struct Lines<R> {
+    |            ----- fields in this struct
+567 |     reader: R,
+    |     ^^^^^^
+568 |     buf: String,
+    |     ^^^
+
+warning: field `flag` is never read
+   --> crates/stdlib/src/signal.rs:354:5
+    |
+353 | pub struct CtrlC {
+    |            ----- field in this struct
+354 |     flag: Arc<AtomicBool>,
+    |     ^^^^
+
+warning: field `should_shutdown` is never read
+   --> crates/stdlib/src/signal.rs:417:5
+    |
+416 | pub struct GracefulShutdown {
+    |            ---------------- field in this struct
+417 |     should_shutdown: Arc<AtomicBool>,
+    |     ^^^^^^^^^^^^^^^
+
+warning: `roast-vm` (lib) generated 15 warnings (run `cargo fix --lib -p roast-vm` to apply 6 suggestions)
+warning: `roast-stdlib` (lib) generated 53 warnings (run `cargo fix --lib -p roast-stdlib` to apply 32 suggestions)
+warning: unused import: `crate::modules::PyModule`
+ --> crates/pycompat/src/bridge.rs:4:5
+  |
+4 | use crate::modules::PyModule;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `PyException`
+ --> crates/pycompat/src/builtins.rs:4:36
+  |
+4 | use crate::types::{PyValue, PyKey, PyException};
+  |                                    ^^^^^^^^^^^
+
+warning: unused import: `PyCallable`
+ --> crates/pycompat/src/decorators.rs:6:29
+  |
+6 | use crate::types::{PyValue, PyCallable, PyObject};
+  |                             ^^^^^^^^^^
+
+warning: unused import: `std::collections::VecDeque`
+ --> crates/pycompat/src/stdlib.rs:9:5
+  |
+9 | use std::collections::VecDeque;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `PySlice`
+ --> crates/pycompat/src/interop.rs:6:58
+  |
+6 | use crate::types::{PyValue, PyKey, PyObject, PyCallable, PySlice};
+  |                                                          ^^^^^^^
+
+warning: unused variable: `module`
+   --> crates/pycompat/src/bridge.rs:345:13
+    |
+345 |             module: &str,
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_module`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `function`
+   --> crates/pycompat/src/bridge.rs:346:13
+    |
+346 |             function: &str,
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_function`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/bridge.rs:347:13
+    |
+347 |             args: Vec<PyValue>,
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `module`
+   --> crates/pycompat/src/bridge.rs:354:36
+    |
+354 |         pub fn get_attr(&mut self, module: &str, attr: &str) -> Result<PyValue, BridgeError> {
+    |                                    ^^^^^^ help: if this is intentional, prefix it with an underscore: `_module`
+
+warning: unused variable: `attr`
+   --> crates/pycompat/src/bridge.rs:354:50
+    |
+354 |         pub fn get_attr(&mut self, module: &str, attr: &str) -> Result<PyValue, BridgeError> {
+    |                                                  ^^^^ help: if this is intentional, prefix it with an underscore: `_attr`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/modules.rs:181:47
+    |
+181 |                 module.add_function("match", |args| {
+    |                                               ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/modules.rs:185:48
+    |
+185 |                 module.add_function("search", |args| {
+    |                                                ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/modules.rs:188:49
+    |
+188 |                 module.add_function("findall", |args| {
+    |                                                 ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/builtins.rs:202:17
+    |
+202 | fn builtin_dict(args: Vec<PyValue>) -> Result<PyValue, BridgeError> {
+    |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/ffi.rs:245:9
+    |
+245 |         args: Vec<PyValue>,
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: unused variable: `args`
+   --> crates/pycompat/src/stdlib.rs:351:36
+    |
+351 |     module.add_function("reduce", |args| {
+    |                                    ^^^^ help: if this is intentional, prefix it with an underscore: `_args`
+
+warning: variable does not need to be mutable
+   --> crates/pycompat/src/migrate.rs:121:13
+    |
+121 |         let mut warnings = Vec::new();
+    |             ----^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `receiver`
+  --> crates/pycompat/src/interop.rs:83:34
+   |
+83 |             Value::BoundMethod { receiver, method } => PyValue::Callable(PyCallable {
+   |                                  ^^^^^^^^ help: try ignoring the field: `receiver: _`
+
+warning: field `path` is never read
+   --> crates/pycompat/src/ffi.rs:104:5
+    |
+101 | pub struct Library {
+    |            ------- field in this struct
+...
+104 |     path: String,
+    |     ^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: fields `py_incref`, `py_decref`, and `py_run_string` are never read
+   --> crates/pycompat/src/ffi.rs:282:9
+    |
+279 |     pub struct CPythonAPI {
+    |                ---------- fields in this struct
+...
+282 |         py_incref: Option<extern "C" fn(PyObjectPtr)>,
+    |         ^^^^^^^^^
+283 |         py_decref: Option<extern "C" fn(PyObjectPtr)>,
+    |         ^^^^^^^^^
+284 |         py_run_string: Option<extern "C" fn(*const i8, i32, PyObjectPtr, PyObjectPtr) -> PyObjectPtr>,
+    |         ^^^^^^^^^^^^^
+
+warning: field `context` is never read
+   --> crates/pycompat/src/interop.rs:279:5
+    |
+278 | pub struct Importer {
+    |            -------- field in this struct
+279 |     context: InteropContext,
+    |     ^^^^^^^
+
+warning: `roast-pycompat` (lib) generated 21 warnings (run `cargo fix --lib -p roast-pycompat` to apply 6 suggestions)
+warning: unused imports: `RUNTIME_DECLARATIONS` and `TypeTag`
+  --> crates/llvm_backend/src/types.rs:17:22
+   |
+17 | use crate::runtime::{RUNTIME_DECLARATIONS, TypeTag};
+   |                      ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `std::io::Write`
+    --> crates/llvm_backend/src/lib.rs:1192:13
+     |
+1192 |         use std::io::Write;
+     |             ^^^^^^^^^^^^^^
+
+warning: unused variable: `escaped`
+    --> crates/llvm_backend/src/lib.rs:1156:33
+     |
+1156 | ...                   let escaped = method_name.replace("\\", "\\5C").replace("\"", "\\22");
+     |                           ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_escaped`
+     |
+     = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `body`
+    --> crates/llvm_backend/src/lib.rs:2770:48
+     |
+2770 |             MirAggregateKind::Lambda { params, body } => {
+     |                                                ^^^^ help: try ignoring the field: `body: _`
+
+warning: unused variable: `unwind`
+    --> crates/llvm_backend/src/lib.rs:3374:68
+     |
+3374 |             MirTerminator::Call { func, args, destination, target, unwind } => {
+     |                                                                    ^^^^^^ help: try ignoring the field: `unwind: _`
+
+warning: unused variable: `finally`
+    --> crates/llvm_backend/src/lib.rs:4415:55
+     |
+4415 |             MirTerminator::TryBegin { body, handlers, finally, exit } => {
+     |                                                       ^^^^^^^ help: try ignoring the field: `finally: _`
+
+warning: fields `ir`, `declarations`, `definitions`, and `class_globals` are never read
+   --> crates/llvm_backend/src/lib.rs:478:5
+    |
+475 | pub struct LlvmCodeGen {
+    |            ----------- fields in this struct
+...
+478 |     ir: String,
+    |     ^^
+479 |     /// Function declarations
+480 |     declarations: Vec<String>,
+    |     ^^^^^^^^^^^^
+481 |     /// Function definitions
+482 |     definitions: Vec<String>,
+    |     ^^^^^^^^^^^
+...
+494 |     class_globals: HashMap<String, String>,
+    |     ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: methods `fresh_label` and `generate_block` are never used
+    --> crates/llvm_backend/src/lib.rs:1401:8
+     |
+1383 | impl<'a> FunctionGen<'a> {
+     | ------------------------ methods in this implementation
+...
+1401 |     fn fresh_label(&mut self) -> usize {
+     |        ^^^^^^^^^^^
+...
+1835 |     fn generate_block(&mut self, block: &MirBlock) -> LlvmResult<()> {
+     |        ^^^^^^^^^^^^^^
+
+warning: `roast-llvm-backend` (lib) generated 8 warnings (run `cargo fix --lib -p roast-llvm-backend` to apply 2 suggestions)
+   Compiling roast-cli v0.1.0 (/home/swadhin/lang/roast/crates/cli)
+warning: unused variable: `emitter`
+  --> crates/cli/src/commands.rs:94:17
+   |
+94 |         let mut emitter = CodeEmitter::new(target_config);
+   |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_emitter`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: variable does not need to be mutable
+  --> crates/cli/src/commands.rs:94:13
+   |
+94 |         let mut emitter = CodeEmitter::new(target_config);
+   |             ----^^^^^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `parallel`
+   --> crates/cli/src/commands.rs:425:50
+    |
+425 | pub fn test(filter: Option<&str>, verbose: bool, parallel: bool, show_output: bool) -> Result<()> {
+    |                                                  ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_parallel`
+
+warning: unused variable: `parse_result`
+    --> crates/cli/src/commands.rs:1460:9
+     |
+1460 |     let parse_result = roast_parser::parse_module(source, &path.to_string_lossy(), interner, &mut diagnostics);
+     |         ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_parse_result`
+
+warning: unused variable: `e`
+    --> crates/cli/src/commands.rs:1776:20
+     |
+1776 |         if let Err(e) = term::emit(&mut writer.lock(), &config, &files, &codespan_diag) {
+     |                    ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `debug`
+    --> crates/cli/src/commands.rs:1873:5
+     |
+1873 |     debug: bool,
+     |     ^^^^^ help: if this is intentional, prefix it with an underscore: `_debug`
+
+warning: unused variable: `debug`
+    --> crates/cli/src/commands.rs:2015:5
+     |
+2015 |     debug: bool,
+     |     ^^^^^ help: if this is intentional, prefix it with an underscore: `_debug`
+
+warning: variable does not need to be mutable
+    --> crates/cli/src/commands.rs:2116:9
+     |
+2116 |     let mut compile_module = |
+     |         ----^^^^^^^^^^^^^^
+     |         |
+     |         help: remove this `mut`
+
+warning: function `run_llvm` is never used
+    --> crates/cli/src/commands.rs:2445:8
+     |
+2445 | pub fn run_llvm(
+     |        ^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` on by default
+
+warning: fields `warmup_iters`, `measure_iters`, `min_time`, `max_time`, and `confidence` are never read
+  --> crates/cli/src/bench.rs:10:9
+   |
+8  | pub struct BenchConfig {
+   |            ----------- fields in this struct
+9  |     /// Warmup iterations.
+10 |     pub warmup_iters: u32,
+   |         ^^^^^^^^^^^^
+11 |     /// Measurement iterations.
+12 |     pub measure_iters: u32,
+   |         ^^^^^^^^^^^^^
+13 |     /// Minimum time for measurement.
+14 |     pub min_time: Duration,
+   |         ^^^^^^^^
+15 |     /// Maximum time for measurement.
+16 |     pub max_time: Duration,
+   |         ^^^^^^^^
+17 |     /// Confidence level (0.0-1.0).
+18 |     pub confidence: f64,
+   |         ^^^^^^^^^^
+   |
+   = note: `BenchConfig` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: multiple fields are never read
+  --> crates/cli/src/bench.rs:36:9
+   |
+35 | pub struct BenchResult {
+   |            ----------- fields in this struct
+36 |     pub name: String,
+   |         ^^^^
+37 |     pub samples: Vec<Duration>,
+   |         ^^^^^^^
+38 |     pub mean: Duration,
+   |         ^^^^
+39 |     pub median: Duration,
+   |         ^^^^^^
+40 |     pub std_dev: Duration,
+   |         ^^^^^^^
+41 |     pub min: Duration,
+   |         ^^^
+42 |     pub max: Duration,
+   |         ^^^
+43 |     pub iterations: u32,
+   |         ^^^^^^^^^^
+44 |     pub throughput: Option<Throughput>,
+   |         ^^^^^^^^^^
+   |
+   = note: `BenchResult` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: associated items `from_samples`, `with_throughput`, and `format` are never used
+   --> crates/cli/src/bench.rs:49:12
+    |
+47  | impl BenchResult {
+    | ---------------- associated items in this implementation
+48  |     /// Calculate from samples.
+49  |     pub fn from_samples(name: &str, samples: Vec<Duration>, iters: u32) -> Self {
+    |            ^^^^^^^^^^^^
+...
+101 |     pub fn with_throughput(mut self, throughput: Throughput) -> Self {
+    |            ^^^^^^^^^^^^^^^
+...
+107 |     pub fn format(&self) -> String {
+    |            ^^^^^^
+
+warning: variants `Bytes`, `Elements`, and `Custom` are never constructed
+   --> crates/cli/src/bench.rs:144:5
+    |
+143 | pub enum Throughput {
+    |          ---------- variants in this enum
+144 |     Bytes(u64),
+    |     ^^^^^
+145 |     Elements(u64),
+    |     ^^^^^^^^
+146 |     Custom(f64, String),
+    |     ^^^^^^
+    |
+    = note: `Throughput` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: methods `value` and `unit` are never used
+   --> crates/cli/src/bench.rs:150:12
+    |
+149 | impl Throughput {
+    | --------------- methods in this implementation
+150 |     pub fn value(&self) -> f64 {
+    |            ^^^^^
+...
+158 |     pub fn unit(&self) -> &str {
+    |            ^^^^
+
+warning: fields `config` and `results` are never read
+   --> crates/cli/src/bench.rs:169:5
+    |
+168 | pub struct Bencher {
+    |            ------- fields in this struct
+169 |     config: BenchConfig,
+    |     ^^^^^^
+170 |     results: Vec<BenchResult>,
+    |     ^^^^^^^
+
+warning: methods `bench`, `bench_with_setup`, `results`, and `print_report` are never used
+   --> crates/cli/src/bench.rs:182:12
+    |
+173 | impl Bencher {
+    | ------------ methods in this implementation
+...
+182 |     pub fn bench<F>(&mut self, name: &str, mut f: F) -> &BenchResult
+    |            ^^^^^
+...
+217 |     pub fn bench_with_setup<S, F, T>(&mut self, name: &str, mut setup: S, mut f: F) -> &BenchResult
+    |            ^^^^^^^^^^^^^^^^
+...
+250 |     pub fn results(&self) -> &[BenchResult] {
+    |            ^^^^^^^
+...
+255 |     pub fn print_report(&self) {
+    |            ^^^^^^^^^^^^
+
+warning: function `compare` is never used
+   --> crates/cli/src/bench.rs:275:8
+    |
+275 | pub fn compare(baseline: &BenchResult, current: &BenchResult) -> Comparison {
+    |        ^^^^^^^
+
+warning: struct `Comparison` is never constructed
+   --> crates/cli/src/bench.rs:301:12
+    |
+301 | pub struct Comparison {
+    |            ^^^^^^^^^^
+    |
+    = note: `Comparison` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: method `format` is never used
+   --> crates/cli/src/bench.rs:310:12
+    |
+309 | impl Comparison {
+    | --------------- method in this implementation
+310 |     pub fn format(&self) -> String {
+    |            ^^^^^^
+
+warning: variants `Improvement`, `Regression`, and `NoChange` are never constructed
+   --> crates/cli/src/bench.rs:333:5
+    |
+332 | pub enum ChangeKind {
+    |          ---------- variants in this enum
+333 |     Improvement,
+    |     ^^^^^^^^^^^
+334 |     Regression,
+    |     ^^^^^^^^^^
+335 |     NoChange,
+    |     ^^^^^^^^
+    |
+    = note: `ChangeKind` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: function `format_duration` is never used
+   --> crates/cli/src/bench.rs:338:4
+    |
+338 | fn format_duration(d: Duration) -> String {
+    |    ^^^^^^^^^^^^^^^
+
+warning: function `profile` is never used
+   --> crates/cli/src/bench.rs:352:8
+    |
+352 | pub fn profile<F, T>(name: &str, f: F) -> (T, Duration)
+    |        ^^^^^^^
+
+warning: fields `timings` and `current` are never read
+   --> crates/cli/src/bench.rs:367:5
+    |
+366 | pub struct Profiler {
+    |            -------- fields in this struct
+367 |     timings: HashMap<String, Vec<Duration>>,
+    |     ^^^^^^^
+368 |     current: Option<(String, Instant)>,
+    |     ^^^^^^^
+
+warning: methods `start`, `stop`, `time`, `summary`, and `print_summary` are never used
+   --> crates/cli/src/bench.rs:380:12
+    |
+371 | impl Profiler {
+    | ------------- methods in this implementation
+...
+380 |     pub fn start(&mut self, name: &str) {
+    |            ^^^^^
+...
+385 |     pub fn stop(&mut self) {
+    |            ^^^^
+...
+393 |     pub fn time<F, T>(&mut self, name: &str, f: F) -> T
+    |            ^^^^
+...
+404 |     pub fn summary(&self) -> HashMap<String, ProfileSummary> {
+    |            ^^^^^^^
+...
+423 |     pub fn print_summary(&self) {
+    |            ^^^^^^^^^^^^^
+
+warning: struct `ProfileSummary` is never constructed
+   --> crates/cli/src/bench.rs:450:12
+    |
+450 | pub struct ProfileSummary {
+    |            ^^^^^^^^^^^^^^
+    |
+    = note: `ProfileSummary` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: `roast-cli` (bin "roastc") generated 25 warnings (run `cargo fix --bin "roastc"` to apply 2 suggestions)
+    Finished `release` profile [optimized] target(s) in 34.46s
+     Running `target/release/roastc run bughunting/14_inheritance.roast`
+   Compiling 14_inheritance.roast...Codegen Call: ID=90 Name='super'
+Codegen Call: ID=90 Name='super'
+Codegen Call: ID=90 Name='super'
+Codegen Call: ID=94 Name='print'
+Codegen Call: ID=92 Name='D'
+Codegen Call: ID=94 Name='print'
+Codegen Call: ID=94 Name='print'
+Codegen Call: ID=93 Name='main'
+bughunting/cooked/14_inheritance.ll:446:19: error: use of undefined value '@roast_fn_92'
+  446 |   %v12 = call i64 @roast_fn_92()
+      |                   ^
+1 error generated.
+error: clang failed with exit code exit status: 1

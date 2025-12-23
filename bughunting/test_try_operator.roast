@@ -1,0 +1,12 @@
+# Test ? operator for Result propagation
+
+def might_fail(x: int) -> int:
+    if x < 0:
+        raise ValueError("negative!")
+    return x * 2
+
+def test_try():
+    result = might_fail(5)?  # Should propagate error or unwrap
+    print(result)
+
+test_try()

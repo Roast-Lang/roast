@@ -195,6 +195,14 @@ pub enum MirTerminator {
         target: Option<BlockId>,
         unwind: Option<BlockId>,
     },
+    /// Python FFI call (for py:* imports)
+    PythonCall {
+        module: String,             // Python module name (e.g., "json")
+        func: Symbol,               // Function name symbol to call (resolved in codegen)
+        args: Vec<MirOperand>,      // Arguments
+        destination: MirPlace,
+        target: Option<BlockId>,
+    },
     /// Method call on an object (uses static dispatch based on receiver type)
     MethodCall {
         receiver: MirOperand,       // The object to call method on
@@ -208,6 +216,13 @@ pub enum MirTerminator {
     /// For loop iteration - calls GetIter on iter and ForIter with proper jump
     ForIter {
         iter: MirPlace,       // The iterator local
+        loop_var: LocalId,    // Where to store the next value
+        body: BlockId,        // Block for loop body
+        exit: BlockId,        // Block for loop exit
+    },
+    /// Async for loop iteration - uses __anext__ and awaits results
+    AsyncForIter {
+        iter: MirPlace,       // The async iterator local
         loop_var: LocalId,    // Where to store the next value
         body: BlockId,        // Block for loop body
         exit: BlockId,        // Block for loop exit
@@ -262,5 +277,5 @@ pub enum MirBinOp {
     Add, Sub, Mul, Div, FloorDiv, Rem, Pow,
     BitAnd, BitOr, BitXor, Shl, Shr,
     Eq, Ne, Lt, Le, Gt, Ge,
-    In, NotIn,
+    In, NotIn, Is, IsNot,
 }

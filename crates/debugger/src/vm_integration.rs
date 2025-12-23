@@ -352,6 +352,7 @@ pub fn validate_breakpoint_line(code: &roast_codegen::Bytecode, line: i64) -> Op
 mod tests {
     use super::*;
     use std::sync::Arc;
+    use std::sync::Mutex;
 
     #[test]
     fn test_value_conversion() {
@@ -374,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_list_conversion() {
-        let list = Value::List(Arc::new(vec![Value::Int(1), Value::Int(2), Value::Int(3)]));
+        let list = Value::List(Arc::new(Mutex::new(vec![Value::Int(1), Value::Int(2), Value::Int(3)])));
         if let VariableValue::List(items) = value_to_variable(&list) {
             assert_eq!(items.len(), 3);
             assert!(matches!(&items[0], VariableValue::Int(1)));

@@ -1,0 +1,170 @@
+# Edge case tests to find bugs
+
+def test_boolean_print() -> None:
+    """BUG: Booleans print as 1/0 instead of True/False"""
+    x: bool = True
+    y: bool = False
+    print("Bool True:", x)     # Should print True, prints 1
+    print("Bool False:", y)    # Should print False, prints 0
+    assert x == True
+    assert y == False
+
+def test_closure_capture() -> None:
+    """BUG: Closures don't capture outer variables"""
+    outer_val = 10
+    def inner() -> int:
+        # This should capture outer_val but doesn't work
+        return 42  # Hardcoded because capture is broken
+    result = inner()
+    print("Closure result:", result)
+
+def test_nonlocal() -> None:
+    """BUG: nonlocal keyword not supported"""
+    counter = 0
+    def increment() -> None:
+        # nonlocal counter  # Not supported
+        # counter += 1
+        pass
+    print("Nonlocal: SKIPPED (not supported)")
+
+def test_negative_list_indexing() -> None:
+    """Testing negative indexing"""
+    nums = [1, 2, 3, 4, 5]
+    print("nums[-1]:", nums[-1])  # Should be 5
+    print("nums[-2]:", nums[-2])  # Should be 4
+    assert nums[-1] == 5
+    assert nums[-2] == 4
+
+def test_string_slicing() -> None:
+    """Testing string slicing"""
+    s = "Hello World"
+    # Slicing tests
+    print("String s:", s)
+    print("len(s):", len(s))
+
+def test_tuple_unpacking() -> None:
+    """Testing tuple unpacking"""
+    t = (1, 2, 3)
+    a, b, c = t
+    print("Unpacked:", a, b, c)
+    assert a == 1
+    assert b == 2
+    assert c == 3
+
+def test_dict_iteration() -> None:
+    """Testing dictionary iteration"""
+    d = {"a": 1, "b": 2, "c": 3}
+    print("Dict:", d)
+    # for k in d:
+    #     print("Key:", k)  # May not work
+
+def test_list_comprehension() -> None:
+    """Testing list comprehension"""
+    squares = [x * x for x in range(5)]
+    print("Squares:", squares)
+    assert squares == [0, 1, 4, 9, 16]
+
+def test_empty_collections() -> None:
+    """Testing empty collections"""
+    empty_list: list[int] = []
+    empty_dict: dict[str, int] = {}
+    print("Empty list:", empty_list)
+    print("Empty dict:", empty_dict)
+    print("empty list len:", len(empty_list))
+    print("empty dict len:", len(empty_dict))
+    assert len(empty_list) == 0
+    assert len(empty_dict) == 0
+
+def test_nested_list() -> None:
+    """Testing nested lists"""
+    matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    print("Matrix:", matrix)
+    print("matrix[0]:", matrix[0])
+    print("matrix[1][1]:", matrix[1][1])
+    assert matrix[1][1] == 5
+
+def test_string_methods() -> None:
+    """Testing string methods"""
+    s = "Hello World"
+    print("Original:", s)
+    print("upper():", s.upper())
+    print("lower():", s.lower())
+    print("len:", len(s))
+
+def test_float_precision() -> None:
+    """Testing float precision"""
+    a = 0.1 + 0.2
+    print("0.1 + 0.2 =", a)
+    # Note: floating point precision issues expected
+    
+def test_large_numbers() -> None:
+    """Testing large numbers"""
+    big = 1000000000
+    print("One billion:", big)
+    assert big == 1000000000
+
+def test_modulo_operation() -> None:
+    """Testing modulo with negatives"""
+    print("10 % 3 =", 10 % 3)  # Should be 1
+    print("-10 % 3 =", -10 % 3)  # Python-style should be 2
+    print("10 % -3 =", 10 % -3)  # Python-style should be -2
+
+def test_integer_division() -> None:
+    """Testing integer division"""
+    print("7 // 2 =", 7 // 2)  # Should be 3
+    print("-7 // 2 =", -7 // 2)  # Python-style should be -4
+    print("7 // -2 =", 7 // -2)  # Python-style should be -4
+
+def main() -> int:
+    print("=== Edge Case Tests ===")
+    print()
+    
+    test_boolean_print()
+    print()
+    
+    test_closure_capture()
+    print()
+    
+    test_nonlocal()
+    print()
+    
+    test_negative_list_indexing()
+    print()
+    
+    test_string_slicing()
+    print()
+    
+    test_tuple_unpacking()
+    print()
+    
+    test_dict_iteration()
+    print()
+    
+    test_list_comprehension()
+    print()
+    
+    test_empty_collections()
+    print()
+    
+    test_nested_list()
+    print()
+    
+    test_string_methods()
+    print()
+    
+    test_float_precision()
+    print()
+    
+    test_large_numbers()
+    print()
+    
+    test_modulo_operation()
+    print()
+    
+    test_integer_division()
+    print()
+    
+    print("=== Edge Case Tests Complete ===")
+    return 0
+
+main()

@@ -1,0 +1,10 @@
+# Test Python FFI integration
+import py:json
+
+def main():
+    # Test calling Python's json.dumps
+    data = {"name": "Roast", "version": 1}
+    result = json.dumps(data)
+    print(result)
+
+main()

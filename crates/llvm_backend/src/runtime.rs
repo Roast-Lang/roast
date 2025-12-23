@@ -44,6 +44,7 @@ declare void @roast_list_insert(i8*, i64, i64) nounwind
 declare void @roast_list_remove(i8*, i64) nounwind
 declare i64 @roast_list_index(i8*, i64) nounwind
 declare i1 @roast_list_contains(i8*, i64) nounwind
+declare i1 @roast_list_eq(i8*, i8*) nounwind
 
 ; Dict operations
 declare i8* @roast_dict_new() nounwind
@@ -55,6 +56,7 @@ declare i64 @roast_dict_len(i8*) nounwind
 declare i8* @roast_dict_keys(i8*) nounwind
 declare i8* @roast_dict_values(i8*) nounwind
 declare i8* @roast_dict_items(i8*) nounwind
+declare i1 @roast_dict_eq(i8*, i8*) nounwind
 
 ; Set operations
 declare i8* @roast_set_new() nounwind
@@ -156,6 +158,110 @@ declare void @roast_bigint_print(i8*) nounwind
 
 ; Debug
 declare void @roast_debug_print(i8*) nounwind
+
+; HTTP Client operations
+declare i8* @roast_http_get(i8*) nounwind
+declare i8* @roast_http_post(i8*, i8*) nounwind
+declare i8* @roast_http_request(i8*, i8*, i8*) nounwind
+declare i64 @roast_http_download(i8*, i8*) nounwind
+
+; SQLite Database operations
+declare i64 @roast_sqlite_connect(i8*) nounwind
+declare i64 @roast_sqlite_execute(i64, i8*) nounwind
+declare i8* @roast_sqlite_query(i64, i8*) nounwind
+declare i64 @roast_sqlite_close(i64) nounwind
+
+; File operations
+declare i8* @roast_file_open(i8*, i8*) nounwind
+declare i8* @roast_file_read(i8*) nounwind
+declare i8* @roast_file_readline(i8*) nounwind
+declare i64 @roast_file_write(i8*, i8*) nounwind
+declare void @roast_file_close(i8*) nounwind
+declare i1 @roast_file_exists(i8*) nounwind
+declare i8* @roast_file_read_all(i8*) nounwind
+declare i64 @roast_file_write_all(i8*, i8*) nounwind
+
+; JSON operations
+declare i8* @roast_json_parse(i8*) nounwind
+declare i8* @roast_json_stringify(i8*) nounwind
+declare i8* @roast_json_get(i8*, i8*) nounwind
+
+; UUID generation
+declare i8* @roast_uuid_v4() nounwind
+
+; Socket operations
+declare i64 @roast_socket_connect(i8*, i64) nounwind
+declare i64 @roast_socket_send(i64, i8*) nounwind
+declare i8* @roast_socket_recv(i64, i64) nounwind
+declare void @roast_socket_close(i64) nounwind
+
+; Process/subprocess operations
+declare i64 @roast_subprocess_call(i8*) nounwind
+declare i8* @roast_subprocess_output(i8*) nounwind
+
+; Environment operations
+declare i8* @roast_env_get(i8*) nounwind
+declare void @roast_env_set(i8*, i8*) nounwind
+
+; Time operations
+declare i64 @roast_time_now() nounwind
+declare void @roast_sleep(i64) nounwind
+declare double @roast_time_now_float() nounwind
+
+; Channel/concurrency operations (Go-style)
+declare i64 @roast_chan_new(i64) nounwind
+declare void @roast_chan_send(i64, i64) nounwind
+declare i64 @roast_chan_recv(i64) nounwind
+declare void @roast_chan_close(i64) nounwind
+declare i64 @roast_go(i8*) nounwind
+
+; Password hashing (bcrypt)
+declare i8* @roast_bcrypt_hash(i8*, i64) nounwind
+declare i64 @roast_bcrypt_verify(i8*, i8*) nounwind
+
+; Cryptographic hashing
+declare i8* @roast_sha256(i8*) nounwind
+declare i8* @roast_md5(i8*) nounwind
+declare i8* @roast_secure_random_hex(i64) nounwind
+
+; JWT Token operations
+declare i8* @roast_jwt_encode(i8*, i8*) nounwind
+declare i8* @roast_jwt_decode(i8*, i8*) nounwind
+declare i64 @roast_jwt_verify(i8*, i8*) nounwind
+
+; UUID generation
+declare i8* @roast_uuid_v7() nounwind
+
+; Random operations
+declare i64 @roast_random_int(i64) nounwind
+declare i64 @roast_random_range(i64, i64) nounwind
+declare double @roast_random_float() nounwind
+declare void @roast_random_seed(i64) nounwind
+declare void @roast_random_shuffle(i8*) nounwind
+declare i64 @roast_random_choice(i8*) nounwind
+
+; Base64 encoding/decoding
+declare i8* @roast_base64_encode(i8*) nounwind
+declare i8* @roast_base64_decode(i8*) nounwind
+
+; Threading operations
+declare void @roast_thread_sleep(i64) nounwind
+declare i64 @roast_thread_current_id() nounwind
+declare void @roast_thread_yield_now() nounwind
+declare i64 @roast_thread_cpu_count() nounwind
+declare i64 @roast_mutex_new() nounwind
+declare i64 @roast_mutex_lock(i64) nounwind
+declare i64 @roast_mutex_unlock(i64) nounwind
+
+; Test framework assertions
+declare i64 @roast_test_assert_eq(i64, i64, i8*) nounwind
+declare i64 @roast_test_assert_true(i64, i8*) nounwind
+declare i64 @roast_test_assert_false(i64, i8*) nounwind
+declare i64 @roast_test_assert_ne(i64, i64, i8*) nounwind
+declare void @roast_test_fail(i8*) nounwind
+declare void @roast_test_skip(i8*) nounwind
+declare i64 @roast_test_assert_str_eq(i8*, i8*, i8*) nounwind
+declare i64 @roast_test_assert_in_range(i64, i64, i64, i8*) nounwind
 "#;
 
 /// Type tags for runtime values.

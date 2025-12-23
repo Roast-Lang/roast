@@ -31,5 +31,8 @@ Thumbs.db
 *.profraw
 *.profdata
 coverage/
+cooked/
 
 test/*
+registry-server/
+docs/

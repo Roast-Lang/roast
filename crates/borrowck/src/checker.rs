@@ -224,6 +224,10 @@ impl<'a> BorrowChecker<'a> {
                 // ForIter reads and writes to the iterator
                 // TODO: proper borrow checking for for-loop iterators
             }
+            MirTerminator::AsyncForIter { iter: _, .. } => {
+                // AsyncForIter reads and writes to the async iterator
+                // TODO: proper borrow checking for async for-loop iterators
+            }
             MirTerminator::Goto(_) | MirTerminator::Unreachable => {}
             MirTerminator::TryBegin { .. } => {
                 // TryBegin sets up exception handler - no borrow checking needed
@@ -242,6 +246,18 @@ impl<'a> BorrowChecker<'a> {
             } => {
                 // Check receiver and arguments
                 self.check_operand(receiver, location, span);
+                for arg in args {
+                    self.check_operand(arg, location, span);
+                }
+                // Destination is written to
+                self.check_write_place(destination, location, span);
+            }
+            MirTerminator::PythonCall {
+                args,
+                destination,
+                ..
+            } => {
+                // Check arguments for Python FFI call
                 for arg in args {
                     self.check_operand(arg, location, span);
                 }

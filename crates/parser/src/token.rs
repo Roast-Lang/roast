@@ -97,6 +97,7 @@ pub enum TokenKind {
     Move,
     Own,
     Ref,
+    Where,
 
     // Operators
     /// +
@@ -480,6 +481,7 @@ pub fn keyword_to_token(s: &str) -> Option<TokenKind> {
         "own" => TokenKind::Own,
         "owned" => TokenKind::Own,  // Alias for 'own'
         "ref" => TokenKind::Ref,
+        "where" => TokenKind::Where,
         _ => return None,
     })
 }

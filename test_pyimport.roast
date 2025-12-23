@@ -1,0 +1,14 @@
+# Test Python FFI imports
+
+import py:json
+from py:os import path
+
+def test_json():
+    data = json.dumps({"hello": "world"})
+    print(data)
+
+def test_path():
+    result = path.exists("/tmp")
+    print(result)
+
+print("Python FFI test")

@@ -1,0 +1,20 @@
+# models/person.roast - Person model
+
+class Person:
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+    
+    def greet(self) -> str:
+        return "Hello, I am " + self.name
+    
+    def birthday(self):
+        self.age = self.age + 1
+
+class Employee(Person):
+    def __init__(self, name: str, age: int, title: str):
+        super().__init__(name, age)
+        self.title = title
+    
+    def greet(self) -> str:
+        return super().greet() + " and I work as " + self.title

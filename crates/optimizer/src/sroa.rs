@@ -283,6 +283,11 @@ impl<'a> SroaPass<'a> {
                     Self::analyze_operand_static(arg, field_accesses);
                 }
             }
+            MirTerminator::PythonCall { args, .. } => {
+                for arg in args {
+                    Self::analyze_operand_static(arg, field_accesses);
+                }
+            }
             MirTerminator::SwitchInt { discr, .. } => {
                 Self::analyze_operand_static(discr, field_accesses);
             }
@@ -477,6 +482,11 @@ impl<'a> SroaPass<'a> {
         match term {
             MirTerminator::Call { func, args, .. } => {
                 Self::rewrite_operand_static(func, candidates, field_map);
+                for arg in args {
+                    Self::rewrite_operand_static(arg, candidates, field_map);
+                }
+            }
+            MirTerminator::PythonCall { args, .. } => {
                 for arg in args {
                     Self::rewrite_operand_static(arg, candidates, field_map);
                 }

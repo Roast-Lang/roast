@@ -1,0 +1,13 @@
+# Benchmark: Fibonacci computation (Roast)
+# Computes fib(40) which is computationally intensive
+
+def fib(n: int) -> int:
+    if n <= 1:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+def main():
+    result: int = fib(40)
+    print(f"fib(40) = {result}")
+
+main()

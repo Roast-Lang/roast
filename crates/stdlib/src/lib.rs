@@ -29,6 +29,7 @@ pub mod sync;
 pub mod thread;
 pub mod channel;
 pub mod async_utils;
+pub mod structured;
 
 // Logging
 pub mod logging;

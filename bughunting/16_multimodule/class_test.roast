@@ -1,0 +1,20 @@
+
+# Test imported class method calls
+
+from utils.math_ops import Calculator
+
+def main():
+    print("=== Class Import Test ===")
+    
+    calc = Calculator()
+    calc.compute("add", 5, 3)
+    result = calc.get_last()
+    
+    if result == 8:
+        print("Calculator.compute: OK")
+    else:
+        print("Calculator.compute: FAIL -> " + str(result))
+    
+    print("=== Done ===")
+
+main()

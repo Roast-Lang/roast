@@ -1,0 +1,4 @@
+
+def main():
+    val: int4 = 10
+    print(val)

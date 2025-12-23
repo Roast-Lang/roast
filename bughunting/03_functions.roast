@@ -1,0 +1,51 @@
+# Bug Hunt 3: Functions
+# Test function definitions, recursion, default args
+
+def simple_func(x: int) -> int:
+    return x * 2
+
+def multi_arg(a: int, b: int, c: int) -> int:
+    return a + b + c
+
+def recursive_fib(n: int) -> int:
+    if n <= 1:
+        return n
+    return recursive_fib(n - 1) + recursive_fib(n - 2)
+
+def no_return_value() -> None:
+    print("This function returns None")
+
+def returns_string(name: str) -> str:
+    return "Hello, " + name + "!"
+
+def returns_bool(x: int) -> bool:
+    return x > 0
+
+def main() -> int:
+    print("=== Bug Hunt 3: Functions ===")
+    
+    # Simple function
+    result: int = simple_func(5)
+    print("simple_func(5) =", result)
+    
+    # Multi-arg function
+    result = multi_arg(1, 2, 3)
+    print("multi_arg(1,2,3) =", result)
+    
+    # Recursive function
+    result = recursive_fib(10)
+    print("fib(10) =", result)
+    
+    # Void function
+    no_return_value()
+    
+    # String return
+    msg: str = returns_string("Roast")
+    print(msg)
+    
+    # Bool return
+    positive: bool = returns_bool(5)
+    print("5 > 0:", positive)
+    
+    print("=== Function tests passed! ===")
+    return 0

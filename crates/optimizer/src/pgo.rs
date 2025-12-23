@@ -984,10 +984,10 @@ mod tests {
     #[test]
     fn test_branch_profile() {
         let mut profile = BranchProfile::default();
-        profile.taken_count = 90;
-        profile.not_taken_count = 10;
+        profile.taken_count = 95;
+        profile.not_taken_count = 5;
         
-        assert!((profile.taken_probability() - 0.9).abs() < 0.001);
+        assert!((profile.taken_probability() - 0.95).abs() < 0.001);
         assert!(profile.is_predictable());
     }
     

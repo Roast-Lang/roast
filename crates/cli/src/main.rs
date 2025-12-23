@@ -344,7 +344,7 @@ fn run() -> Result<()> {
                 commands::run_native(&file, &args, opt_level, cli.debug)
             } else {
                 // Default: LLVM native compilation (Rust-like speed!)
-                commands::run_llvm(&file, &args, opt_level, cli.debug)
+                commands::run_llvm_with_opts(&file, &args, opt_level, cli.debug, cli.quiet, cli.verbose)
             }
         }
         Some(Commands::Repl { no_banner }) => {

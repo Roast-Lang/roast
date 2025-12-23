@@ -15,6 +15,8 @@ pub mod protocols;
 pub mod exhaustiveness;
 pub mod mro;
 pub mod variance;
+pub mod concurrency;
+pub mod lints;
 
 pub use types::*;
 pub use mro::{compute_mro, get_next_in_mro};
@@ -23,6 +25,8 @@ pub use checker::TypeChecker;
 pub use ownership::{OwnershipAnalyzer, OwnershipInfo, OwnershipMode, TypeTrait};
 pub use protocols::{Protocol, ProtocolRegistry, ProtocolMethod, ProtocolImpl, DerivableProtocol};
 pub use variance::{Variance, TypeParam, ConstGeneric, WhereClause, TypeBounds};
+pub use concurrency::{ConcurrencyChecker, ConcurrencyError, ConcurrencyErrorKind};
+pub use lints::{LintChecker, MutableDefaultKind};
 
 use roast_common::prelude::*;
 
@@ -34,4 +38,5 @@ pub mod prelude {
     pub use crate::ownership::{OwnershipAnalyzer, OwnershipMode, TypeTrait};
     pub use crate::protocols::{Protocol, ProtocolRegistry, ProtocolMethod};
     pub use crate::variance::{Variance, TypeParam, ConstGeneric, WhereClause};
+    pub use crate::concurrency::{ConcurrencyChecker, ConcurrencyError};
 }

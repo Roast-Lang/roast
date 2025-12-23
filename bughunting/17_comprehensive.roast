@@ -1,0 +1,335 @@
+# Comprehensive test suite for bug hunting (simplified)
+
+# === Basic Types Tests ===
+def test_basic_types():
+    print("=== Testing Basic Types ===")
+    
+    # Integers
+    a: int = 42
+    b: int = -10
+    c: int = a + b
+    if c == 32:
+        print("int addition: OK")
+    else:
+        print("int addition: FAIL")
+    
+    # Floats
+    x: float = 3.14
+    y: float = 2.0
+    z: float = x * y
+    if z > 6.0 and z < 7.0:
+        print("float multiply: OK")
+    else:
+        print("float multiply: FAIL")
+    
+    # Strings
+    s1: str = "Hello"
+    s2: str = "World"
+    s3: str = s1 + " " + s2
+    if s3 == "Hello World":
+        print("string concat: OK")
+    else:
+        print("string concat: FAIL - " + s3)
+    
+    # Booleans
+    t: bool = True
+    f: bool = False
+    if t and not f:
+        print("boolean logic: OK")
+    else:
+        print("boolean logic: FAIL")
+    
+    print("")
+
+# === Collections Tests ===
+def test_collections():
+    print("=== Testing Collections ===")
+    
+    # Lists
+    lst: list = [1, 2, 3, 4, 5]
+    lst.append(6)
+    if len(lst) == 6:
+        print("list append: OK")
+    else:
+        print("list append: FAIL - len=" + str(len(lst)))
+    
+    if lst[0] == 1 and lst[5] == 6:
+        print("list indexing: OK")
+    else:
+        print("list indexing: FAIL")
+    
+    # Dicts
+    d: dict = {"a": 1, "b": 2, "c": 3}
+    if d["a"] == 1:
+        print("dict access: OK")
+    else:
+        print("dict access: FAIL")
+    
+    d["d"] = 4
+    if len(d) == 4:
+        print("dict insert: OK")
+    else:
+        print("dict insert: FAIL")
+    
+    print("")
+
+# === Control Flow Tests ===
+def test_control_flow():
+    print("=== Testing Control Flow ===")
+    
+    # If-elif-else
+    x: int = 5
+    result: str = ""
+    if x < 0:
+        result = "negative"
+    elif x == 0:
+        result = "zero"
+    else:
+        result = "positive"
+    
+    if result == "positive":
+        print("if-elif-else: OK")
+    else:
+        print("if-elif-else: FAIL - " + result)
+    
+    # For loop
+    total: int = 0
+    for i in range(5):
+        total = total + i
+    if total == 10:
+        print("for loop: OK")
+    else:
+        print("for loop: FAIL - total=" + str(total))
+    
+    # While loop
+    count: int = 0
+    while count < 5:
+        count = count + 1
+    if count == 5:
+        print("while loop: OK")
+    else:
+        print("while loop: FAIL")
+    
+    # Break
+    found: int = -1
+    for i in range(100):
+        if i == 7:
+            found = i
+            break
+    if found == 7:
+        print("break: OK")
+    else:
+        print("break: FAIL")
+    
+    # Continue
+    evens: int = 0
+    for i in range(10):
+        if i % 2 == 1:
+            continue
+        evens = evens + 1
+    if evens == 5:
+        print("continue: OK")
+    else:
+        print("continue: FAIL - evens=" + str(evens))
+    
+    print("")
+
+# === Helper functions for function tests ===
+def helper_add(a: int, b: int) -> int:
+    return a + b
+
+def helper_factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * helper_factorial(n - 1)
+
+def helper_greet(name: str) -> str:
+    return "Hello, " + name
+
+def test_functions():
+    print("=== Testing Functions ===")
+    
+    if helper_add(3, 4) == 7:
+        print("function call: OK")
+    else:
+        print("function call: FAIL")
+    
+    if helper_factorial(5) == 120:
+        print("recursion: OK")
+    else:
+        print("recursion: FAIL - factorial(5)=" + str(helper_factorial(5)))
+    
+    if helper_greet("World") == "Hello, World":
+        print("string return: OK")
+    else:
+        print("string return: FAIL")
+    
+    print("")
+
+# === Class for class tests ===
+class Counter:
+    def __init__(self, start: int):
+        self.value: int = start
+    
+    def increment(self):
+        self.value = self.value + 1
+    
+    def get(self) -> int:
+        return self.value
+
+def test_classes():
+    print("=== Testing Classes ===")
+    
+    c = Counter(10)
+    if c.get() == 10:
+        print("class init: OK")
+    else:
+        print("class init: FAIL - value=" + str(c.get()))
+    
+    c.increment()
+    c.increment()
+    if c.get() == 12:
+        print("method call: OK")
+    else:
+        print("method call: FAIL - value=" + str(c.get()))
+    
+    # Multiple instances
+    c1 = Counter(0)
+    c2 = Counter(100)
+    c1.increment()
+    if c1.get() == 1 and c2.get() == 100:
+        print("instance isolation: OK")
+    else:
+        print("instance isolation: FAIL")
+    
+    print("")
+
+# === String methods ===
+def test_string_methods():
+    print("=== Testing String Methods ===")
+    
+    s: str = "hello world"
+    
+    # Length
+    if len(s) == 11:
+        print("str len: OK")
+    else:
+        print("str len: FAIL")
+    
+    # Upper
+    u: str = s.upper()
+    if u == "HELLO WORLD":
+        print("str upper: OK")
+    else:
+        print("str upper: FAIL - " + u)
+    
+    # Indexing
+    if s[0] == "h":
+        print("str index: OK")
+    else:
+        print("str index: FAIL")
+    
+    print("")
+
+# === List operations ===
+def test_list_operations():
+    print("=== Testing List Operations ===")
+    
+    lst: list = [3, 1, 4, 1, 5, 9, 2, 6]
+    
+    # Sum
+    total: int = sum([1, 2, 3, 4, 5])
+    if total == 15:
+        print("sum: OK")
+    else:
+        print("sum: FAIL - total=" + str(total))
+    
+    # Min/Max
+    if min([3, 1, 4]) == 1 and max([3, 1, 4]) == 4:
+        print("min/max: OK")
+    else:
+        print("min/max: FAIL")
+    
+    print("")
+
+# === Comparisons ===
+def test_comparisons():
+    print("=== Testing Comparisons ===")
+    
+    # Integer comparisons
+    if 1 < 2 and 2 <= 2 and 3 > 2 and 3 >= 3:
+        print("int comparisons: OK")
+    else:
+        print("int comparisons: FAIL")
+    
+    # Equality
+    if 5 == 5 and 5 != 6:
+        print("equality: OK")
+    else:
+        print("equality: FAIL")
+    
+    # String comparisons
+    if "a" < "b" and "abc" == "abc":
+        print("str comparisons: OK")
+    else:
+        print("str comparisons: FAIL")
+    
+    # None checks
+    x = None
+    if x is None:
+        print("is None: OK")
+    else:
+        print("is None: FAIL")
+    
+    print("")
+
+# === F-Strings ===
+def test_f_strings():
+    print("=== Testing F-Strings ===")
+    
+    name: str = "Alice"
+    age: int = 30
+    
+    s1: str = f"Name: {name}"
+    if s1 == "Name: Alice":
+        print("basic f-string: OK")
+    else:
+        print("basic f-string: FAIL - " + s1)
+    
+    s2: str = f"{name} is {age} years old"
+    if s2 == "Alice is 30 years old":
+        print("multi f-string: OK")
+    else:
+        print("multi f-string: FAIL - " + s2)
+    
+    # Expression in f-string
+    s3: str = f"2 + 2 = {2 + 2}"
+    if s3 == "2 + 2 = 4":
+        print("expr f-string: OK")
+    else:
+        print("expr f-string: FAIL - " + s3)
+    
+    print("")
+
+# === Main ===
+def main():
+    print("=" * 50)
+    print("COMPREHENSIVE BUG HUNTING TEST SUITE")
+    print("=" * 50)
+    print("")
+    
+    test_basic_types()
+    test_collections()
+    test_control_flow()
+    test_functions()
+    test_classes()
+    test_string_methods()
+    test_list_operations()
+    test_comparisons()
+    test_f_strings()
+    
+    print("=" * 50)
+    print("TEST SUITE COMPLETE")
+    print("=" * 50)
+
+main()

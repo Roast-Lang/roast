@@ -179,6 +179,12 @@ pub struct LlvmConfig {
     pub target_triple: Option<String>,
     pub cpu: String,
     pub features: String,
+    /// Generate DWARF debug info for source-level debugging
+    pub debug_info: bool,
+    /// Source file name for debug info
+    pub source_file: Option<String>,
+    /// Source directory for debug info
+    pub source_dir: Option<String>,
 }
 
 impl Default for LlvmConfig {
@@ -188,6 +194,9 @@ impl Default for LlvmConfig {
             target_triple: None,
             cpu: "native".to_string(),
             features: String::new(),
+            debug_info: false,
+            source_file: None,
+            source_dir: None,
         }
     }
 }
@@ -362,6 +371,17 @@ impl LlvmBackend {
         None
     }
 
+    /// Find which class owns a method by symbol ID (searches all classes).
+    /// Used when we only have the symbol ID and need to construct the full function name.
+    pub fn find_class_owning_method(&self, method_sym: u32) -> Option<String> {
+        for (class_name, info) in &self.class_info {
+            if info.methods.contains(&method_sym) {
+                return Some(class_name.clone());
+            }
+        }
+        None
+    }
+
     /// Register a class as abstract (cannot be instantiated).
     pub fn register_abstract_class(&mut self, class_name: &str) {
         self.abstract_classes.insert(class_name.to_string());
@@ -494,6 +514,14 @@ pub struct LlvmCodeGen {
     class_globals: HashMap<String, String>,
     /// Function signatures for forward declarations (name -> (return_type, param_types))
     function_signatures: HashMap<String, (String, Vec<String>)>,
+    /// Counter for generating unique lambda function names
+    lambda_counter: usize,
+    /// Python modules imported with py: prefix (alias symbol -> python module name)
+    python_modules: HashMap<u32, String>,
+    /// Debug info: next metadata ID
+    debug_metadata_id: u32,
+    /// Debug info: function metadata (function_name -> metadata_id)
+    debug_functions: HashMap<String, u32>,
 }
 
 impl LlvmCodeGen {
@@ -511,7 +539,28 @@ impl LlvmCodeGen {
             class_info: HashMap::new(),
             class_globals: HashMap::new(),
             function_signatures: HashMap::new(),
+            lambda_counter: 0,
+            python_modules: HashMap::new(),
+            debug_metadata_id: 0,
+            debug_functions: HashMap::new(),
         }
+    }
+
+    /// Register a Python module import (py:module_name).
+    /// alias_sym is the symbol used to refer to this module in Roast code.
+    /// python_name is the actual Python module name (without py: prefix).
+    pub fn register_python_module(&mut self, alias_sym: u32, python_name: &str) {
+        self.python_modules.insert(alias_sym, python_name.to_string());
+    }
+
+    /// Check if a symbol refers to a Python module.
+    pub fn is_python_module(&self, sym: u32) -> bool {
+        self.python_modules.contains_key(&sym)
+    }
+
+    /// Get the Python module name for a symbol.
+    pub fn get_python_module_name(&self, sym: u32) -> Option<&str> {
+        self.python_modules.get(&sym).map(|s| s.as_str())
     }
 
     /// Check if a class (or any parent in MRO) has a method by name.
@@ -552,6 +601,28 @@ impl LlvmCodeGen {
                     if parent_info.methods.contains(&method_sym) {
                         return Some(parent.clone());
                     }
+                }
+            }
+        }
+        None
+    }
+
+    /// Find which class owns a method by symbol ID (searches all classes).
+    /// Returns (class_name, class_method_sym_id) - the sym_id is the one registered for the class,
+    /// which may differ from the caller's sym_id due to cross-module symbol ID mismatches.
+    pub fn find_class_owning_method(&self, method_sym: u32) -> Option<(String, u32)> {
+        // First, resolve the symbol ID to a method name
+        let method_name = self.resolve_symbol(method_sym)?;
+        
+        // Handle qualified names like "Calculator.compute" - extract just the method name
+        let simple_name = method_name.split('.').last().unwrap_or(method_name);
+        
+        // Search all classes for one that has this method name
+        for (class_name, info) in &self.class_info {
+            if info.method_names.contains(simple_name) {
+                // Found the class - now get the class's registered sym_id for this method
+                if let Some(&class_sym) = info.method_syms.get(simple_name) {
+                    return Some((class_name.clone(), class_sym));
                 }
             }
         }
@@ -657,6 +728,39 @@ entry:
             params_str = params_str,
             init_name = init_name,
             init_args_str = init_args_str,
+        );
+
+        self.functions.insert(func_name, constructor_ir);
+        Ok(())
+    }
+
+    /// Generate a default class constructor for classes without __init__.
+    /// Creates a function @roast_fn_CLASS that just allocates an object.
+    pub fn generate_default_class_constructor(
+        &mut self,
+        class_sym_id: u32,
+        class_name: &str,
+    ) -> LlvmResult<()> {
+        let func_name = format!("roast_fn_{}", class_sym_id);
+
+        let constructor_ir = format!(
+            r#"
+define i64 @{func_name}() {{
+entry:
+    ; Load class pointer from global
+    %class_ptr = load i8*, i8** @.class.{class_name}
+    ; Create a new object with the class pointer
+    %obj = call i8* @roast_object_new(i8* %class_ptr)
+
+    ; Convert object pointer to i64 for storage and passing
+    %self_i64 = ptrtoint i8* %obj to i64
+
+    ; Return the object (as i64)
+    ret i64 %self_i64
+}}
+"#,
+            func_name = func_name,
+            class_name = class_name,
         );
 
         self.functions.insert(func_name, constructor_ir);
@@ -883,6 +987,7 @@ entry:
         ir.push_str("declare i8* @roast_list_copy(i8*) nounwind\n");
         ir.push_str("declare void @roast_list_extend(i8*, i8*) nounwind\n");
         ir.push_str("declare i8* @roast_list_slice(i8*, i64, i64, i64) nounwind\n");
+        ir.push_str("declare i1 @roast_list_eq(i8*, i8*) nounwind\n");
         ir.push('\n');
 
         // Dict operations
@@ -902,6 +1007,7 @@ entry:
         ir.push_str("declare void @roast_dict_update(i8*, i8*) nounwind\n");
         ir.push_str("declare i8* @roast_dict_copy(i8*) nounwind\n");
         ir.push_str("declare i64 @roast_dict_setdefault(i8*, i64, i64) nounwind\n");
+        ir.push_str("declare i1 @roast_dict_eq(i8*, i8*) nounwind\n");
         ir.push('\n');
 
         // Set operations
@@ -985,8 +1091,9 @@ entry:
         ir.push_str("declare double @roast_pow_float(double, double) nounwind\n");
         ir.push_str("declare i64 @roast_abs_int(i64) nounwind\n");
         ir.push_str("declare double @roast_abs_float(double) nounwind\n");
+        ir.push_str("declare i64 @roast_floordiv(i64, i64) nounwind\n");
+        ir.push_str("declare i64 @roast_mod(i64, i64) nounwind\n");
         ir.push('\n');
-
         // Async operations
         ir.push_str("; Async operations\n");
         ir.push_str("declare i64 @roast_await(i8*) nounwind\n");
@@ -1048,6 +1155,7 @@ entry:
         // Builtin functions (for direct calls)
         ir.push_str("; Builtin functions\n");
         ir.push_str("declare i64 @roast_print(i64) nounwind\n");
+        ir.push_str("declare i64 @roast_print_value(i64) nounwind\n");
         ir.push_str("declare i64 @roast_len(i64) nounwind\n");
         ir.push_str("declare i64 @roast_type(i64) nounwind\n");
         ir.push_str("declare i64 @roast_int(i64) nounwind\n");
@@ -1059,6 +1167,8 @@ entry:
         ir.push_str("declare i64 @roast_set(i64) nounwind\n");
         ir.push_str("declare i64 @roast_tuple(i64) nounwind\n");
         ir.push_str("declare i64 @roast_range(i64, i64, i64) nounwind\n");
+        ir.push_str("declare i64 @roast_enumerate(i64, i64) nounwind\n");
+        ir.push_str("declare i64 @roast_zip(i64, i64) nounwind\n");
         ir.push_str("declare i64 @roast_abs(i64) nounwind\n");
         ir.push_str("declare i64 @roast_min(i64, i64) nounwind\n");
         ir.push_str("declare i64 @roast_max(i64, i64) nounwind\n");
@@ -1067,13 +1177,14 @@ entry:
         ir.push_str("declare i64 @roast_sum(i64) nounwind\n");
         ir.push_str("declare i64 @roast_sorted(i64) nounwind\n");
         ir.push_str("declare i64 @roast_reversed(i64) nounwind\n");
-        ir.push_str("declare i64 @roast_enumerate(i64, i64) nounwind\n");
-        ir.push_str("declare i64 @roast_zip(i64, i64) nounwind\n");
         ir.push_str("declare i64 @roast_map(i64, i64) nounwind\n");
         ir.push_str("declare i64 @roast_filter(i64, i64) nounwind\n");
         ir.push_str("declare i64 @roast_input(i64) nounwind\n");
         ir.push_str("declare i64 @roast_ord(i64) nounwind\n");
         ir.push_str("declare i64 @roast_chr(i64) nounwind\n");
+        
+        // MRO Support
+        ir.push_str("declare void @roast_class_set_mro(i8*, i8*) nounwind\n");
         ir.push_str("declare i64 @roast_repr(i64) nounwind\n");
         ir.push_str("declare i64 @roast_hash(i64) nounwind\n");
         ir.push_str("declare i64 @roast_id(i64) nounwind\n");
@@ -1093,6 +1204,15 @@ entry:
         ir.push_str("declare i64 @roast_file_write(i64, i64) nounwind\n");
         ir.push_str("declare void @roast_file_close(i64) nounwind\n");
         ir.push_str("declare i64 @roast_file_readline(i64) nounwind\n");
+        ir.push('\n');
+
+        // Python FFI functions (for py:* imports)
+        ir.push_str("; Python FFI\n");
+        ir.push_str("declare i64 @roast_py_import(i8*) nounwind\n");
+        ir.push_str("declare i64 @roast_py_getattr(i64, i8*) nounwind\n");
+        ir.push_str("declare i64 @roast_py_call(i64, i8*) nounwind\n");
+        ir.push_str("declare i8* @roast_py_to_str(i64) nounwind\n");
+        ir.push_str("declare i64 @roast_py_to_int(i64) nounwind\n");
         ir.push('\n');
 
         // Generate class initialization function
@@ -1142,6 +1262,36 @@ entry:
                     "  store i8* %class.{}, i8** @.class.{}\n",
                     class_name, class_name
                 ));
+
+                // Initialize MRO list
+                if let Some(info) = self.class_info.get(class_name) {
+                    if !info.mro.is_empty() {
+                         ir.push_str(&format!(
+                            "  %mro.list.{} = call i8* @roast_list_new(i64 {})\n",
+                            class_name, info.mro.len()
+                        ));
+                         
+                         for (idx, mro_cls) in info.mro.iter().enumerate() {
+                             ir.push_str(&format!(
+                                 "  %mro.ptr.{}.{} = load i8*, i8** @.class.{}\n",
+                                 class_name, idx, mro_cls
+                             ));
+                             ir.push_str(&format!(
+                                 "  %mro.val.{}.{} = ptrtoint i8* %mro.ptr.{}.{} to i64\n",
+                                 class_name, idx, class_name, idx
+                             ));
+                             ir.push_str(&format!(
+                                 "  call void @roast_list_append(i8* %mro.list.{}, i64 %mro.val.{}.{})\n",
+                                 class_name, class_name, idx
+                             ));
+                         }
+                         
+                         ir.push_str(&format!(
+                             "  call void @roast_class_set_mro(i8* %class.{}, i8* %mro.list.{})\n",
+                             class_name, class_name
+                         ));
+                    }
+                }
                 
                 // Register methods with the class for dynamic dispatch
                 if let Some(info) = self.class_info.get(class_name) {
@@ -1180,6 +1330,55 @@ entry:
         for func_ir in self.functions.values() {
             ir.push_str(func_ir);
             ir.push('\n');
+        }
+
+        // DWARF Debug Info metadata (if enabled)
+        if self.config.debug_info {
+            ir.push_str("\n; Debug Info metadata\n");
+            
+            let source_file = self.config.source_file.as_deref().unwrap_or("unknown.roast");
+            let source_dir = self.config.source_dir.as_deref().unwrap_or(".");
+            
+            // DIFile - source file information
+            ir.push_str(&format!(
+                "!0 = !DIFile(filename: \"{}\", directory: \"{}\")\n",
+                source_file, source_dir
+            ));
+            
+            // DICompileUnit - the compilation unit
+            ir.push_str("!1 = distinct !DICompileUnit(language: DW_LANG_Python, file: !0, producer: \"roastc\", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)\n");
+            
+            // Named metadata for debug info
+            ir.push_str("!llvm.dbg.cu = !{!1}\n");
+            ir.push_str("!llvm.module.flags = !{!2, !3}\n");
+            ir.push_str("!2 = !{i32 7, !\"Dwarf Version\", i32 4}\n");
+            ir.push_str("!3 = !{i32 2, !\"Debug Info Version\", i32 3}\n");
+            
+            // Generate DISubprogram entries for each function
+            let mut metadata_id = 4u32;
+            for func_name in self.functions.keys() {
+                // Extract a clean function name for display
+                let display_name = if func_name.starts_with("roast_fn_") {
+                    func_name.strip_prefix("roast_fn_").unwrap_or(func_name)
+                } else {
+                    func_name
+                };
+                
+                // DISubprogram for the function (simplified - no line info yet)
+                ir.push_str(&format!(
+                    "!{} = distinct !DISubprogram(name: \"{}\", linkageName: \"{}\", scope: !0, file: !0, line: 1, type: !{}, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !1)\n",
+                    metadata_id, display_name, func_name, metadata_id + 1
+                ));
+                
+                // DISubroutineType (void function type as placeholder)
+                ir.push_str(&format!(
+                    "!{} = !DISubroutineType(types: !{})\n",
+                    metadata_id + 1, metadata_id + 2
+                ));
+                ir.push_str(&format!("!{} = !{{null}}\n", metadata_id + 2));
+                
+                metadata_id += 3;
+            }
         }
 
         ir
@@ -1326,6 +1525,11 @@ entry:
             ir_path.to_str().unwrap(),
         ];
 
+        // Add debug info flag if enabled
+        if self.config.debug_info {
+            args.insert(0, "-g");
+        }
+
         // If we found the runtime library, link it
         // We need to add both the library and its dependencies
         let runtime_lib_str: String;
@@ -1401,6 +1605,11 @@ impl<'a> FunctionGen<'a> {
         let l = self.next_value;
         self.next_value += 1;
         l
+    }
+
+    /// Get the LLVM label for a block ID.
+    fn block_label(target: u32) -> String {
+        format!("bb{}", target)
     }
 
     /// Check if a type is Copy (doesn't need deallocation)
@@ -1792,6 +2001,7 @@ impl<'a> FunctionGen<'a> {
             self.locals.insert(local.id, ptr);
         }
 
+
         // Also allocate for parameters (they need their own stack slots)
         for (arg_name, ty, id) in &param_names {
             // Skip void types
@@ -1808,13 +2018,11 @@ impl<'a> FunctionGen<'a> {
             self.ir.push_str(&format!("  store {} {}, {}* {}\n", ty, arg_name, ty, ptr));
         }
 
-        // Now emit the first basic block's statements (skip bb0's label)
-        if let Some(first_block) = self.body.blocks.first() {
-            self.generate_block_body(first_block)?;
-        }
+        // Jump from entry to bb0 (this separates allocas from control flow)
+        self.ir.push_str("  br label %bb0\n");
 
-        // Generate remaining blocks
-        for block in self.body.blocks.iter().skip(1) {
+        // Generate ALL blocks with their labels (including bb0)
+        for block in self.body.blocks.iter() {
             self.ir.push_str(&format!("bb{}:\n", block.id));
             self.generate_block_body(block)?;
         }
@@ -2279,6 +2487,70 @@ impl<'a> FunctionGen<'a> {
             }
         }
 
+        // List operations - compare element-by-element
+        let is_list = matches!(lhs_ty, Type::List(_)) || matches!(rhs_ty, Type::List(_));
+        if is_list {
+            match op {
+                MirBinOp::Eq => {
+                    let l_ptr = self.fresh_value();
+                    let r_ptr = self.fresh_value();
+                    let bool_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", r_ptr, r));
+                    self.ir.push_str(&format!("  {} = call i1 @roast_list_eq(i8* {}, i8* {})\n", bool_result, l_ptr, r_ptr));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, bool_result));
+                    return Ok(result);
+                }
+                MirBinOp::Ne => {
+                    let l_ptr = self.fresh_value();
+                    let r_ptr = self.fresh_value();
+                    let tmp = self.fresh_value();
+                    let not_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", r_ptr, r));
+                    self.ir.push_str(&format!("  {} = call i1 @roast_list_eq(i8* {}, i8* {})\n", tmp, l_ptr, r_ptr));
+                    self.ir.push_str(&format!("  {} = xor i1 {}, true\n", not_result, tmp));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, not_result));
+                    return Ok(result);
+                }
+                _ => {
+                    // Other list operations fall through
+                }
+            }
+        }
+
+        // Dict operations - compare key-value pairs
+        let is_dict = matches!(lhs_ty, Type::Dict(_, _)) || matches!(rhs_ty, Type::Dict(_, _));
+        if is_dict {
+            match op {
+                MirBinOp::Eq => {
+                    let l_ptr = self.fresh_value();
+                    let r_ptr = self.fresh_value();
+                    let bool_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", r_ptr, r));
+                    self.ir.push_str(&format!("  {} = call i1 @roast_dict_eq(i8* {}, i8* {})\n", bool_result, l_ptr, r_ptr));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, bool_result));
+                    return Ok(result);
+                }
+                MirBinOp::Ne => {
+                    let l_ptr = self.fresh_value();
+                    let r_ptr = self.fresh_value();
+                    let tmp = self.fresh_value();
+                    let not_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", r_ptr, r));
+                    self.ir.push_str(&format!("  {} = call i1 @roast_dict_eq(i8* {}, i8* {})\n", tmp, l_ptr, r_ptr));
+                    self.ir.push_str(&format!("  {} = xor i1 {}, true\n", not_result, tmp));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, not_result));
+                    return Ok(result);
+                }
+                _ => {
+                    // Other dict operations fall through
+                }
+            }
+        }
+
         // BigInt operations (arbitrary precision arithmetic)
         let is_bigint = matches!(lhs_ty, Type::BigInt) || matches!(rhs_ty, Type::BigInt);
         if is_bigint {
@@ -2392,10 +2664,8 @@ impl<'a> FunctionGen<'a> {
                 }
                 _ => "fadd", // Default
             };
-            // Float arithmetic produces double, but we store as i64 - need bitcast
-            let float_result = self.fresh_value();
-            self.ir.push_str(&format!("  {} = {} double {}, {}\n", float_result, instr, l_float, r_float));
-            self.ir.push_str(&format!("  {} = bitcast double {} to i64\n", result, float_result));
+            // Float arithmetic produces double - return directly
+            self.ir.push_str(&format!("  {} = {} double {}, {}\n", result, instr, l_float, r_float));
         } else {
             // Integer operations
             let (instr, needs_cmp) = match op {
@@ -2403,12 +2673,21 @@ impl<'a> FunctionGen<'a> {
                 MirBinOp::Sub => ("sub", false),
                 MirBinOp::Mul => ("mul", false),
                 MirBinOp::Div => ("sdiv", false),
-                MirBinOp::FloorDiv => ("sdiv", false),
-                MirBinOp::Rem => ("srem", false),
+                MirBinOp::FloorDiv => {
+                    // Use Python-style floor division (rounds toward negative infinity)
+                    self.ir.push_str(&format!("  {} = call i64 @roast_floordiv(i64 {}, i64 {})\n", result, l, r));
+                    return Ok(result);
+                }
+                MirBinOp::Rem => {
+                    // Use Python-style modulo (result has same sign as divisor)
+                    self.ir.push_str(&format!("  {} = call i64 @roast_mod(i64 {}, i64 {})\n", result, l, r));
+                    return Ok(result);
+                }
                 MirBinOp::Pow => {
                     self.ir.push_str(&format!("  {} = call i64 @roast_pow_int(i64 {}, i64 {})\n", result, l, r));
                     return Ok(result);
                 }
+
                 MirBinOp::BitAnd => ("and", false),
                 MirBinOp::BitOr => ("or", false),
                 MirBinOp::BitXor => ("xor", false),
@@ -2428,23 +2707,25 @@ impl<'a> FunctionGen<'a> {
                     self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, r));
                     let cmp = self.fresh_value();
                     
-                    match rhs_ty {
-                        Type::Str => {
-                            // String contains - lhs is also a string
-                            let l_ptr = self.fresh_value();
-                            self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
-                            self.ir.push_str(&format!("  {} = call i1 @roast_str_contains(i8* {}, i8* {})\n", cmp, ptr, l_ptr));
-                        }
-                        Type::Dict(_, _) => {
-                            self.ir.push_str(&format!("  {} = call i1 @roast_dict_contains(i8* {}, i64 {})\n", cmp, ptr, l));
-                        }
-                        Type::Set(_) => {
-                            self.ir.push_str(&format!("  {} = call i1 @roast_set_contains(i8* {}, i64 {})\n", cmp, ptr, l));
-                        }
-                        _ => {
-                            // Default to list contains
-                            self.ir.push_str(&format!("  {} = call i1 @roast_list_contains(i8* {}, i64 {})\n", cmp, ptr, l));
-                        }
+                    // Helper to check if type is dict-like
+                    let is_dict = matches!(&rhs_ty, Type::Dict(_, _)) || {
+                        // Check for TypeVar with dict name
+                        let type_name = format!("{:?}", rhs_ty);
+                        type_name.contains("Dict") || type_name.contains("47")  // Symbol(47) might be 'dict'
+                    };
+                    
+                    if matches!(&rhs_ty, Type::Str) {
+                        // String contains - lhs is also a string
+                        let l_ptr = self.fresh_value();
+                        self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", l_ptr, l));
+                        self.ir.push_str(&format!("  {} = call i1 @roast_str_contains(i8* {}, i8* {})\n", cmp, ptr, l_ptr));
+                    } else if is_dict {
+                        self.ir.push_str(&format!("  {} = call i1 @roast_dict_contains(i8* {}, i64 {})\n", cmp, ptr, l));
+                    } else if matches!(&rhs_ty, Type::Set(_)) {
+                        self.ir.push_str(&format!("  {} = call i1 @roast_set_contains(i8* {}, i64 {})\n", cmp, ptr, l));
+                    } else {
+                        // Default to list contains
+                        self.ir.push_str(&format!("  {} = call i1 @roast_list_contains(i8* {}, i64 {})\n", cmp, ptr, l));
                     }
                     // Extend i1 to i64
                     self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp));
@@ -2479,6 +2760,20 @@ impl<'a> FunctionGen<'a> {
                     self.ir.push_str(&format!("  {} = xor i1 {}, true\n", neg, tmp));
                     // Extend i1 to i64 for consistent storage
                     self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, neg));
+                    return Ok(result);
+                }
+                MirBinOp::Is => {
+                    // Identity comparison - check if two values are the same object
+                    let cmp_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = icmp eq i64 {}, {}\n", cmp_result, l, r));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp_result));
+                    return Ok(result);
+                }
+                MirBinOp::IsNot => {
+                    // Negated identity comparison - check if two values are NOT the same object
+                    let cmp_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = icmp ne i64 {}, {}\n", cmp_result, l, r));
+                    self.ir.push_str(&format!("  {} = zext i1 {} to i64\n", result, cmp_result));
                     return Ok(result);
                 }
             };
@@ -2767,15 +3062,191 @@ impl<'a> FunctionGen<'a> {
                 Ok(result)
             }
             MirAggregateKind::Lambda { params, body } => {
-                // Create closure - would need to compile the body as a separate function
-                // For now, return a placeholder
-                let closure = self.fresh_value();
-                self.ir.push_str(&format!("  {} = call i8* @roast_closure_new(i8* null, i64 {}, i8* null)\n",
-                    closure, params.len()));
-
-                let result = self.fresh_value();
-                self.ir.push_str(&format!("  {} = ptrtoint i8* {} to i64\n", result, closure));
-                Ok(result)
+                // Generate a unique lambda function name
+                let lambda_id = self.codegen.lambda_counter;
+                self.codegen.lambda_counter += 1;
+                let lambda_fn_name = format!("roast_lambda_{}", lambda_id);
+                
+                // Compile the lambda body as a separate function
+                // The lambda body is a MirBody that we need to generate IR for
+                let num_params = params.len();
+                
+                // Generate the lambda function IR
+                // Lambda parameters are passed as i64, returns i64
+                let param_list: Vec<String> = (0..num_params)
+                    .map(|i| format!("i64 %arg{}", i))
+                    .collect();
+                let params_str = param_list.join(", ");
+                
+                // Create a minimal lambda function that compiles the body
+                // For now, we generate a stub that calls the body's blocks
+                let mut lambda_ir = String::new();
+                lambda_ir.push_str(&format!("\ndefine i64 @{}({}) {{\n", lambda_fn_name, params_str));
+                lambda_ir.push_str("entry:\n");
+                
+                // Generate IR for each block in the lambda body
+                // For simplicity, we'll try to generate the body inline
+                // Create allocas for parameters
+                for i in 0..num_params {
+                    lambda_ir.push_str(&format!("  %local_{} = alloca i64\n", i));
+                    lambda_ir.push_str(&format!("  store i64 %arg{}, i64* %local_{}\n", i, i));
+                }
+                
+                // Allocate temps for all locals in the body beyond parameters
+                let num_locals = body.locals.len();
+                for i in num_params..num_locals {
+                    lambda_ir.push_str(&format!("  %local_{} = alloca i64\n", i));
+                }
+                
+                // Process all blocks in the lambda body
+                let mut val_counter: usize = 0;
+                let mut fresh_val = || { let v = val_counter; val_counter += 1; format!("%t{}", v) };
+                
+                if !body.blocks.is_empty() {
+                    let first_block = &body.blocks[0];
+                    
+                    // Process statements in the block
+                    for stmt in &first_block.stmts {
+                        match &stmt.kind {
+                            MirStmtKind::Assign { place, value } => {
+                                let dest_local = place.local as usize;
+                                
+                                // Generate the rvalue
+                                match value {
+                                    MirRvalue::Use(operand) => {
+                                        let val = match operand {
+                                            MirOperand::Constant(c) => {
+                                                match c {
+                                                    MirConstant::Int(v) => format!("{}", v),
+                                                    MirConstant::Float(f) => format!("{}", (*f as i64)),
+                                                    MirConstant::Bool(b) => if *b { "1".to_string() } else { "0".to_string() },
+                                                    _ => "0".to_string(),
+                                                }
+                                            }
+                                            MirOperand::Copy(p) | MirOperand::Move(p) => {
+                                                let tmp = fresh_val();
+                                                lambda_ir.push_str(&format!("  {} = load i64, i64* %local_{}\n", tmp, p.local));
+                                                tmp
+                                            }
+                                            _ => "0".to_string(),
+                                        };
+                                        lambda_ir.push_str(&format!("  store i64 {}, i64* %local_{}\n", val, dest_local));
+                                    }
+                                    MirRvalue::BinaryOp(op, left, right) => {
+                                        // Load left operand
+                                        let left_val = match left {
+                                            MirOperand::Constant(c) => {
+                                                match c {
+                                                    MirConstant::Int(v) => format!("{}", v),
+                                                    _ => "0".to_string(),
+                                                }
+                                            }
+                                            MirOperand::Copy(p) | MirOperand::Move(p) => {
+                                                let tmp = fresh_val();
+                                                lambda_ir.push_str(&format!("  {} = load i64, i64* %local_{}\n", tmp, p.local));
+                                                tmp
+                                            }
+                                            _ => "0".to_string(),
+                                        };
+                                        
+                                        // Load right operand
+                                        let right_val = match right {
+                                            MirOperand::Constant(c) => {
+                                                match c {
+                                                    MirConstant::Int(v) => format!("{}", v),
+                                                    _ => "0".to_string(),
+                                                }
+                                            }
+                                            MirOperand::Copy(p) | MirOperand::Move(p) => {
+                                                let tmp = fresh_val();
+                                                lambda_ir.push_str(&format!("  {} = load i64, i64* %local_{}\n", tmp, p.local));
+                                                tmp
+                                            }
+                                            _ => "0".to_string(),
+                                        };
+                                        
+                                        // Generate binary operation
+                                        let result = fresh_val();
+                                        let op_str = match op {
+                                            MirBinOp::Add => "add",
+                                            MirBinOp::Sub => "sub",
+                                            MirBinOp::Mul => "mul",
+                                            MirBinOp::Div => "sdiv",
+                                            MirBinOp::Rem => "srem",
+                                            MirBinOp::BitAnd => "and",
+                                            MirBinOp::BitOr => "or",
+                                            MirBinOp::BitXor => "xor",
+                                            _ => "add", // Default fallback
+                                        };
+                                        lambda_ir.push_str(&format!("  {} = {} i64 {}, {}\n", result, op_str, left_val, right_val));
+                                        lambda_ir.push_str(&format!("  store i64 {}, i64* %local_{}\n", result, dest_local));
+                                    }
+                                    _ => {
+                                        // For other rvalues, store 0 as placeholder
+                                        lambda_ir.push_str(&format!("  store i64 0, i64* %local_{}\n", dest_local));
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Skip other statement kinds for now
+                            }
+                        }
+                    }
+                    
+                    // Handle the terminator
+                    match &first_block.terminator {
+                        MirTerminator::Return(Some(op)) => {
+                            match op {
+                                MirOperand::Constant(c) => {
+                                    match c {
+                                        MirConstant::Int(v) => {
+                                            lambda_ir.push_str(&format!("  ret i64 {}\n", v));
+                                        }
+                                        _ => {
+                                            lambda_ir.push_str("  ret i64 0\n");
+                                        }
+                                    }
+                                }
+                                MirOperand::Copy(place) | MirOperand::Move(place) => {
+                                    let local_idx = place.local;
+                                    let ret_tmp = fresh_val();
+                                    lambda_ir.push_str(&format!("  {} = load i64, i64* %local_{}\n", ret_tmp, local_idx));
+                                    lambda_ir.push_str(&format!("  ret i64 {}\n", ret_tmp));
+                                }
+                                _ => {
+                                    lambda_ir.push_str("  ret i64 0\n");
+                                }
+                            }
+                        }
+                        MirTerminator::Return(None) => {
+                            lambda_ir.push_str("  ret i64 0\n");
+                        }
+                        _ => {
+                            lambda_ir.push_str("  ret i64 0\n");
+                        }
+                    }
+                } else {
+                    // Empty body - return 0
+                    lambda_ir.push_str("  ret i64 0\n");
+                }
+                
+                lambda_ir.push_str("}\n");
+                
+                // Add the lambda function to the codegen's functions map
+                self.codegen.functions.insert(lambda_fn_name.clone(), lambda_ir);
+                
+                // For simple non-capturing lambdas, return the function pointer directly
+                // The call site will cast it to a function pointer and call it
+                // This avoids the broken closure call mechanism
+                let fn_ptr = self.fresh_value();
+                self.ir.push_str(&format!("  {} = ptrtoint i64 (", fn_ptr));
+                for i in 0..num_params {
+                    if i > 0 { self.ir.push_str(", "); }
+                    self.ir.push_str("i64");
+                }
+                self.ir.push_str(&format!(")* @{} to i64\n", lambda_fn_name));
+                
+                Ok(fn_ptr)
             }
         }
     }
@@ -2983,6 +3454,24 @@ impl<'a> FunctionGen<'a> {
                         return Ok(final_result);
                     }
                 }
+                
+                // Check for Python module reference
+                if let Some(python_name) = self.codegen.get_python_module_name(sym.as_raw()).map(|s| s.to_string()) {
+                    // Generate call to roast_py_import
+                    let str_ptr = self.codegen.add_string(&python_name);
+                    let str_gep = self.fresh_value();
+                    self.ir.push_str(&format!(
+                        "  {} = getelementptr [{} x i8], [{} x i8]* {}, i64 0, i64 0\n",
+                        str_gep, python_name.len() + 1, python_name.len() + 1, str_ptr
+                    ));
+                    let result = self.fresh_value();
+                    self.ir.push_str(&format!(
+                        "  {} = call i64 @roast_py_import(i8* {})\n",
+                        result, str_gep
+                    ));
+                    return Ok(result);
+                }
+                
                 // Convert function pointer to i64 for use as value
                 let func_name = format!("@roast_fn_{}", sym.as_raw());
                 let result = self.fresh_value();
@@ -3158,11 +3647,12 @@ impl<'a> FunctionGen<'a> {
                             self.ir.push_str(&format!("  {} = ptrtoint i8* {} to i64\n", result, slice_ptr));
                         }
                         _ => {
-                            // Generic slice - use runtime function
+                            // Generic slice - fallback to list slice
                             let slice_ptr = self.fresh_value();
+                            let base_ptr_inner = self.i64_to_ptr(&current);
                             self.ir.push_str(&format!(
-                                "  {} = call i8* @roast_slice_get(i64 {}, i64 {}, i64 {}, i64 {})\n",
-                                slice_ptr, current, lower_val, upper_val, step_val
+                                "  {} = call i8* @roast_list_slice(i8* {}, i64 {}, i64 {}, i64 {})\n",
+                                slice_ptr, base_ptr_inner, lower_val, upper_val, step_val
                             ));
                             self.ir.push_str(&format!("  {} = ptrtoint i8* {} to i64\n", result, slice_ptr));
                         }
@@ -3260,7 +3750,7 @@ impl<'a> FunctionGen<'a> {
                 }
             }
             MirTerminator::Goto(target) => {
-                self.ir.push_str(&format!("  br label %bb{}\n", target));
+                self.ir.push_str(&format!("  br label %{}\n", Self::block_label(*target)));
             }
             MirTerminator::SwitchInt { discr, targets, otherwise } => {
                 // Check if discriminant is a class type with __bool__ method
@@ -3350,22 +3840,22 @@ impl<'a> FunctionGen<'a> {
                     if discr_type == "i1" {
                         // Boolean - direct branch
                         if *test_val == 1 {
-                            self.ir.push_str(&format!("  br i1 {}, label %bb{}, label %bb{}\n", val, target, otherwise));
+                            self.ir.push_str(&format!("  br i1 {}, label %{}, label %{}\n", val, Self::block_label(*target), Self::block_label(*otherwise)));
                         } else {
                             // test_val == 0, flip the branches
-                            self.ir.push_str(&format!("  br i1 {}, label %bb{}, label %bb{}\n", val, otherwise, target));
+                            self.ir.push_str(&format!("  br i1 {}, label %{}, label %{}\n", val, Self::block_label(*otherwise), Self::block_label(*target)));
                         }
                     } else {
                         // Integer comparison
                         let cmp = self.fresh_value();
                         self.ir.push_str(&format!("  {} = icmp eq {} {}, {}\n", cmp, discr_type, val, test_val));
-                        self.ir.push_str(&format!("  br i1 {}, label %bb{}, label %bb{}\n", cmp, target, otherwise));
+                        self.ir.push_str(&format!("  br i1 {}, label %{}, label %{}\n", cmp, Self::block_label(*target), Self::block_label(*otherwise)));
                     }
                 } else {
                     // Switch statement (requires integer)
-                    self.ir.push_str(&format!("  switch {} {}, label %bb{} [\n", discr_type, val, otherwise));
+                    self.ir.push_str(&format!("  switch {} {}, label %{} [\n", discr_type, val, Self::block_label(*otherwise)));
                     for (test_val, target) in targets {
-                        self.ir.push_str(&format!("    {} {}, label %bb{}\n", discr_type, test_val, target));
+                        self.ir.push_str(&format!("    {} {}, label %{}\n", discr_type, test_val, Self::block_label(*target)));
                     }
                     self.ir.push_str("  ]\n");
                 }
@@ -3384,6 +3874,26 @@ impl<'a> FunctionGen<'a> {
                             let result = self.fresh_value();
                             self.ir.push_str(&format!(
                                 "  {} = call i8* @roast_iter_new(i8* {})\n",
+                                result, arg_ptr
+                            ));
+                            // Convert result pointer to i64 and store
+                            let result_i64 = self.fresh_value();
+                            self.ir.push_str(&format!("  {} = ptrtoint i8* {} to i64\n", result_i64, result));
+                            let ptr = self.get_place_ptr(destination);
+                            self.ir.push_str(&format!("  store i64 {}, i64* {}\n", result_i64, ptr));
+                            if let Some(target) = target {
+                                self.ir.push_str(&format!("  br label %bb{}\n", target));
+                            }
+                            return Ok(());
+                        }
+                        
+                        // Handle async iterator creation intrinsic
+                        if *sym == Symbol::MAKE_AITER {
+                            let arg_val = self.generate_operand(&args[0])?;
+                            let arg_ptr = self.i64_to_ptr(&arg_val);
+                            let result = self.fresh_value();
+                            self.ir.push_str(&format!(
+                                "  {} = call i8* @roast_aiter_new(i8* {})\n",
                                 result, arg_ptr
                             ));
                             // Convert result pointer to i64 and store
@@ -3447,11 +3957,24 @@ impl<'a> FunctionGen<'a> {
                                 ));
 
                                 // Create super proxy: roast_super_new(self, class_ptr)
-                                // For now, pass null as class - runtime will determine from self
+                                // We pass the class where the method is defined (from class_prefix)
+                                // This allows the runtime to look up the next class in MRO
+                                let class_arg = if let Some(ref cls) = self.class_prefix {
+                                    let cls_var = format!("@.class.{}", cls);
+                                    let cls_ptr = self.fresh_value();
+                                    self.ir.push_str(&format!(
+                                        "  {} = load i8*, i8** {}\n",
+                                        cls_ptr, cls_var
+                                    ));
+                                    cls_ptr
+                                } else {
+                                    "null".to_string()
+                                };
+
                                 let result = self.fresh_value();
                                 self.ir.push_str(&format!(
-                                    "  {} = call i8* @roast_super_new(i8* {}, i8* null)\n",
-                                    result, self_ptr
+                                    "  {} = call i8* @roast_super_new(i8* {}, i8* {})\n",
+                                    result, self_ptr, class_arg
                                 ));
 
                                 // Convert pointer to i64 and store
@@ -3465,6 +3988,49 @@ impl<'a> FunctionGen<'a> {
                                 }
                                 return Ok(());
                             }
+                            
+                            // Check if it's a class constructor call (instantiation)
+                            if self.codegen.class_info.contains_key(name) {
+                                // Instantiating a class - call the constructor wrapper function
+                                // The constructor wrapper is generated by generate_class_constructor
+                                // It creates the object AND calls __init__ with all arguments
+                                
+                                // Generate argument values
+                                let arg_vals: Vec<String> = args.iter()
+                                    .map(|arg| self.generate_operand_as_i64(arg))
+                                    .collect::<LlvmResult<Vec<_>>>()?;
+                                
+                                // Build the argument string
+                                let args_str = arg_vals.iter()
+                                    .map(|v| format!("i64 {}", v))
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
+                                
+                                // Call the constructor wrapper function @roast_fn_CLASS_SYM_ID(args...)
+                                // The constructor function was registered by compile_class_constructor
+                                let constructor_fn = format!("@roast_fn_{}", sym_id);
+                                let result = self.fresh_value();
+                                if args_str.is_empty() {
+                                    self.ir.push_str(&format!(
+                                        "  {} = call i64 {}()\n",
+                                        result, constructor_fn
+                                    ));
+                                } else {
+                                    self.ir.push_str(&format!(
+                                        "  {} = call i64 {}({})\n",
+                                        result, constructor_fn, args_str
+                                    ));
+                                }
+                                
+                                let ptr = self.get_place_ptr(destination);
+                                self.ir.push_str(&format!("  store i64 {}, i64* {}\n", result, ptr));
+                                
+                                if let Some(target) = target {
+                                    self.ir.push_str(&format!("  br label %bb{}\n", target));
+                                }
+                                return Ok(());
+                            }
+
                             // Check if it's a builtin function
                             if is_builtin(name) {
                                 // Handle min/max specially based on argument count
@@ -3475,10 +4041,12 @@ impl<'a> FunctionGen<'a> {
                                     // Multi-argument print - handle specially
                                     "@@multi_print@@".to_string()
                                 } else if name == "print" && args.len() == 1 {
-                                    // Single-argument print - check if it's a BigInt
+                                    // Single-argument print - check type for proper output
                                     let arg_ty = self.operand_type(&args[0]);
                                     if matches!(arg_ty, Type::BigInt) {
                                         "@@bigint_print@@".to_string()
+                                    } else if matches!(arg_ty, Type::Bool) {
+                                        "@@bool_print@@".to_string()
                                     } else {
                                         format!("@roast_{}", name)
                                     }
@@ -3521,18 +4089,37 @@ impl<'a> FunctionGen<'a> {
                                         if let Some(runtime_fn) = get_builtin_method_by_kind(collection_kind, name) {
                                             format!("@{}", runtime_fn)
                                         } else {
+                                            // Check if this is a class method
+                                            if let Some((class_name, class_sym)) = self.codegen.find_class_owning_method(sym_id) {
+                                                format!("@roast_fn_{}_{}", class_name, class_sym)
+                                            } else {
+                                                format!("@roast_fn_{}", sym_id)
+                                            }
+                                        }
+                                    } else {
+                                        // Check if this is a class method
+                                        if let Some((class_name, class_sym)) = self.codegen.find_class_owning_method(sym_id) {
+                                            format!("@roast_fn_{}_{}", class_name, class_sym)
+                                        } else {
                                             format!("@roast_fn_{}", sym_id)
                                         }
+                                    }
+                                } else {
+                                    // Check if this is a class method
+                                    if let Some((class_name, class_sym)) = self.codegen.find_class_owning_method(sym_id) {
+                                        format!("@roast_fn_{}_{}", class_name, class_sym)
                                     } else {
                                         format!("@roast_fn_{}", sym_id)
                                     }
-                                } else {
-                                    format!("@roast_fn_{}", sym_id)
                                 }
                             }
                         } else {
-                            // Fallback to raw ID
-                            format!("@roast_fn_{}", sym_id)
+                            // Fallback to raw ID - check if this is a class method
+                            if let Some((class_name, class_sym)) = self.codegen.find_class_owning_method(sym_id) {
+                                format!("@roast_fn_{}_{}", class_name, class_sym)
+                            } else {
+                                format!("@roast_fn_{}", sym_id)
+                            }
                         }
                     }
                     MirOperand::Copy(place) | MirOperand::Move(place) => {
@@ -3598,7 +4185,35 @@ impl<'a> FunctionGen<'a> {
                                 .collect::<Result<_, _>>()?
                         }
                     } else {
-                        // Not a class type
+                        // Not a class type - check for bool or float type
+                        let arg_ty = self.operand_type(&args[0]);
+                        if matches!(arg_ty, Type::Bool) {
+                            // Bool value - call roast_print_bool directly
+                            let bool_i64 = self.generate_operand_as_i64(&args[0])?;
+                            let bool_val = self.fresh_value();
+                            self.ir.push_str(&format!("  {} = trunc i64 {} to i1\n", bool_val, bool_i64));
+                            self.ir.push_str(&format!("  call void @roast_print_bool(i1 {})\n", bool_val));
+                            self.ir.push_str("  call void @roast_print_newline()\n");
+                            // Result is 0 (None)
+                            let result_ptr = self.get_place_ptr(destination);
+                            self.ir.push_str(&format!("  store i64 0, i64* {}\n", result_ptr));
+                            if let Some(target) = target {
+                                self.ir.push_str(&format!("  br label %bb{}\n", target));
+                            }
+                            return Ok(());
+                        } else if matches!(arg_ty, Type::Float | Type::Float32 | Type::Float64) {
+                            // Float value - call roast_print_float directly
+                            let float_val = self.generate_operand(&args[0])?;
+                            self.ir.push_str(&format!("  call void @roast_print_float(double {})\n", float_val));
+                            self.ir.push_str("  call void @roast_print_newline()\n");
+                            // Result is 0 (None)
+                            let result_ptr = self.get_place_ptr(destination);
+                            self.ir.push_str(&format!("  store i64 0, i64* {}\n", result_ptr));
+                            if let Some(target) = target {
+                                self.ir.push_str(&format!("  br label %bb{}\n", target));
+                            }
+                            return Ok(());
+                        }
                         args.iter()
                             .map(|a| self.generate_operand_as_i64(a))
                             .collect::<Result<_, _>>()?
@@ -3886,6 +4501,27 @@ impl<'a> FunctionGen<'a> {
                             "  {} = call i64 @roast_range(i64 {}, i64 {}, i64 {})\n",
                             result, start, stop, step
                         ));
+                    } else if func_name == "@roast_enumerate" {
+                        // enumerate(iterable) -> enumerate(iterable, 0)
+                        // enumerate(iterable, start) -> enumerate(iterable, start)
+                        let (iterable, start) = match arg_vals.len() {
+                            1 => (arg_vals[0].clone(), "0".to_string()),
+                            2 => (arg_vals[0].clone(), arg_vals[1].clone()),
+                            _ => return Err(LlvmError::IrGen("enumerate() takes 1-2 arguments".to_string())),
+                        };
+                        self.ir.push_str(&format!(
+                            "  {} = call i64 @roast_enumerate(i64 {}, i64 {})\n",
+                            result, iterable, start
+                        ));
+                    } else if func_name == "@roast_zip" {
+                        // zip(a, b) - requires exactly 2 arguments
+                        if arg_vals.len() != 2 {
+                            return Err(LlvmError::IrGen("zip() takes exactly 2 arguments".to_string()));
+                        }
+                        self.ir.push_str(&format!(
+                            "  {} = call i64 @roast_zip(i64 {}, i64 {})\n",
+                            result, arg_vals[0], arg_vals[1]
+                        ));
                     } else if func_name == "@roast_isinstance" && args.len() == 2 {
                         // Special handling for isinstance(obj, Class)
                         // The second argument is the class type - we need to get the class pointer
@@ -4030,57 +4666,48 @@ impl<'a> FunctionGen<'a> {
                         ));
                     } else if func_name == "@@multi_print@@" {
                         // Special handling for print with multiple arguments
-                        // Print each argument with a space between, newline at end
+                        // Use type-specific print functions for each argument
                         for (i, arg) in args.iter().enumerate() {
                             if i > 0 {
                                 // Print space between arguments
                                 self.ir.push_str("  call void @roast_print_space()\n");
                             }
-                            // Check the type of the argument to call the correct print function
                             let arg_ty = self.operand_type(arg);
-                            let arg_val = self.generate_operand(arg)?;
-                            let _ = self.fresh_value();
-                            match arg_ty {
-                                Type::Float | Type::Float32 | Type::Float64 => {
-                                    self.ir.push_str(&format!("  call void @roast_print_float(double {})\n", arg_val));
-                                }
-                                Type::Bool => {
-                                    // Bool is stored as i64, need to truncate to i1
-                                    let bool_val = self.fresh_value();
-                                    self.ir.push_str(&format!("  {} = trunc i64 {} to i1\n", bool_val, arg_val));
-                                    self.ir.push_str(&format!("  call void @roast_print_bool(i1 {})\n", bool_val));
-                                }
-                                Type::Str => {
-                                    // String is a RoastString pointer (i64) - convert back to pointer
-                                    let ptr = self.fresh_value();
-                                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, arg_val));
-                                    self.ir.push_str(&format!("  call void @roast_print_roast_str(i8* {})\n", ptr));
-                                }
-                                Type::Int | Type::Int32 | Type::Int64 => {
-                                    // Use roast_print_int for integers (no newline)
-                                    self.ir.push_str(&format!("  call void @roast_print_int(i64 {})\n", arg_val));
-                                }
-                                Type::BigInt => {
-                                    // BigInt is a pointer - convert i64 back to i8* and call bigint_print
-                                    let ptr = self.fresh_value();
-                                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, arg_val));
-                                    self.ir.push_str(&format!("  call void @roast_bigint_print(i8* {})\n", ptr));
-                                }
-                                Type::Dict(..) | Type::List(..) | Type::Set(..) | Type::Tuple(..) => {
-                                    // For collections, convert to string first using roast_str, then print
-                                    let str_val = self.fresh_value();
-                                    self.ir.push_str(&format!("  {} = call i64 @roast_str(i64 {})\n", str_val, arg_val));
-                                    let ptr = self.fresh_value();
-                                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", ptr, str_val));
-                                    self.ir.push_str(&format!("  call void @roast_print_roast_str(i8* {})\n", ptr));
-                                }
-                                _ => {
-                                    // Default to roast_print for other values (might add newline)
-                                    self.ir.push_str(&format!("  call i64 @roast_print(i64 {})\n", arg_val));
-                                }
+                            if matches!(arg_ty, Type::Bool) {
+                                // Boolean - use roast_print_bool for True/False output
+                                let bool_val = self.generate_operand(arg)?;
+                                // Convert i64 to i1 for roast_print_bool
+                                let bool_i1 = self.fresh_value();
+                                self.ir.push_str(&format!("  {} = trunc i64 {} to i1\n", bool_i1, bool_val));
+                                self.ir.push_str(&format!("  call void @roast_print_bool(i1 {})\n", bool_i1));
+                            } else if matches!(arg_ty, Type::Float | Type::Float32 | Type::Float64) {
+                                // Float - use roast_print_float
+                                let float_val = self.generate_operand(arg)?;
+                                self.ir.push_str(&format!("  call void @roast_print_float(double {})\n", float_val));
+                            } else if matches!(arg_ty, Type::Str) {
+                                // String - use roast_print_str
+                                // Strings are stored as i64 pointers, convert to i8*
+                                let str_val = self.generate_operand(arg)?;
+                                let str_ptr = self.fresh_value();
+                                self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", str_ptr, str_val));
+                                self.ir.push_str(&format!("  call void @roast_print_str(i8* {})\n", str_ptr));
+                            } else {
+                                // Integer types - use roast_print_int
+                                let int_val = self.generate_operand(arg)?;
+                                self.ir.push_str(&format!("  call void @roast_print_int(i64 {})\n", int_val));
                             }
                         }
                         // Print newline at end
+                        self.ir.push_str("  call void @roast_print_newline()\n");
+                        // Result is 0 (None)
+                        self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
+                    } else if func_name == "@@bool_print@@" {
+                        // Special handling for print(bool) - print True/False with newline
+                        let bool_val = self.generate_operand(&args[0])?;
+                        // Convert i64 to i1 for roast_print_bool
+                        let bool_i1 = self.fresh_value();
+                        self.ir.push_str(&format!("  {} = trunc i64 {} to i1\n", bool_i1, bool_val));
+                        self.ir.push_str(&format!("  call void @roast_print_bool(i1 {})\n", bool_i1));
                         self.ir.push_str("  call void @roast_print_newline()\n");
                         // Result is 0 (None)
                         self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
@@ -4181,18 +4808,20 @@ impl<'a> FunctionGen<'a> {
                     Type::Set(_) => Some("set"),
                     Type::Str => Some("str"),
                     Type::File => Some("file"),
-                    // For untyped (Any) or generic (Var) - try to match method name to determine type
-                    Type::Any | Type::Var(_) => {
-                        // Use method name heuristic to determine collection type
+                    // For untyped (Any), generic (Var), or unknown - infer type from method name
+                    Type::Any | Type::Var(_) | Type::Unknown => {
+                        // Infer type from method name
                         match method_name.as_str() {
-                            "append" | "extend" | "pop" | "insert" | "remove" | "reverse" | "sort" | "copy" | "count" | "index" => Some("list"),
-                            "keys" | "values" | "items" | "get" | "update" | "setdefault" | "popitem" => Some("dict"),
-                            "add" | "discard" | "union" | "intersection" | "difference" => Some("set"),
-                            "upper" | "lower" | "strip" | "split" | "join" | "replace" | "startswith" | "endswith" => Some("str"),
+                            "upper" | "lower" | "strip" | "lstrip" | "rstrip" | 
+                            "split" | "join" | "find" | "rfind" | "replace" |
+                            "startswith" | "endswith" | "format" => Some("str"),
+                            "append" | "pop" | "extend" | "reverse" | "sort" | "insert" | "remove" => Some("list"),
+                            "keys" | "values" | "items" | "update" | "setdefault" => Some("dict"),
+                            "add" | "discard" => Some("set"),
                             "read" | "write" | "readline" | "close" => Some("file"),
                             _ => None,
                         }
-                    },
+                    }
                     _ => None,
                 } {
                     if let Some(runtime_fn) = get_builtin_method_by_kind(collection_kind, &method_name) {
@@ -4231,11 +4860,9 @@ impl<'a> FunctionGen<'a> {
                             self.ir.push_str(&format!("  {} = call {} {}({})\n", result, return_type, format!("@{}", runtime_fn), call_str));
                         }
 
-                        // Store result
-                        if self.locals.contains_key(&destination.local) {
-                            let ptr = self.get_place_ptr(destination);
-                            self.ir.push_str(&format!("  store i64 {}, i64* {}\n", result, ptr));
-                        }
+                        // Store result to destination (always do this, temps may not be in locals map)
+                        let ptr = self.get_place_ptr(destination);
+                        self.ir.push_str(&format!("  store i64 {}, i64* {}\n", result, ptr));
 
                         // Jump to continuation
                         if let Some(target) = target {
@@ -4273,7 +4900,47 @@ impl<'a> FunctionGen<'a> {
                     let args_str = arg_vals.iter().map(|a| format!("i64 {}", a)).collect::<Vec<_>>().join(", ");
                     self.ir.push_str(&format!("  {} = call i64 {}({})\n", result, func_name, args_str));
                 } else {
-                    // Dynamic method dispatch - use runtime method lookup
+                    // Dynamic method dispatch - but first try fallback for builtin methods
+                    // This catches cases where receiver type doesn't match but method name is a builtin
+                    let method_name_fallback = self.codegen.resolve_symbol(method.as_raw())
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "".to_string());
+                    
+                    // If it's a known string method, use builtin dispatch regardless of receiver type
+                    if matches!(method_name_fallback.as_str(), 
+                        "upper" | "lower" | "strip" | "lstrip" | "rstrip" |
+                        "split" | "join" | "find" | "rfind" | "replace" |
+                        "startswith" | "endswith" | "format") {
+                        if let Some(runtime_fn) = get_builtin_method_by_kind("str", &method_name_fallback) {
+                            // Call string builtin method
+                            let receiver_arg = self.i64_to_ptr(&receiver_val);
+                            let mut arg_vals: Vec<String> = vec![receiver_arg.clone()];
+                            for arg in args {
+                                arg_vals.push(self.generate_operand_as_i64(arg)?);
+                            }
+                            let (return_type, call_str) = self.get_builtin_method_signature(runtime_fn, &arg_vals)?;
+                            
+                            if return_type == "i8*" {
+                                let ptr_result = self.fresh_value();
+                                self.ir.push_str(&format!("  {} = call {} @{}({})\n", ptr_result, return_type, runtime_fn, call_str));
+                                self.ir.push_str(&format!("  {} = ptrtoint i8* {} to i64\n", result, ptr_result));
+                            } else {
+                                self.ir.push_str(&format!("  {} = call {} @{}({})\n", result, return_type, runtime_fn, call_str));
+                            }
+                            
+                            // Store result to destination
+                            let ptr = self.get_place_ptr(destination);
+                            self.ir.push_str(&format!("  store i64 {}, i64* {}\n", result, ptr));
+                            
+                            // Jump to continuation
+                            if let Some(target) = target {
+                                self.ir.push_str(&format!("  br label %bb{}\n", target));
+                            }
+                            return Ok(());
+                        }
+                    }
+                    
+                    // Fall through to full dynamic dispatch
                     // Get method name as C string
                     // Note: resolve_symbol might return qualified name like "Child.__init__"
                     // For dynamic dispatch, we need just the method name part
@@ -4333,11 +5000,9 @@ impl<'a> FunctionGen<'a> {
                     }
                 }
 
-                // Store result
-                if self.locals.contains_key(&destination.local) {
-                    let ptr = self.get_place_ptr(destination);
-                    self.ir.push_str(&format!("  store i64 {}, i64* {}\n", result, ptr));
-                }
+                // Store result to destination (always do this, temps may not be in locals map yet)
+                let ptr = self.get_place_ptr(destination);
+                self.ir.push_str(&format!("  store i64 {}, i64* {}\n", result, ptr));
 
                 // Jump to continuation
                 if let Some(target) = target {
@@ -4360,6 +5025,36 @@ impl<'a> FunctionGen<'a> {
                 let next_val = self.fresh_value();
                 self.ir.push_str(&format!(
                     "  {} = call i64 @roast_iter_next(i8* {}, i1* {})\n",
+                    next_val, iter_i8ptr, done_ptr
+                ));
+
+                let is_done = self.fresh_value();
+                self.ir.push_str(&format!("  {} = load i1, i1* {}\n", is_done, done_ptr));
+
+                // Store next value to loop variable
+                let loop_var_ptr = self.locals.get(loop_var).cloned().unwrap_or_else(|| format!("%local{}", loop_var));
+                self.ir.push_str(&format!("  store i64 {}, i64* {}\n", next_val, loop_var_ptr));
+
+                // Branch based on iterator exhaustion
+                self.ir.push_str(&format!("  br i1 {}, label %bb{}, label %bb{}\n", is_done, exit, body));
+            }
+            MirTerminator::AsyncForIter { iter, loop_var, body, exit } => {
+                // Async for: call __anext__ and await the result
+                let iter_ptr = self.get_place_ptr(iter);
+                let iter_val = self.fresh_value();
+                self.ir.push_str(&format!("  {} = load i64, i64* {}\n", iter_val, iter_ptr));
+
+                // Convert iterator to pointer
+                let iter_i8ptr = self.i64_to_ptr(&iter_val);
+
+                // Check if iterator is exhausted
+                let done_ptr = self.fresh_value();
+                self.ir.push_str(&format!("  {} = alloca i1\n", done_ptr));
+
+                // Call async iterator next (roast_aiter_next includes await)
+                let next_val = self.fresh_value();
+                self.ir.push_str(&format!(
+                    "  {} = call i64 @roast_aiter_next(i8* {}, i1* {})\n",
                     next_val, iter_i8ptr, done_ptr
                 ));
 
@@ -4444,10 +5139,21 @@ impl<'a> FunctionGen<'a> {
                 // Create dispatch label if there are handlers with type filters
                 // For now, simplified: just go to first handler (bare except or first typed)
                 let first_handler = handlers.first().map(|h| h.body).unwrap_or(*exit);
+
+                // Create a trampoline block for the handler path to pop the exception frame
+                // We use a fresh value ID for the label
+                let trampoline_label = format!("exc_dispatch_{}", self.fresh_value().replace("%", ""));
+                
                 self.ir.push_str(&format!(
-                    "  br i1 {}, label %bb{}, label %bb{}\n",
-                    is_exc, first_handler, body
+                    "  br i1 {}, label %{}, label %bb{}\n",
+                    is_exc, trampoline_label, body
                 ));
+
+                // Emit the trampoline block
+                self.ir.push_str(&format!("\n{}:\n", trampoline_label));
+                self.ir.push_str("  call void @roast_exception_pop_frame()\n");
+                self.ir.push_str(&format!("  br label %bb{}\n", first_handler));
+
 
                 // Note: Exception type matching and handler dispatch happens in the handler blocks
                 // Each handler block should check roast_exception_matches and branch accordingly
@@ -4463,6 +5169,69 @@ impl<'a> FunctionGen<'a> {
                 }
                 self.ir.push_str("  unreachable\n");
             }
+            MirTerminator::PythonCall { module, func, args, destination, target } => {
+                // Python FFI call - import module, get attribute, and call
+                
+                // Step 1: Create module name string and call roast_py_import
+                let module_str_ptr = self.codegen.add_string(module);
+                let module_str_gep = self.fresh_value();
+                self.ir.push_str(&format!(
+                    "  {} = getelementptr [{} x i8], [{} x i8]* {}, i64 0, i64 0\n",
+                    module_str_gep, module.len() + 1, module.len() + 1, module_str_ptr
+                ));
+                let py_module = self.fresh_value();
+                self.ir.push_str(&format!(
+                    "  {} = call i64 @roast_py_import(i8* {})\n",
+                    py_module, module_str_gep
+                ));
+                
+                // Step 2: Get function name and call roast_py_getattr
+                let func_name = self.codegen.resolve_symbol(func.as_raw())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| format!("func_{}", func.as_raw()));
+                let func_str_ptr = self.codegen.add_string(&func_name);
+                let func_str_gep = self.fresh_value();
+                self.ir.push_str(&format!(
+                    "  {} = getelementptr [{} x i8], [{} x i8]* {}, i64 0, i64 0\n",
+                    func_str_gep, func_name.len() + 1, func_name.len() + 1, func_str_ptr
+                ));
+                let py_func = self.fresh_value();
+                self.ir.push_str(&format!(
+                    "  {} = call i64 @roast_py_getattr(i64 {}, i8* {})\n",
+                    py_func, py_module, func_str_gep
+                ));
+                
+                // Step 3: Build argument list and call roast_py_call
+                // For now, create a list with arguments
+                let arg_list = self.fresh_value();
+                self.ir.push_str(&format!(
+                    "  {} = call i8* @roast_list_new(i64 {})\n",
+                    arg_list, args.len()
+                ));
+                
+                for (i, arg) in args.iter().enumerate() {
+                    let arg_val = self.generate_operand_as_i64(arg)?;
+                    self.ir.push_str(&format!(
+                        "  call void @roast_list_append(i8* {}, i64 {})\n",
+                        arg_list, arg_val
+                    ));
+                }
+                
+                let result = self.fresh_value();
+                self.ir.push_str(&format!(
+                    "  {} = call i64 @roast_py_call(i64 {}, i8* {})\n",
+                    result, py_func, arg_list
+                ));
+                
+                // Store result
+                let ptr = self.get_place_ptr(destination);
+                self.ir.push_str(&format!("  store i64 {}, i64* {}\n", result, ptr));
+                
+                // Jump to continuation
+                if let Some(target) = target {
+                    self.ir.push_str(&format!("  br label %bb{}\n", target));
+                }
+            }
             MirTerminator::Unreachable => {
                 self.ir.push_str("  unreachable\n");
             }
@@ -4471,8 +5240,11 @@ impl<'a> FunctionGen<'a> {
     }
 
     fn get_place_ptr(&self, place: &MirPlace) -> String {
-        self.locals.get(&place.local).cloned().unwrap_or_else(|| format!("%local{}", place.local))
+        let result = self.locals.get(&place.local).cloned().unwrap_or_else(|| format!("%local{}", place.local));
+        // eprintln!("[LLVM DEBUG lookup] local_id={} -> ptr={}", place.local, result);
+        result
     }
+
 
     fn get_place_type(&self, place: &MirPlace) -> Type {
         // Find the type from locals or params

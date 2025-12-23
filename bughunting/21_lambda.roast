@@ -1,0 +1,11 @@
+# Minimal test for lambda bug
+
+def main():
+    print("Testing lambda")
+    
+    double = lambda x: x * 2
+    result: int = double(5)
+    
+    print("double(5) = " + str(result))
+
+main()

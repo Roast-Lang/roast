@@ -7,6 +7,8 @@
 //! - Build system
 //! - Package publishing
 //! - GPU detection and configuration
+//! - Package signing and verification
+//! - Publisher trust management
 
 pub mod config;
 pub mod project;
@@ -22,6 +24,8 @@ pub mod scripts;
 pub mod workspace;
 pub mod pypi;
 pub mod doc;
+pub mod signing;
+pub mod trust;
 
 pub use config::{KitchenConfig, ProjectConfig};
 pub use project::Project;
@@ -35,6 +39,8 @@ pub use lock::Lockfile;
 pub use gpu::GpuInfo;
 pub use workspace::Workspace;
 pub use pypi::{PythonEnv, PyPIClient, PythonPackage};
+pub use signing::{SigningKey, PackageSignature, verify_signature};
+pub use trust::{TrustStore, TrustLevel, TrustDecision, VerificationStatus};
 
 /// Kitchen version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

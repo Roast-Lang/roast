@@ -5,10 +5,11 @@ use std::path::Path;
 use std::fs;
 use serde::{Deserialize, Serialize};
 use crate::deps::{DependencyGraph, ResolvedDependency, ResolvedSource};
+use crate::signing::PackageSignature;
 use crate::{Error, Result};
 
 /// Lockfile version.
-pub const LOCKFILE_VERSION: u32 = 1;
+pub const LOCKFILE_VERSION: u32 = 2;
 
 /// Package lockfile (roast.lock).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,9 +38,17 @@ pub struct LockedPackage {
     /// Source information.
     pub source: String,
     
-    /// Checksum.
+    /// Checksum (SHA256).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub checksum: Option<String>,
+    
+    /// Package signature (base64 encoded).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    
+    /// Publisher key fingerprint.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publisher_fingerprint: Option<String>,
     
     /// Dependencies of this package.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -207,6 +216,8 @@ impl LockedPackage {
             version: dep.version.clone(),
             source,
             checksum: dep.checksum.clone(),
+            signature: None,
+            publisher_fingerprint: None,
             dependencies: dep.dependencies.clone(),
             features: dep.features.clone(),
         }

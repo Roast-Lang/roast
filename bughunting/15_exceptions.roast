@@ -1,0 +1,79 @@
+
+# 15_exceptions.roast
+# Testing Try-Except-Finally and Raise - With Heap Workaround
+
+def can_fail(x: int) -> int:
+    if x < 0:
+        raise "NegativeValue"
+    return x * 2
+
+def verify_basic_try_catch():
+    print("Test 1: Basic Try-Except")
+    res = ""
+    try:
+        can_fail(-1)
+        res = "Failed to catch"
+    except:
+        res = "Caught"
+    
+    if res == "Caught":
+        print("Test 1: OK")
+    else:
+        print("Test 1: FAIL -> " + res)
+
+def verify_finally():
+    print("Test 2: Try-Except-Finally")
+    stage = 0
+    try:
+        stage = 1
+        raise "Error"
+    except:
+        stage = 2
+    finally:
+        stage = 3
+    
+    if stage == 3:
+        print("Test 2: OK")
+    else:
+        print("Test 2: FAIL -> Stage not 3, got " + str(stage))
+
+def verify_nested_try_heap():
+    print("Test 3: Nested Try (Heap Workaround)")
+    # Use a list (heap-allocated) to survive longjmp
+    state = [0, 0]  # [inner_caught, outer_caught]
+    try:
+        try:
+             raise "Inner"
+        except:
+             print("DEBUG: Inner handler entered")
+             state[0] = 1
+             raise "Outer"
+    except:
+         print("DEBUG: Outer handler entered")
+         state[1] = 1
+
+    if state[0] == 1:
+        print("  Inner: OK")
+    else:
+        print("  Inner: FAIL (not caught)")
+    
+    if state[1] == 1:
+        print("  Outer: OK")
+    else:
+        print("  Outer: FAIL (not caught)")
+    
+    if state[0] == 1 and state[1] == 1:
+        print("Test 3: OK")
+    else:
+        print("Test 3: FAIL")
+
+def main():
+    print("=== Exception Handling Test ===")
+    
+    verify_basic_try_catch()
+    verify_finally()
+    verify_nested_try_heap()
+
+    print("=== Exceptions Done ===")
+
+main()

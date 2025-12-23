@@ -33,6 +33,9 @@ impl Symbol {
 
     /// Intrinsic: __make_iter__ - creates an iterator from an iterable
     pub const MAKE_ITER: Symbol = Symbol::from_raw(u32::MAX - 2);
+    
+    /// Intrinsic: __make_aiter__ - creates an async iterator from an async iterable
+    pub const MAKE_AITER: Symbol = Symbol::from_raw(u32::MAX - 3);
 }
 
 impl fmt::Debug for Symbol {

@@ -1,0 +1,55 @@
+# Bug Hunt 7: String Operations
+# Test string methods and operations
+
+def test_string_methods() -> int:
+    s: str = "Hello World"
+    
+    # Length
+    length: int = len(s)
+    print("Length:", length)
+    
+    # Concatenation
+    s2: str = s + "!"
+    print("Concat:", s2)
+    
+    # String multiplication
+    stars: str = "*" * 5
+    print("Stars:", stars)
+    
+    # Upper/lower
+    upper: str = s.upper()
+    lower: str = s.lower()
+    print("Upper:", upper)
+    print("Lower:", lower)
+    
+    return 0
+
+def test_string_slicing() -> int:
+    s: str = "Hello"
+    
+    # Basic slicing
+    first: str = s[0]
+    last: str = s[4]
+    print("First char:", first)
+    print("Last char:", last)
+    
+    return 0
+
+def test_string_comparison() -> int:
+    a: str = "hello"
+    b: str = "hello"
+    c: str = "world"
+    
+    print("'hello' == 'hello':", a == b)
+    print("'hello' == 'world':", a == c)
+    print("'hello' != 'world':", a != c)
+    
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 7: Strings ===")
+    test_string_methods()
+    test_string_slicing()
+    test_string_comparison()
+    print("=== String tests done! ===")
+    return 0

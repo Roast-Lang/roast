@@ -1,0 +1,39 @@
+# Bug Hunt 10: Optional and None
+# Test optional types and None handling
+
+def returns_none() -> None:
+    print("This function returns None")
+
+def maybe_return(x: int) -> int:
+    if x > 0:
+        return x
+    return 0
+
+def test_none_handling() -> int:
+    # Call function that returns None
+    returns_none()
+    
+    # Maybe return
+    result1: int = maybe_return(5)
+    result2: int = maybe_return(-3)
+    print("maybe_return(5):", result1)
+    print("maybe_return(-3):", result2)
+    
+    return 0
+
+def test_default_values() -> int:
+    # Test with explicit None
+    x: int = 0
+    if x == 0:
+        print("x is zero/None-like")
+    else:
+        print("x has value")
+    
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 10: None/Optional ===")
+    test_none_handling()
+    test_default_values()
+    print("=== None tests done! ===")
+    return 0

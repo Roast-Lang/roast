@@ -1,0 +1,28 @@
+# utils/strings.roast - String manipulation utilities
+
+def reverse(s: str) -> str:
+    result = ""
+    i = len(s) - 1
+    while i >= 0:
+        result = result + s[i]
+        i = i - 1
+    return result
+
+def uppercase(s: str) -> str:
+    return s.upper()
+
+def concat(a: str, b: str) -> str:
+    return a + b
+
+class StringBuilder:
+    def __init__(self):
+        self.parts = []
+    
+    def append(self, s: str):
+        self.parts.append(s)
+    
+    def build(self) -> str:
+        result = ""
+        for part in self.parts:
+            result = result + part
+        return result

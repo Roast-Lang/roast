@@ -1,0 +1,4 @@
+# Test string methods
+s = "Hello World"
+print("upper():", s.upper())
+print("lower():", s.lower())

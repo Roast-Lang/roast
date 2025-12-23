@@ -1,0 +1,4 @@
+
+def main():
+    val: nonexist = 10
+    print(val)

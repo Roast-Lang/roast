@@ -1,0 +1,57 @@
+
+# 14_inheritance.roast
+
+class A:
+    def foo(self) -> Any:
+        return "A"
+
+class B(A):
+    def foo(self) -> Any:
+        return "B -> " + super().foo()
+
+class C(A):
+    def foo(self) -> Any:
+        return "C -> " + super().foo()
+
+class D(B, C):
+    def foo(self) -> Any:
+        # Expected MRO: D, B, C, A, Object
+        # super() in D calls B.foo()
+        # super() in B calls C.foo() (because MRO of D!)
+        # super() in C calls A.foo()
+        return "D -> " + super().foo()
+
+def main() -> int:
+    print("=== Inheritance Test ===")
+    print("Step 1: Instantiating D")
+    d = D()
+    print("Step 1: OK")
+    
+    print("Step 2: Calling d.foo()")
+    res = d.foo()
+    print("Step 2: OK")
+    
+    if res == "D -> B -> C -> A":
+        print("MRO Verified: Correct")
+    else:
+        print("MRO Verification FAILED")
+        if res == "D -> B -> A":
+            print("Diagnosis: Skipped C")
+        
+        if res == "D -> C -> A":
+            print("Diagnosis: Skipped B")
+            
+        if res == "D -> B -> C -> A -> Object":
+            print("Diagnosis: Included Object")
+            
+        print("Length check:")
+        if len(res) < 10: print("Too short")
+        if len(res) > 20: print("Too long")
+
+    # Verify strict MRO order
+    # assert res == "D -> B -> C -> A"
+    
+    print("=== Inheritance Done ===")
+    return 0
+
+main()

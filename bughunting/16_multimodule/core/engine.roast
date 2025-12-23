@@ -1,0 +1,44 @@
+# core/engine.roast - Core application engine
+
+from utils.math_ops import Calculator, add, factorial
+from utils.strings import StringBuilder, reverse
+from models.person import Employee
+from models.product import Product, DiscountedProduct
+
+class Engine:
+    def __init__(self):
+        self.calc = Calculator()
+        self.sb = StringBuilder()
+        self.employees = []
+        self.products = []
+    
+    def add_employee(self, name: str, age: int, title: str):
+        emp = Employee(name, age, title)
+        self.employees.append(emp)
+    
+    def add_product(self, name: str, price: int, qty: int):
+        prod = Product(name, price, qty)
+        self.products.append(prod)
+    
+    def compute_total_inventory(self) -> int:
+        total = 0
+        for prod in self.products:
+            total = add(total, prod.total_value())
+        return total
+    
+    def generate_report(self) -> str:
+        self.sb.append("=== Report ===\n")
+        self.sb.append("Employees: " + str(len(self.employees)) + "\n")
+        for emp in self.employees:
+            self.sb.append("  - " + emp.greet() + "\n")
+        self.sb.append("Products: " + str(len(self.products)) + "\n")
+        for prod in self.products:
+            self.sb.append("  - " + prod.description() + "\n")
+        self.sb.append("Total Inventory Value: $" + str(self.compute_total_inventory()) + "\n")
+        return self.sb.build()
+
+def run_factorial_test(n: int) -> int:
+    return factorial(n)
+
+def run_string_test(s: str) -> str:
+    return reverse(s)

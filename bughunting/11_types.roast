@@ -1,0 +1,57 @@
+# Bug Hunt 11: Type System
+# Test type annotations and inference
+
+def test_type_inference() -> int:
+    # Inferred types
+    a = 10
+    b = 20
+    c = a + b
+    print("Inferred int addition:", c)
+    
+    x = 3.14
+    y = 2.0
+    z = x * y
+    print("Inferred float multiply:", z)
+    
+    s1 = "Hello"
+    s2 = " Types"
+    s3 = s1 + s2
+    print("Inferred string concat:", s3)
+    
+    return 0
+
+def test_explicit_types() -> int:
+    # Explicit types
+    a: int = 100
+    b: float = 10.5
+    s: str = "Explicit"
+    
+    print("Explicit types:", a, b, s)
+    
+    return 0
+
+def test_mixed_operations() -> int:
+    # Mixed int/float (should result in float)
+    i: int = 10
+    f: float = 2.5
+    
+    # Needs explicit casting or should work if supported
+    # In many languages i + f works. Let's test if Roast supports it.
+    # Based on previous tests, we might need to be careful, but let's try.
+    
+    # Mixed int/float requires explicit conversion in strict mode
+    res1: float = float(i) + f
+    print("10 + 2.5 =", res1)
+    
+    res2: float = f * float(i)
+    print("2.5 * 10 =", res2)
+    
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 11: Types ===")
+    test_type_inference()
+    test_explicit_types()
+    test_mixed_operations()
+    print("=== Type tests done! ===")
+    return 0

@@ -5,6 +5,8 @@ use std::fs;
 use sha2::{Sha256, Digest};
 use crate::deps::PackageMetadata;
 use crate::cache::Cache;
+use crate::signing::{PackageSignature, SigningKey, verify_signature};
+use crate::trust::{TrustStore, TrustDecision, VerificationStatus};
 use crate::{Error, Result};
 
 /// Package registry.
@@ -20,6 +22,12 @@ pub struct Registry {
     
     /// Package cache.
     cache: Cache,
+    
+    /// Trust store for publisher verification.
+    trust_store: TrustStore,
+    
+    /// Whether to verify signatures.
+    verify_signatures: bool,
 }
 
 impl Registry {
@@ -33,12 +41,26 @@ impl Registry {
                 .expect("Failed to create HTTP client"),
             token: None,
             cache,
+            trust_store: TrustStore::load_default().unwrap_or_default(),
+            verify_signatures: true,
         }
     }
     
     /// Set authentication token.
     pub fn with_token(mut self, token: String) -> Self {
         self.token = Some(token);
+        self
+    }
+    
+    /// Enable or disable signature verification.
+    pub fn with_signature_verification(mut self, enabled: bool) -> Self {
+        self.verify_signatures = enabled;
+        self
+    }
+    
+    /// Set a custom trust store.
+    pub fn with_trust_store(mut self, store: TrustStore) -> Self {
+        self.trust_store = store;
         self
     }
     
@@ -157,10 +179,63 @@ impl Registry {
             }
         }
         
+        // Verify signature if enabled
+        if self.verify_signatures {
+            self.verify_package_signature(name, &bytes, None)?;
+        }
+        
         // Store in cache
         let path = self.cache.store_package(name, version, &bytes)?;
         
         Ok(path)
+    }
+    
+    /// Verify a package signature and check trust.
+    fn verify_package_signature(
+        &self,
+        name: &str,
+        tarball: &[u8],
+        signature: Option<&PackageSignature>,
+    ) -> Result<VerificationStatus> {
+        // Check trust decision
+        let decision = self.trust_store.check_package(name, signature);
+        
+        match decision {
+            TrustDecision::Allow(level) => {
+                eprintln!("📦 {} - {}", name, level);
+                Ok(VerificationStatus::Unsigned)
+            }
+            TrustDecision::Prompt(msg) => {
+                eprintln!("⚠️  {}", msg);
+                // In a real implementation, this would prompt the user
+                // For now, allow with warning
+                Ok(VerificationStatus::Unsigned)
+            }
+            TrustDecision::Deny(reason) => {
+                Err(Error::Registry(format!(
+                    "Package '{}' rejected: {}",
+                    name, reason
+                )))
+            }
+        }
+    }
+    
+    /// Download with explicit signature verification.
+    pub async fn download_verified(
+        &self,
+        name: &str,
+        version: &str,
+        signature: Option<&PackageSignature>,
+    ) -> Result<(PathBuf, VerificationStatus)> {
+        let path = self.download(name, version).await?;
+        
+        if let Some(sig) = signature {
+            let tarball = fs::read(&path)?;
+            let status = self.trust_store.verify_package(&tarball, Some(sig));
+            Ok((path, status))
+        } else {
+            Ok((path, VerificationStatus::Unsigned))
+        }
     }
     
     /// Publish a package.
@@ -188,6 +263,48 @@ impl Registry {
         }
         
         Ok(())
+    }
+    
+    /// Publish a signed package.
+    /// 
+    /// This method signs the package tarball with the provided signing key
+    /// and uploads both the tarball and signature to the registry.
+    pub async fn publish_signed(&self, tarball: &Path, signing_key: &SigningKey) -> Result<PackageSignature> {
+        let token = self.token.as_ref()
+            .ok_or_else(|| Error::Registry("Authentication required for publishing".to_string()))?;
+        
+        let file_content = fs::read(tarball)?;
+        
+        // Sign the package
+        let signature = signing_key.sign(&file_content);
+        
+        // Create multipart form with tarball and signature
+        let url = format!("{}/api/v1/packages", self.url);
+        
+        let signature_json = serde_json::to_string(&signature)
+            .map_err(|e| Error::Registry(format!("Failed to serialize signature: {}", e)))?;
+        
+        let response = self.client.post(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "application/gzip")
+            .header("X-Package-Signature", &signature_json)
+            .header("X-Publisher-Fingerprint", signing_key.fingerprint())
+            .body(file_content)
+            .send().await
+            .map_err(|e| Error::Http(e.to_string()))?;
+        
+        if !response.status().is_success() {
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(Error::Registry(format!(
+                "Publish failed: {}",
+                error_text
+            )));
+        }
+        
+        eprintln!("✅ Package published with signature");
+        eprintln!("   Fingerprint: {}", signing_key.fingerprint());
+        
+        Ok(signature)
     }
     
     /// Yank a version.

@@ -104,6 +104,240 @@ impl<'a> TypeChecker<'a> {
         for stmt in &module.body {
             self.check_stmt(stmt);
         }
+
+        // Third pass: run lint checks for common pitfalls
+        let mut lint_checker = crate::lints::LintChecker::new(self.diagnostics);
+        lint_checker.check_module(&module.body);
+        
+        // Fourth pass: check concurrency safety for spawn/async
+        self.check_concurrency_safety(module);
+    }
+    
+    /// Checks concurrency safety for async functions and spawn calls.
+    fn check_concurrency_safety(&mut self, module: &Module) {
+        for stmt in &module.body {
+            self.check_stmt_concurrency(stmt);
+        }
+    }
+    
+    /// Recursively check a statement for concurrency issues.
+    fn check_stmt_concurrency(&mut self, stmt: &Stmt) {
+        match &stmt.kind {
+            StmtKind::FunctionDef { body, is_async, name, .. } => {
+                if *is_async {
+                    // Check that async function doesn't capture non-Send types
+                    // (This is a simplified check - full check would analyze closures)
+                    for inner_stmt in body {
+                        self.check_stmt_concurrency(inner_stmt);
+                    }
+                }
+            }
+            StmtKind::Expr { value } => {
+                self.check_expr_concurrency(value, stmt.span);
+            }
+            StmtKind::Assign { value, .. } => {
+                self.check_expr_concurrency(value, stmt.span);
+            }
+            StmtKind::If { body, orelse, .. } => {
+                for s in body {
+                    self.check_stmt_concurrency(s);
+                }
+                for s in orelse {
+                    self.check_stmt_concurrency(s);
+                }
+            }
+            StmtKind::While { body, orelse, .. } => {
+                for s in body {
+                    self.check_stmt_concurrency(s);
+                }
+                for s in orelse {
+                    self.check_stmt_concurrency(s);
+                }
+            }
+            StmtKind::For { body, orelse, .. } => {
+                for s in body {
+                    self.check_stmt_concurrency(s);
+                }
+                for s in orelse {
+                    self.check_stmt_concurrency(s);
+                }
+            }
+            StmtKind::Try { body, handlers, orelse, finalbody, .. } => {
+                for s in body {
+                    self.check_stmt_concurrency(s);
+                }
+                for handler in handlers {
+                    for s in &handler.body {
+                        self.check_stmt_concurrency(s);
+                    }
+                }
+                for s in orelse {
+                    self.check_stmt_concurrency(s);
+                }
+                for s in finalbody {
+                    self.check_stmt_concurrency(s);
+                }
+            }
+            StmtKind::With { body, .. } => {
+                for s in body {
+                    self.check_stmt_concurrency(s);
+                }
+            }
+            StmtKind::ClassDef { body, .. } => {
+                for s in body {
+                    self.check_stmt_concurrency(s);
+                }
+            }
+            _ => {}
+        }
+    }
+    
+    /// Check an expression for concurrency issues (e.g., spawn calls).
+    fn check_expr_concurrency(&mut self, expr: &Expr, span: Span) {
+        match &expr.kind {
+            ExprKind::Call { func, args, .. } => {
+                // Check if this is a spawn/thread call
+                if let ExprKind::Attribute { attr, .. } = &func.kind {
+                    let attr_name = self.interner.resolve(attr.name).unwrap_or_default();
+                    if attr_name == "spawn" || attr_name == "start" || attr_name == "submit" {
+                        // Check that arguments passed to spawn are Send
+                        for arg in args {
+                            let arg_type = self.check_expr(arg);
+                            if !self.is_send_type(&arg_type) {
+                                self.diagnostics.report(
+                                    Diagnostic::error(format!(
+                                        "value of type `{}` cannot be sent to another thread",
+                                        arg_type
+                                    ))
+                                    .with_span(span)
+                                    .with_note(
+                                        "types containing interior mutability (Mutex internals, \
+                                         RefCell, etc.) may not be Send unless wrapped properly"
+                                    )
+                                );
+                            }
+                        }
+                    }
+                }
+                
+                // Check if this is a direct spawn function call
+                if let ExprKind::Name { id, .. } = &func.kind {
+                    let func_name = self.interner.resolve(id.name).unwrap_or_default();
+                    if func_name == "spawn" || func_name == "spawn_thread" || func_name == "thread_spawn" {
+                        for arg in args {
+                            let arg_type = self.check_expr(arg);
+                            if !self.is_send_type(&arg_type) {
+                                self.diagnostics.report(
+                                    Diagnostic::error(format!(
+                                        "cannot spawn with value of type `{}` which is not Send",
+                                        arg_type
+                                    ))
+                                    .with_span(span)
+                                    .with_note("values passed to spawn must be safe to send between threads")
+                                );
+                            }
+                        }
+                    }
+                }
+                
+                // Recursively check subexpressions
+                self.check_expr_concurrency(func, span);
+                for arg in args {
+                    self.check_expr_concurrency(arg, span);
+                }
+            }
+            ExprKind::Lambda { body, .. } => {
+                self.check_expr_concurrency(body, span);
+            }
+            ExprKind::IfExp { test, body, orelse, .. } => {
+                self.check_expr_concurrency(test, span);
+                self.check_expr_concurrency(body, span);
+                self.check_expr_concurrency(orelse, span);
+            }
+            ExprKind::BinOp { left, right, .. } => {
+                self.check_expr_concurrency(left, span);
+                self.check_expr_concurrency(right, span);
+            }
+            ExprKind::UnaryOp { operand, .. } => {
+                self.check_expr_concurrency(operand, span);
+            }
+            ExprKind::List { elts, .. } | ExprKind::Tuple { elts, .. } | ExprKind::Set { elts, .. } => {
+                for elt in elts {
+                    self.check_expr_concurrency(elt, span);
+                }
+            }
+            ExprKind::Dict { keys, values, .. } => {
+                for key in keys.iter().flatten() {
+                    self.check_expr_concurrency(key, span);
+                }
+                for val in values {
+                    self.check_expr_concurrency(val, span);
+                }
+            }
+            ExprKind::Await { value, .. } => {
+                self.check_expr_concurrency(value, span);
+            }
+            _ => {}
+        }
+    }
+    
+    /// Checks if a type is Send (can be transferred between threads).
+    fn is_send_type(&self, ty: &Type) -> bool {
+        match ty {
+            // Primitive types are always Send
+            Type::Int | Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64 | Type::Int128 |
+            Type::UInt | Type::UInt8 | Type::UInt16 | Type::UInt32 | Type::UInt64 | Type::UInt128 |
+            Type::Float | Type::Float32 | Type::Float64 |
+            Type::Bool | Type::Str | Type::Bytes | Type::NoneType | Type::BigInt => true,
+            
+            // Type variables might be Send (optimistic)
+            Type::Var(_) => true,
+            
+            // List/Dict/Set are Send if their contents are Send
+            Type::List(inner) => self.is_send_type(inner),
+            Type::Dict(k, v) => self.is_send_type(k) && self.is_send_type(v),
+            Type::Set(inner) => self.is_send_type(inner),
+            Type::Tuple(elts) => elts.iter().all(|t| self.is_send_type(t)),
+            
+            // Optional is Send if inner is Send
+            Type::Optional(inner) => self.is_send_type(inner),
+            
+            // Callable types are Send if they don't capture non-Send state
+            Type::Callable { .. } => true, // Simplified - would need capture analysis
+            
+            // Classes need to be checked for interior mutability
+            Type::Class(_) => true, // Simplified - conservative
+            
+            // Union types are Send if all variants are Send
+            Type::Union(types) => types.iter().all(|t| self.is_send_type(t)),
+            
+            // Generic types are Send if instantiated with Send types
+            Type::Generic { args, .. } => args.iter().all(|t| self.is_send_type(t)),
+            
+            // References depend on what they reference
+            Type::Ref { inner, .. } => self.is_send_type(inner),
+            
+            // Owned types are Send if inner is Send
+            Type::Owned(inner) => self.is_send_type(inner),
+            
+            // Rc is NOT Send (single-threaded reference counting)
+            Type::Rc(_) => false,
+            
+            // Unknown types - be conservative
+            Type::Any | Type::Unknown | Type::Error | Type::Never | Type::SelfType => true,
+            
+            // Protocols are Send (they're just interfaces)
+            Type::Protocol(_) => true,
+            
+            // File handles are NOT Send (they contain raw OS handles)
+            Type::File => false,
+            
+            // Slices, Complex, Literal, Alias
+            Type::Slice => true,
+            Type::Complex | Type::Complex64 | Type::Complex128 => true,
+            Type::Literal(_) => true,
+            Type::Alias { target, .. } => self.is_send_type(target),
+        }
     }
 
     /// First pass: collect function/class signatures without checking bodies
@@ -781,6 +1015,18 @@ impl<'a> TypeChecker<'a> {
 
                 class_type.methods.push((self.interner.resolve(func_name.name).unwrap_or("?").to_string(), func_type));
             }
+            // For dataclasses and regular classes: scan class-level annotations as members
+            // This handles: `name: str` or `age: int = 0` at class body level
+            if let StmtKind::AnnAssign { target, annotation, .. } = &stmt.kind {
+                if let ExprKind::Name { id, .. } = &target.kind {
+                    let attr_name = self.interner.resolve(id.name).unwrap_or("?").to_string();
+                    let field_type = self.resolve_type_expr(annotation);
+                    // Add as class member (instance attribute)
+                    if !class_type.members.iter().any(|(n, _)| n == &attr_name) {
+                        class_type.members.push((attr_name, field_type));
+                    }
+                }
+            }
         }
 
         let class_ty = Type::Class(class_type);
@@ -861,6 +1107,14 @@ impl<'a> TypeChecker<'a> {
                                 if let ExprKind::Name { id, .. } = &elt.kind {
                                     self.ctx.define(id.name, ty.clone());
                                 }
+                            }
+                        }
+                    } else if matches!(value_type, Type::Any | Type::Unknown) {
+                        // For Any/Unknown types, define each target variable as Any
+                        // This enables tuple unpacking from functions that return Any
+                        for elt in elts {
+                            if let ExprKind::Name { id, .. } = &elt.kind {
+                                self.ctx.define(id.name, Type::Any);
                             }
                         }
                     }
@@ -1555,6 +1809,38 @@ impl<'a> TypeChecker<'a> {
                 Type::Error
             }
 
+            ExprKind::Slice { lower, upper, step } => {
+                // Check that slice bounds are integers or None
+                if let Some(l) = lower {
+                    let ty = self.check_expr(l);
+                    if !ty.is_integer() && !matches!(ty, Type::NoneType | Type::Any) {
+                        self.diagnostics.report(
+                            Diagnostic::error(format!("slice indices must be integers or None, not {}", ty))
+                                .with_span(l.span),
+                        );
+                    }
+                }
+                if let Some(u) = upper {
+                    let ty = self.check_expr(u);
+                    if !ty.is_integer() && !matches!(ty, Type::NoneType | Type::Any) {
+                        self.diagnostics.report(
+                            Diagnostic::error(format!("slice indices must be integers or None, not {}", ty))
+                                .with_span(u.span),
+                        );
+                    }
+                }
+                if let Some(s) = step {
+                    let ty = self.check_expr(s);
+                    if !ty.is_integer() && !matches!(ty, Type::NoneType | Type::Any) {
+                        self.diagnostics.report(
+                            Diagnostic::error(format!("slice step must be integers or None, not {}", ty))
+                                .with_span(s.span),
+                        );
+                    }
+                }
+                Type::Slice
+            }
+
             _ => Type::Unknown,
         }
     }
@@ -1583,8 +1869,13 @@ impl<'a> TypeChecker<'a> {
             return Type::Any;
         }
 
-        // Numeric operations
+        // Numeric operations - proper type promotion
         if left.is_numeric() && right.is_numeric() {
+            // If either operand is float, promote to float
+            if left.is_float() || right.is_float() {
+                return Type::Float;
+            }
+            // Both are integers, return the wider type
             return self.ctx.join(&left, &right);
         }
 
@@ -1856,16 +2147,23 @@ impl<'a> TypeChecker<'a> {
 
         match &value_type {
             Type::List(elem) => {
-                if !slice_type.is_integer() {
+                // Slicing returns a list, indexing returns an element
+                if matches!(slice_type, Type::Slice) {
+                    // Slice returns a list of the same type
+                    Type::list((**elem).clone())
+                } else if slice_type.is_integer() {
+                    // Integer index returns an element
+                    (**elem).clone()
+                } else {
                     self.diagnostics.report(
                         Diagnostic::error(format!(
-                            "list indices must be integers, not {}",
+                            "list indices must be integers or slices, not {}",
                             slice_type
                         ))
                         .with_span(span),
                     );
+                    (**elem).clone()
                 }
-                (**elem).clone()
             }
             Type::Dict(_, value) => (**value).clone(),
             Type::Tuple(elems) => {

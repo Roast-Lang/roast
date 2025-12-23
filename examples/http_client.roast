@@ -1,0 +1,25 @@
+# HTTP Client Example
+# Demonstrates making HTTP requests in Roast
+
+def main():
+    print("=== Roast HTTP Client Demo ===")
+    print("")
+    
+    # Simple GET request
+    print("Fetching data from httpbin.org...")
+    # Note: The http module needs to be imported from Roast stdlib
+    # For now, this demonstrates the syntax that will be available
+    
+    url = "https://httpbin.org/get"
+    print(f"URL: {url}")
+    
+    # When fully integrated, usage will be:
+    # response = http.get(url)
+    # print(f"Response: {response}")
+    
+    print("")
+    print("HTTP client example complete!")
+
+
+if __name__ == "__main__":
+    main()

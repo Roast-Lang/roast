@@ -1,0 +1,16 @@
+# Debug recursive call return values
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+def fib(n: int) -> int:
+    if n <= 1:
+        return n
+    left: int = fib(n - 1)
+    right: int = fib(n - 2)
+    print(f"fib({n}): left={left}, right={right}, sum={left + right}")
+    return left + right
+
+print("Testing fib(3):")
+result: int = fib(3)
+print(f"Result: {result}")

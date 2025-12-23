@@ -311,6 +311,12 @@ fn remap_terminator(
             body: block_offset + body,
             exit: block_offset + exit,
         },
+        MirTerminator::AsyncForIter { iter, loop_var, body, exit } => MirTerminator::AsyncForIter {
+            iter: remap_place(iter, locals),
+            loop_var: *locals.get(loop_var).unwrap_or(loop_var),
+            body: block_offset + body,
+            exit: block_offset + exit,
+        },
         MirTerminator::Unreachable => MirTerminator::Unreachable,
         MirTerminator::TryBegin { body: try_body, handlers, finally, exit } => {
             let remapped_handlers = handlers.iter().map(|h| MirExceptHandler {
@@ -333,6 +339,13 @@ fn remap_terminator(
             receiver_class: receiver_class.clone(),
             receiver_type: receiver_type.clone(),
             method: *method,
+            args: args.iter().map(|a| remap_operand(a, locals)).collect(),
+            destination: remap_place(destination, locals),
+            target: target.map(|t| block_offset + t),
+        },
+        MirTerminator::PythonCall { module, func, args, destination, target } => MirTerminator::PythonCall {
+            module: module.clone(),
+            func: *func,
             args: args.iter().map(|a| remap_operand(a, locals)).collect(),
             destination: remap_place(destination, locals),
             target: target.map(|t| block_offset + t),

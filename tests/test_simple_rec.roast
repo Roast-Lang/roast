@@ -1,0 +1,15 @@
+# Very simple test to isolate the issue
+
+def simple_rec(n: int) -> int:
+    print(f"Called with n={n}")
+    if n <= 1:
+        print("Returning base case")
+        return n
+    print("Making recursive call")
+    result: int = simple_rec(n - 1) + 1
+    print(f"Returning {result}")
+    return result
+
+print("Starting test:")
+x: int = simple_rec(3)
+print(f"Final result: {x}")

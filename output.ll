@@ -2,17 +2,7 @@
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@.str.7 = private unnamed_addr constant [3 x i8] c"lo\00"
-@.str.2 = private unnamed_addr constant [12 x i8] c"hello world\00"
-@.str.0 = private unnamed_addr constant [23 x i8] c"=== String Methods ===\00"
-@.str.3 = private unnamed_addr constant [6 x i8] c"world\00"
-@.str.6 = private unnamed_addr constant [4 x i8] c"hel\00"
-@.str.5 = private unnamed_addr constant [6 x i8] c"hello\00"
-@.str.1 = private unnamed_addr constant [16 x i8] c"hello,world,foo\00"
-@.str.10 = private unnamed_addr constant [21 x i8] c"=== List Methods ===\00"
-@.str.8 = private unnamed_addr constant [9 x i8] c"   hello\00"
-@.str.9 = private unnamed_addr constant [9 x i8] c"hello   \00"
-@.str.4 = private unnamed_addr constant [6 x i8] c"roast\00"
+@.str.0 = private unnamed_addr constant [12 x i8] c"Hello World\00"
 
 ; C standard library
 declare i32 @printf(i8*, ...) nounwind
@@ -34,8 +24,10 @@ declare double @cos(double) nounwind
 declare void @roast_print_int(i64) nounwind
 declare void @roast_print_float(double) nounwind
 declare void @roast_print_str(i8*) nounwind
+declare void @roast_print_roast_str(i8*) nounwind
 declare void @roast_print_bool(i1) nounwind
 declare void @roast_print_newline() nounwind
+declare void @roast_print_space() nounwind
 
 ; Memory management
 declare i8* @roast_alloc(i64) nounwind
@@ -65,6 +57,7 @@ declare i64 @roast_str_rfind(i8*, i8*) nounwind
 declare i8* @roast_str_replace(i8*, i8*, i8*) nounwind
 declare i1 @roast_str_startswith(i8*, i8*) nounwind
 declare i1 @roast_str_endswith(i8*, i8*) nounwind
+declare i1 @roast_str_contains(i8*, i8*) nounwind
 declare i8* @roast_str_index(i8*, i64) nounwind
 declare i64 @roast_str_count(i8*, i8*) nounwind
 declare i8* @roast_str_repeat(i8*, i64) nounwind
@@ -79,6 +72,7 @@ declare i64 @roast_list_len(i8*) nounwind
 declare i64 @roast_list_pop(i8*) nounwind
 declare i1 @roast_list_contains(i8*, i64) nounwind
 declare i64 @roast_subscript_get(i64, i64) nounwind
+declare void @roast_subscript_set(i64, i64, i64) nounwind
 declare i64 @roast_list_count(i8*, i64) nounwind
 declare void @roast_list_sort(i8*) nounwind
 declare i64 @roast_list_pop_at(i8*, i64) nounwind
@@ -90,6 +84,7 @@ declare i64 @roast_list_index(i8*, i64) nounwind
 declare i8* @roast_list_copy(i8*) nounwind
 declare void @roast_list_extend(i8*, i8*) nounwind
 declare i8* @roast_list_slice(i8*, i64, i64, i64) nounwind
+declare i1 @roast_list_eq(i8*, i8*) nounwind
 
 ; Dict operations
 declare i8* @roast_dict_new() nounwind
@@ -107,10 +102,12 @@ declare i64 @roast_dict_pop(i8*, i64, i64) nounwind
 declare void @roast_dict_update(i8*, i8*) nounwind
 declare i8* @roast_dict_copy(i8*) nounwind
 declare i64 @roast_dict_setdefault(i8*, i64, i64) nounwind
+declare i1 @roast_dict_eq(i8*, i8*) nounwind
 
 ; Set operations
 declare i8* @roast_set_new() nounwind
 declare void @roast_set_add(i8*, i64) nounwind
+declare void @roast_set_remove(i8*, i64) nounwind
 declare i1 @roast_set_contains(i8*, i64) nounwind
 declare i64 @roast_set_len(i8*) nounwind
 
@@ -120,6 +117,14 @@ declare void @roast_tuple_set(i8*, i64, i64) nounwind
 declare i64 @roast_tuple_get(i8*, i64) nounwind
 declare i64 @roast_tuple_len(i8*) nounwind
 
+; BigInt operations
+declare i8* @roast_bigint_from_i64(i64) nounwind
+declare i8* @roast_bigint_add(i8*, i8*) nounwind
+declare i8* @roast_bigint_sub(i8*, i8*) nounwind
+declare i8* @roast_bigint_mul(i8*, i8*) nounwind
+declare i8* @roast_bigint_to_str(i8*) nounwind
+declare void @roast_bigint_print(i8*) nounwind
+
 ; Iterator operations
 declare i8* @roast_iter_new(i8*) nounwind
 declare i64 @roast_iter_next(i8*, i1*) nounwind
@@ -128,12 +133,14 @@ declare i8* @roast_range_new(i64, i64, i64) nounwind
 ; Object operations
 declare i8* @roast_object_new(i8*) nounwind
 declare i8* @roast_class_new(i8*, i8*) nounwind
+declare void @roast_class_add_method(i8*, i8*, i64) nounwind
 declare i64 @roast_object_getattr(i8*, i8*) nounwind
 declare i64 @roast_object_getattr_auto(i8*, i8*, i64) nounwind
 declare void @roast_object_setattr(i8*, i8*, i64) nounwind
 declare i1 @roast_object_hasattr(i8*, i8*) nounwind
 declare i64 @roast_object_call_method0(i64, i8*) nounwind
 declare i64 @roast_object_call_method1(i64, i8*, i64) nounwind
+declare i64 @roast_object_call_method2(i64, i8*, i64, i64) nounwind
 
 ; Dunder method operations
 declare i8* @roast_object_str(i64) nounwind
@@ -163,9 +170,16 @@ declare i64 @roast_pow_int(i64, i64) nounwind
 declare double @roast_pow_float(double, double) nounwind
 declare i64 @roast_abs_int(i64) nounwind
 declare double @roast_abs_float(double) nounwind
+declare i64 @roast_floordiv(i64, i64) nounwind
+declare i64 @roast_mod(i64, i64) nounwind
 
 ; Async operations
 declare i64 @roast_await(i8*) nounwind
+declare i64 @roast_asyncio_run(i64) nounwind
+declare i64 @roast_asyncio_sleep(double) nounwind
+; Reference counting
+declare i64 @roast_rc_create(i64) nounwind
+declare i64 @roast_rc_get(i64) nounwind
 
 ; Error handling
 declare i32 @setjmp(i8*) nounwind returns_twice
@@ -198,8 +212,18 @@ declare i64 @roast_property_get(i8*, i64) nounwind
 declare void @roast_property_set(i8*, i64, i64) nounwind
 declare i64 @roast_is_property(i64) nounwind
 
+; Type constants
+@roast_type_int = external global i64
+@roast_type_float = external global i64
+@roast_type_str = external global i64
+@roast_type_bool = external global i64
+@roast_type_list = external global i64
+@roast_type_dict = external global i64
+@roast_type_none = external global i64
+
 ; Builtin functions
 declare i64 @roast_print(i64) nounwind
+declare i64 @roast_print_value(i64) nounwind
 declare i64 @roast_len(i64) nounwind
 declare i64 @roast_type(i64) nounwind
 declare i64 @roast_int(i64) nounwind
@@ -211,19 +235,22 @@ declare i64 @roast_dict(i64) nounwind
 declare i64 @roast_set(i64) nounwind
 declare i64 @roast_tuple(i64) nounwind
 declare i64 @roast_range(i64, i64, i64) nounwind
+declare i64 @roast_enumerate(i64, i64) nounwind
+declare i64 @roast_zip(i64, i64) nounwind
 declare i64 @roast_abs(i64) nounwind
 declare i64 @roast_min(i64, i64) nounwind
 declare i64 @roast_max(i64, i64) nounwind
+declare i64 @roast_min_list(i64) nounwind
+declare i64 @roast_max_list(i64) nounwind
 declare i64 @roast_sum(i64) nounwind
 declare i64 @roast_sorted(i64) nounwind
 declare i64 @roast_reversed(i64) nounwind
-declare i64 @roast_enumerate(i64, i64) nounwind
-declare i64 @roast_zip(i64, i64) nounwind
 declare i64 @roast_map(i64, i64) nounwind
 declare i64 @roast_filter(i64, i64) nounwind
 declare i64 @roast_input(i64) nounwind
 declare i64 @roast_ord(i64) nounwind
 declare i64 @roast_chr(i64) nounwind
+declare void @roast_class_set_mro(i8*, i8*) nounwind
 declare i64 @roast_repr(i64) nounwind
 declare i64 @roast_hash(i64) nounwind
 declare i64 @roast_id(i64) nounwind
@@ -236,249 +263,39 @@ declare i64 @roast_setattr(i64, i64, i64) nounwind
 declare i64 @roast_all(i64) nounwind
 declare i64 @roast_any(i64) nounwind
 declare i64 @roast_pow(i64, i64) nounwind
+declare i64 @roast_open(i64, i64) nounwind
+declare i64 @roast_file_read(i64) nounwind
+declare i64 @roast_file_write(i64, i64) nounwind
+declare void @roast_file_close(i64) nounwind
+declare i64 @roast_file_readline(i64) nounwind
 
-define void @roast_fn_164() {
-entry:
-  %v0 = call i64 @roast_fn_110()
-  br label %bb1
-bb1:
-  ret void
-}
-
-define void @roast_fn_110() {
-entry:
-  %v0 = call i64 @roast_fn_87()
-  br label %bb1
-bb1:
-  %v1 = call i64 @roast_fn_100()
-  br label %bb2
-bb2:
-  ret void
-}
-
-define void @roast_fn_87() {
+define i64 @roast_fn_146() {
 entry:
   %v0 = alloca i64
-  %v1 = alloca i64
-  %v2 = alloca i64
-  %v3 = alloca i64
-  %v4 = alloca i64
-  %v5 = alloca i64
-  %v6 = alloca i64
-  %v7 = alloca i64
-  %v8 = alloca i64
-  %v9 = alloca i64
-  %v10 = alloca i64
-  %v11 = getelementptr [23 x i8], [23 x i8]* @.str.0, i64 0, i64 0
-  %v12 = call i8* @roast_str_new(i8* %v11, i64 22)
-  %v13 = ptrtoint i8* %v12 to i64
-  %v14 = call i64 @roast_print(i64 %v13)
+  %v1 = call i64 @roast_fn_87()
+  store i64 %v1, i64* %v0
   br label %bb1
 bb1:
-  %v15 = getelementptr [16 x i8], [16 x i8]* @.str.1, i64 0, i64 0
-  %v16 = call i8* @roast_str_new(i8* %v15, i64 15)
-  %v17 = ptrtoint i8* %v16 to i64
-  store i64 %v17, i64* %v0
-  %v18 = getelementptr [12 x i8], [12 x i8]* @.str.2, i64 0, i64 0
-  %v19 = call i8* @roast_str_new(i8* %v18, i64 11)
-  %v20 = ptrtoint i8* %v19 to i64
-  %v22 = inttoptr i64 %v20 to i8*
-  %v23 = getelementptr [6 x i8], [6 x i8]* @.str.3, i64 0, i64 0
-  %v24 = call i8* @roast_str_new(i8* %v23, i64 5)
-  %v25 = ptrtoint i8* %v24 to i64
-  %v26 = getelementptr [6 x i8], [6 x i8]* @.str.4, i64 0, i64 0
-  %v27 = call i8* @roast_str_new(i8* %v26, i64 5)
-  %v28 = ptrtoint i8* %v27 to i64
-  %v29 = inttoptr i64 %v25 to i8*
-  %v30 = inttoptr i64 %v28 to i8*
-  %v31 = call i8* @roast_str_replace(i8* %v22, i8* %v29, i8* %v30)
-  %v21 = ptrtoint i8* %v31 to i64
-  store i64 %v21, i64* %v2
-  br label %bb2
-bb2:
-  %v32 = load i64, i64* %v2
-  store i64 %v32, i64* %v1
-  %v33 = load i64, i64* %v1
-  %v34 = call i64 @roast_print(i64 %v33)
-  br label %bb3
-bb3:
-  %v35 = getelementptr [6 x i8], [6 x i8]* @.str.5, i64 0, i64 0
-  %v36 = call i8* @roast_str_new(i8* %v35, i64 5)
-  %v37 = ptrtoint i8* %v36 to i64
-  %v39 = inttoptr i64 %v37 to i8*
-  %v40 = getelementptr [4 x i8], [4 x i8]* @.str.6, i64 0, i64 0
-  %v41 = call i8* @roast_str_new(i8* %v40, i64 3)
-  %v42 = ptrtoint i8* %v41 to i64
-  %v43 = inttoptr i64 %v42 to i8*
-  %v44 = call i1 @roast_str_startswith(i8* %v39, i8* %v43)
-  %v38 = zext i1 %v44 to i64
-  store i64 %v38, i64* %v4
-  br label %bb4
-bb4:
-  %v45 = load i64, i64* %v4
-  store i64 %v45, i64* %v3
-  %v46 = load i64, i64* %v3
-  %v47 = call i64 @roast_print(i64 %v46)
-  br label %bb5
-bb5:
-  %v48 = getelementptr [6 x i8], [6 x i8]* @.str.5, i64 0, i64 0
-  %v49 = call i8* @roast_str_new(i8* %v48, i64 5)
-  %v50 = ptrtoint i8* %v49 to i64
-  %v52 = inttoptr i64 %v50 to i8*
-  %v53 = getelementptr [3 x i8], [3 x i8]* @.str.7, i64 0, i64 0
-  %v54 = call i8* @roast_str_new(i8* %v53, i64 2)
-  %v55 = ptrtoint i8* %v54 to i64
-  %v56 = inttoptr i64 %v55 to i8*
-  %v57 = call i1 @roast_str_endswith(i8* %v52, i8* %v56)
-  %v51 = zext i1 %v57 to i64
-  store i64 %v51, i64* %v6
-  br label %bb6
-bb6:
-  %v58 = load i64, i64* %v6
-  store i64 %v58, i64* %v5
-  %v59 = load i64, i64* %v5
-  %v60 = call i64 @roast_print(i64 %v59)
-  br label %bb7
-bb7:
-  %v61 = getelementptr [9 x i8], [9 x i8]* @.str.8, i64 0, i64 0
-  %v62 = call i8* @roast_str_new(i8* %v61, i64 8)
-  %v63 = ptrtoint i8* %v62 to i64
-  %v65 = inttoptr i64 %v63 to i8*
-  %v66 = call i8* @roast_str_lstrip(i8* %v65)
-  %v64 = ptrtoint i8* %v66 to i64
-  store i64 %v64, i64* %v8
-  br label %bb8
-bb8:
-  %v67 = load i64, i64* %v8
-  store i64 %v67, i64* %v7
-  %v68 = load i64, i64* %v7
-  %v69 = call i64 @roast_print(i64 %v68)
-  br label %bb9
-bb9:
-  %v70 = getelementptr [9 x i8], [9 x i8]* @.str.9, i64 0, i64 0
-  %v71 = call i8* @roast_str_new(i8* %v70, i64 8)
-  %v72 = ptrtoint i8* %v71 to i64
-  %v74 = inttoptr i64 %v72 to i8*
-  %v75 = call i8* @roast_str_rstrip(i8* %v74)
-  %v73 = ptrtoint i8* %v75 to i64
-  store i64 %v73, i64* %v10
-  br label %bb10
-bb10:
-  %v76 = load i64, i64* %v10
-  store i64 %v76, i64* %v9
-  %v77 = load i64, i64* %v9
-  %v78 = call i64 @roast_print(i64 %v77)
-  br label %bb11
-bb11:
-  ret void
+  ret i64 0
+}
+
+define i64 @roast_fn_87() {
+entry:
+  %v0 = alloca i64
+  %v1 = getelementptr [12 x i8], [12 x i8]* @.str.0, i64 0, i64 0
+  %v2 = call i8* @roast_str_new(i8* %v1, i64 11)
+  %v3 = ptrtoint i8* %v2 to i64
+  %v4 = call i64 @roast_print(i64 %v3)
+  store i64 %v4, i64* %v0
+  br label %bb1
+bb1:
+  ret i64 0
 }
 
 
 define i32 @main(i32 %argc, i8** %argv) {
 entry:
-    %result = call i64 @roast_fn_164()
-    %exit_code = trunc i64 %result to i32
-    ret i32 %exit_code
-}
-
-define void @roast_fn_100() {
-entry:
-  %v0 = alloca i64
-  %v1 = alloca i64
-  %v2 = alloca i64
-  %v3 = alloca i64
-  %v4 = alloca i64
-  %v5 = alloca i64
-  %v6 = alloca i64
-  %v7 = alloca i64
-  %v8 = alloca i64
-  %v9 = alloca i64
-  %v10 = alloca i64
-  %v11 = alloca i64
-  %v12 = alloca i64
-  %v13 = getelementptr [21 x i8], [21 x i8]* @.str.10, i64 0, i64 0
-  %v14 = call i8* @roast_str_new(i8* %v13, i64 20)
-  %v15 = ptrtoint i8* %v14 to i64
-  %v16 = call i64 @roast_print(i64 %v15)
-  br label %bb1
-bb1:
-  %v17 = call i8* @roast_list_new(i64 8)
-  call void @roast_list_append(i8* %v17, i64 3)
-  call void @roast_list_append(i8* %v17, i64 1)
-  call void @roast_list_append(i8* %v17, i64 4)
-  call void @roast_list_append(i8* %v17, i64 1)
-  call void @roast_list_append(i8* %v17, i64 5)
-  call void @roast_list_append(i8* %v17, i64 9)
-  call void @roast_list_append(i8* %v17, i64 2)
-  call void @roast_list_append(i8* %v17, i64 6)
-  %v18 = ptrtoint i8* %v17 to i64
-  store i64 %v18, i64* %v1
-  %v19 = load i64, i64* %v1
-  store i64 %v19, i64* %v0
-  %v20 = load i64, i64* %v0
-  %v22 = inttoptr i64 %v20 to i8*
-  %v21 = call i64 @roast_list_count(i8* %v22, i64 1)
-  store i64 %v21, i64* %v3
-  br label %bb2
-bb2:
-  %v23 = load i64, i64* %v3
-  store i64 %v23, i64* %v2
-  %v24 = load i64, i64* %v2
-  %v25 = call i64 @roast_print(i64 %v24)
-  br label %bb3
-bb3:
-  %v26 = load i64, i64* %v0
-  %v28 = inttoptr i64 %v26 to i8*
-  %v27 = call i64 @roast_list_index(i8* %v28, i64 4)
-  store i64 %v27, i64* %v5
-  br label %bb4
-bb4:
-  %v29 = load i64, i64* %v5
-  store i64 %v29, i64* %v4
-  %v30 = load i64, i64* %v4
-  %v31 = call i64 @roast_print(i64 %v30)
-  br label %bb5
-bb5:
-  %v32 = load i64, i64* %v0
-  %v34 = inttoptr i64 %v32 to i8*
-  call void @roast_list_reverse(i8* %v34)
-  %v33 = add i64 0, 0
-  store i64 %v33, i64* %v6
-  br label %bb6
-bb6:
-  %v35 = load i64, i64* %v0
-  store i64 %v35, i64* %v7
-  store i64 0, i64* %v8
-  %v36 = load i64, i64* %v7
-  %v37 = load i64, i64* %v8
-  %v38 = call i64 @roast_subscript_get(i64 %v36, i64 %v37)
-  %v39 = call i64 @roast_print(i64 %v38)
-  br label %bb7
-bb7:
-  %v40 = call i8* @roast_list_new(i64 3)
-  call void @roast_list_append(i8* %v40, i64 1)
-  call void @roast_list_append(i8* %v40, i64 2)
-  call void @roast_list_append(i8* %v40, i64 3)
-  %v41 = ptrtoint i8* %v40 to i64
-  store i64 %v41, i64* %v10
-  %v42 = load i64, i64* %v10
-  store i64 %v42, i64* %v9
-  %v43 = load i64, i64* %v9
-  %v45 = inttoptr i64 %v43 to i8*
-  call void @roast_list_clear(i8* %v45)
-  %v44 = add i64 0, 0
-  store i64 %v44, i64* %v11
-  br label %bb8
-bb8:
-  %v46 = load i64, i64* %v9
-  %v47 = call i64 @roast_len(i64 %v46)
-  store i64 %v47, i64* %v12
-  br label %bb9
-bb9:
-  %v48 = load i64, i64* %v12
-  %v49 = call i64 @roast_print(i64 %v48)
-  br label %bb10
-bb10:
-  ret void
+    call void @roast_fn_146()
+    ret i32 0
 }
 

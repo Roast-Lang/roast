@@ -1,0 +1,43 @@
+# Benchmark: Roast vs Python
+# Tests: fib(35), count_primes(50000), sum_loop(1000000)
+
+def fib(n: int) -> int:
+    if n <= 1:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+def is_prime(n: int) -> bool:
+    if n < 2:
+        return False
+    i: int = 2
+    while i * i <= n:
+        if n % i == 0:
+            return False
+        i = i + 1
+    return True
+
+def count_primes(limit: int) -> int:
+    count: int = 0
+    n: int = 2
+    while n <= limit:
+        if is_prime(n):
+            count = count + 1
+        n = n + 1
+    return count
+
+def sum_loop(n: int) -> int:
+    total: int = 0
+    i: int = 1
+    while i <= n:
+        total = total + i
+        i = i + 1
+    return total
+
+def main() -> int:
+    print("fib(35) = ")
+    print(fib(35))
+    print("primes(50000) = ")
+    print(count_primes(50000))
+    print("sum(1000000) = ")
+    print(sum_loop(1000000))
+    return 0

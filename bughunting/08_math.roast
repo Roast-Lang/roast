@@ -1,0 +1,64 @@
+# Bug Hunt 8: Math and Edge Cases
+# Test arithmetic edge cases
+
+def test_division() -> int:
+    a: int = 10
+    b: int = 3
+    
+    # Integer division
+    div: int = a // b
+    print("10 // 3 =", div)
+    
+    # Modulo
+    mod: int = a % b
+    print("10 % 3 =", mod)
+    
+    # Negative numbers
+    neg: int = -5
+    print("Negative:", neg)
+    
+    # Large numbers
+    big: int = 1000000000
+    result: int = big * 2
+    print("Large result:", result)
+    
+    return 0
+
+def test_float_operations() -> int:
+    a: float = 3.14159
+    b: float = 2.71828
+    
+    # Basic ops
+    sum_val: float = a + b
+    diff: float = a - b
+    prod: float = a * b
+    quot: float = a / b
+    
+    print("Sum:", sum_val)
+    print("Diff:", diff)
+    print("Prod:", prod)
+    print("Quot:", quot)
+    
+    return 0
+
+def test_comparison_chaining() -> int:
+    x: int = 5
+    
+    # Simple comparisons
+    result1: bool = x > 3
+    result2: bool = x < 10
+    result3: bool = result1 and result2
+    
+    print("5 > 3:", result1)
+    print("5 < 10:", result2)
+    print("5 > 3 and 5 < 10:", result3)
+    
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 8: Math ===")
+    test_division()
+    test_float_operations()
+    test_comparison_chaining()
+    print("=== Math tests done! ===")
+    return 0

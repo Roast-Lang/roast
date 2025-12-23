@@ -1,0 +1,4 @@
+
+def main():
+    val: i8 = 300
+    print(val)

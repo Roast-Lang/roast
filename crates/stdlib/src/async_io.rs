@@ -1,6 +1,37 @@
 //! Async I/O for Roast.
 //!
 //! Provides asynchronous file and network I/O.
+//!
+//! # Important: Blocking vs Non-Blocking I/O
+//!
+//! This module provides two types of async I/O:
+//!
+//! 1. **Simulated Async** (`AsyncFile`, `AsyncTcpStream`, etc.):
+//!    These use synchronous I/O under the hood but provide an async interface.
+//!    They are suitable for simple use cases but will block the executor thread.
+//!    
+//! 2. **True Async** (`TokioFile`, `TokioTcpStream`, etc.):
+//!    These use the tokio runtime for true non-blocking I/O.
+//!    They should be preferred for production use with concurrent workloads.
+//!
+//! # Example
+//!
+//! ```roast
+//! # Simulated async (blocks executor thread)
+//! async def read_file_simple(path: str) -> str:
+//!     f = await AsyncFile.open(path)
+//!     return await f.read_to_string()
+//!
+//! # True async with spawn_blocking (recommended for file I/O)
+//! async def read_file_async(path: str) -> str:
+//!     return await spawn_blocking(|| fs.read_to_string(path))
+//! ```
+//!
+//! # Performance Considerations
+//!
+//! - For CPU-bound work, use `spawn_blocking` or a thread pool
+//! - For true async file I/O on Linux, consider io_uring
+//! - Network I/O uses non-blocking sockets with poll/select
 
 use std::collections::VecDeque;
 use std::future::Future;
@@ -19,28 +50,128 @@ use std::time::Duration;
 pub type AsyncResult<T> = io::Result<T>;
 
 // =============================================================================
-// Async File
+// Spawn Blocking - Run blocking code on a thread pool
+// =============================================================================
+
+/// Spawn a blocking operation on a separate thread.
+///
+/// This is the recommended way to perform file I/O in async contexts,
+/// as file operations are inherently blocking on most platforms.
+///
+/// # Example
+///
+/// ```text
+/// let contents = spawn_blocking(|| std::fs::read_to_string("file.txt")).await?;
+/// ```
+pub async fn spawn_blocking<F, T>(f: F) -> T
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    // Use a simple thread for now
+    // In a full implementation, this would use a thread pool
+    let (tx, rx) = std::sync::mpsc::channel();
+    
+    std::thread::spawn(move || {
+        let result = f();
+        let _ = tx.send(result);
+    });
+    
+    // Poll until result is ready
+    loop {
+        match rx.try_recv() {
+            Ok(result) => return result,
+            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                yield_now().await;
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                panic!("spawn_blocking: thread panicked");
+            }
+        }
+    }
+}
+
+// =============================================================================
+// True Async File I/O (Using spawn_blocking)
+// =============================================================================
+
+/// Async file operations that use spawn_blocking for true async behavior.
+pub struct TrueAsyncFile;
+
+impl TrueAsyncFile {
+    /// Read entire file to string asynchronously (non-blocking).
+    pub async fn read_to_string<P: AsRef<Path> + Send + 'static>(path: P) -> AsyncResult<String> {
+        let path = path.as_ref().to_path_buf();
+        spawn_blocking(move || std::fs::read_to_string(path)).await
+    }
+    
+    /// Read entire file to bytes asynchronously (non-blocking).
+    pub async fn read<P: AsRef<Path> + Send + 'static>(path: P) -> AsyncResult<Vec<u8>> {
+        let path = path.as_ref().to_path_buf();
+        spawn_blocking(move || std::fs::read(path)).await
+    }
+    
+    /// Write bytes to file asynchronously (non-blocking).
+    pub async fn write<P: AsRef<Path> + Send + 'static, C: AsRef<[u8]> + Send + 'static>(
+        path: P,
+        contents: C,
+    ) -> AsyncResult<()> {
+        let path = path.as_ref().to_path_buf();
+        let contents = contents.as_ref().to_vec();
+        spawn_blocking(move || std::fs::write(path, contents)).await
+    }
+    
+    /// Append to file asynchronously (non-blocking).
+    pub async fn append<P: AsRef<Path> + Send + 'static>(
+        path: P,
+        contents: &[u8],
+    ) -> AsyncResult<()> {
+        use std::fs::OpenOptions;
+        let path = path.as_ref().to_path_buf();
+        let contents = contents.to_vec();
+        spawn_blocking(move || {
+            let mut file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(path)?;
+            file.write_all(&contents)
+        }).await
+    }
+}
+
+// =============================================================================
+// Async File (Simulated - BLOCKING UNDER THE HOOD)
 // =============================================================================
 
 /// Async file handle.
+///
+/// **WARNING**: This implementation blocks the executor thread.
+/// For production use with concurrent workloads, use `TrueAsyncFile`
+/// or `spawn_blocking` instead.
 pub struct AsyncFile {
     inner: std::fs::File,
 }
 
 impl AsyncFile {
     /// Open a file for reading.
+    ///
+    /// **Note**: This operation blocks. Use `TrueAsyncFile::read` for non-blocking.
     pub async fn open<P: AsRef<Path>>(path: P) -> AsyncResult<Self> {
         let file = std::fs::File::open(path)?;
         Ok(Self { inner: file })
     }
     
     /// Create a new file for writing.
+    ///
+    /// **Note**: This operation blocks.
     pub async fn create<P: AsRef<Path>>(path: P) -> AsyncResult<Self> {
         let file = std::fs::File::create(path)?;
         Ok(Self { inner: file })
     }
     
     /// Read the entire file contents.
+    ///
+    /// **Note**: This operation blocks. Use `TrueAsyncFile::read_to_string` for non-blocking.
     pub async fn read_to_string(&mut self) -> AsyncResult<String> {
         let mut contents = String::new();
         self.inner.read_to_string(&mut contents)?;
@@ -48,6 +179,8 @@ impl AsyncFile {
     }
     
     /// Read the entire file as bytes.
+    ///
+    /// **Note**: This operation blocks.
     pub async fn read_to_vec(&mut self) -> AsyncResult<Vec<u8>> {
         let mut contents = Vec::new();
         self.inner.read_to_end(&mut contents)?;
@@ -55,16 +188,22 @@ impl AsyncFile {
     }
     
     /// Read a specific number of bytes.
+    ///
+    /// **Note**: This operation blocks.
     pub async fn read(&mut self, buf: &mut [u8]) -> AsyncResult<usize> {
         self.inner.read(buf)
     }
     
     /// Write bytes to the file.
+    ///
+    /// **Note**: This operation blocks.
     pub async fn write(&mut self, buf: &[u8]) -> AsyncResult<usize> {
         self.inner.write(buf)
     }
     
     /// Write all bytes to the file.
+    ///
+    /// **Note**: This operation blocks.
     pub async fn write_all(&mut self, buf: &[u8]) -> AsyncResult<()> {
         self.inner.write_all(buf)
     }
@@ -81,16 +220,22 @@ impl AsyncFile {
 }
 
 /// Read entire file to string asynchronously.
+///
+/// **Note**: This blocks. Use `TrueAsyncFile::read_to_string` for non-blocking.
 pub async fn read_to_string<P: AsRef<Path>>(path: P) -> AsyncResult<String> {
     std::fs::read_to_string(path)
 }
 
 /// Read entire file to bytes asynchronously.
+///
+/// **Note**: This blocks. Use `TrueAsyncFile::read` for non-blocking.
 pub async fn read<P: AsRef<Path>>(path: P) -> AsyncResult<Vec<u8>> {
     std::fs::read(path)
 }
 
 /// Write bytes to file asynchronously.
+///
+/// **Note**: This blocks. Use `TrueAsyncFile::write` for non-blocking.
 pub async fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> AsyncResult<()> {
     std::fs::write(path, contents)
 }

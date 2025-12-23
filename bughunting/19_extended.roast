@@ -1,0 +1,342 @@
+# Extended bug hunting - more edge cases and features
+
+# === Test Multiple Assignment ===
+def test_multiple_assignment():
+    print("=== Testing Multiple Assignment ===")
+    
+    # Tuple unpacking
+    a, b = 1, 2
+    if a == 1 and b == 2:
+        print("tuple unpack: OK")
+    else:
+        print("tuple unpack: FAIL")
+    
+    # Swap
+    a, b = b, a
+    if a == 2 and b == 1:
+        print("swap: OK")
+    else:
+        print("swap: FAIL")
+    
+    # Chained assignment
+    x = y = z = 10
+    if x == 10 and y == 10 and z == 10:
+        print("chained assign: OK")
+    else:
+        print("chained assign: FAIL")
+    
+    print("")
+
+# === Test Augmented Assignment ===
+def test_augmented_assignment():
+    print("=== Testing Augmented Assignment ===")
+    
+    x: int = 10
+    
+    x += 5
+    if x == 15:
+        print("+= : OK")
+    else:
+        print("+= : FAIL - " + str(x))
+    
+    x -= 3
+    if x == 12:
+        print("-= : OK")
+    else:
+        print("-= : FAIL")
+    
+    x *= 2
+    if x == 24:
+        print("*= : OK")
+    else:
+        print("*= : FAIL")
+    
+    x //= 3
+    if x == 8:
+        print("//= : OK")
+    else:
+        print("//= : FAIL - " + str(x))
+    
+    print("")
+
+# === Test Ternary Expression ===
+def test_ternary():
+    print("=== Testing Ternary Expression ===")
+    
+    x: int = 5
+    result: str = "yes" if x > 0 else "no"
+    if result == "yes":
+        print("ternary true: OK")
+    else:
+        print("ternary true: FAIL")
+    
+    x = -5
+    result = "positive" if x > 0 else "negative"
+    if result == "negative":
+        print("ternary false: OK")
+    else:
+        print("ternary false: FAIL")
+    
+    print("")
+
+# === Test Membership (in operator) ===
+def test_membership():
+    print("=== Testing Membership ===")
+    
+    lst: list = [1, 2, 3, 4, 5]
+    if 3 in lst:
+        print("in list: OK")
+    else:
+        print("in list: FAIL")
+    
+    if 10 not in lst:
+        print("not in list: OK")
+    else:
+        print("not in list: FAIL")
+    
+    s: str = "hello world"
+    if "world" in s:
+        print("in string: OK")
+    else:
+        print("in string: FAIL")
+    
+    d: dict = {"a": 1, "b": 2}
+    if "a" in d:
+        print("in dict: OK")
+    else:
+        print("in dict: FAIL")
+    
+    print("")
+
+# === Test Boolean Short-Circuit ===
+def test_short_circuit():
+    print("=== Testing Short-Circuit ===")
+    
+    # Test short-circuit behavior
+    # False and ... should not evaluate second expression
+    # True or ... should not evaluate second expression
+    
+    result: bool = False and True
+    if result == False:
+        print("false and: OK")
+    else:
+        print("false and: FAIL")
+    
+    result = True or False
+    if result == True:
+        print("true or: OK")
+    else:
+        print("true or: FAIL")
+    
+    print("")
+
+# === Test Negative Indexing ===
+def test_negative_indexing():
+    print("=== Testing Negative Indexing ===")
+    
+    lst: list = [1, 2, 3, 4, 5]
+    
+    if lst[-1] == 5:
+        print("list[-1]: OK")
+    else:
+        print("list[-1]: FAIL - " + str(lst[-1]))
+    
+    if lst[-2] == 4:
+        print("list[-2]: OK")
+    else:
+        print("list[-2]: FAIL")
+    
+    s: str = "hello"
+    if s[-1] == "o":
+        print("str[-1]: OK")
+    else:
+        print("str[-1]: FAIL")
+    
+    print("")
+
+# === Test Empty Collections ===
+def test_empty_collections():
+    print("=== Testing Empty Collections ===")
+    
+    empty_list: list = []
+    if len(empty_list) == 0:
+        print("empty list len: OK")
+    else:
+        print("empty list len: FAIL")
+    
+    empty_dict: dict = {}
+    if len(empty_dict) == 0:
+        print("empty dict len: OK")
+    else:
+        print("empty dict len: FAIL")
+    
+    print("")
+
+# === Test Large Numbers ===
+def test_large_numbers():
+    print("=== Testing Large Numbers ===")
+    
+    big: int = 1000000000000
+    if big == 1000000000000:
+        print("large int: OK")
+    else:
+        print("large int: FAIL")
+    
+    big2: int = big * 1000
+    if big2 == 1000000000000000:
+        print("large multiply: OK")
+    else:
+        print("large multiply: FAIL")
+    
+    print("")
+
+# === Test Division Edge Cases ===
+def test_division():
+    print("=== Testing Division Edge Cases ===")
+    
+    # Float division
+    r: float = 7.0 / 2.0
+    if r > 3.4 and r < 3.6:
+        print("float div: OK")
+    else:
+        print("float div: FAIL - " + str(r))
+    
+    # Int division
+    i: int = 7 // 2
+    if i == 3:
+        print("int div: OK")
+    else:
+        print("int div: FAIL")
+    
+    # Negative division
+    n: int = -7 // 2
+    # Python: -4, C: -3
+    if n == -4:
+        print("neg div (Python): OK")
+    else:
+        print("neg div (C-style): FAIL - got " + str(n))
+    
+    print("")
+
+# === Test String Escape Sequences ===
+def test_escape_sequences():
+    print("=== Testing Escape Sequences ===")
+    
+    # Newline
+    s: str = "hello\nworld"
+    if len(s) == 11:
+        print("newline in str: OK")
+    else:
+        print("newline in str: FAIL - len=" + str(len(s)))
+    
+    # Tab
+    t: str = "a\tb"
+    if len(t) == 3:
+        print("tab in str: OK")
+    else:
+        print("tab in str: FAIL")
+    
+    print("")
+
+# === Test Class with Multiple Methods ===
+class Calculator:
+    def __init__(self):
+        self.result: int = 0
+    
+    def add(self, n: int):
+        self.result = self.result + n
+    
+    def subtract(self, n: int):
+        self.result = self.result - n
+    
+    def multiply(self, n: int):
+        self.result = self.result * n
+    
+    def get(self) -> int:
+        return self.result
+    
+    def reset(self):
+        self.result = 0
+
+def test_calculator():
+    print("=== Testing Calculator Class ===")
+    
+    calc = Calculator()
+    calc.add(10)
+    calc.add(5)
+    calc.subtract(3)
+    calc.multiply(2)
+    
+    if calc.get() == 24:
+        print("calculator chain: OK")
+    else:
+        print("calculator chain: FAIL - " + str(calc.get()))
+    
+    calc.reset()
+    if calc.get() == 0:
+        print("calculator reset: OK")
+    else:
+        print("calculator reset: FAIL")
+    
+    print("")
+
+# === Test Range with Step ===
+def test_range_step():
+    print("=== Testing Range with Step ===")
+    
+    # Forward step
+    total: int = 0
+    for i in range(0, 10, 2):
+        total = total + 1
+    if total == 5:
+        print("range step 2: OK")
+    else:
+        print("range step 2: FAIL - count=" + str(total))
+    
+    # Backwards - may not be supported
+    # total = 0
+    # for i in range(10, 0, -1):
+    #     total = total + 1
+    # print("range backward: " + str(total))
+    
+    print("")
+
+# === Test Pass Statement ===
+def test_pass():
+    print("=== Testing Pass Statement ===")
+    
+    # Empty if
+    x: int = 5
+    if x > 10:
+        pass
+    else:
+        print("pass statement: OK")
+    
+    print("")
+
+# === Main ===
+def main():
+    print("=" * 50)
+    print("EXTENDED BUG HUNTING TESTS")
+    print("=" * 50)
+    print("")
+    
+    test_multiple_assignment()
+    test_augmented_assignment()
+    test_ternary()
+    test_membership()
+    test_short_circuit()
+    test_negative_indexing()
+    test_empty_collections()
+    test_large_numbers()
+    test_division()
+    test_escape_sequences()
+    test_calculator()
+    test_range_step()
+    test_pass()
+    
+    print("=" * 50)
+    print("EXTENDED TESTS COMPLETE")
+    print("=" * 50)
+
+main()

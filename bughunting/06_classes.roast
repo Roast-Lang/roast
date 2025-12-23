@@ -1,0 +1,56 @@
+# Bug Hunt 6: Classes
+# Test class definitions, methods, inheritance
+
+class Point:
+    x: int
+    y: int
+    
+    def __init__(self, x: int, y: int) -> None:
+        self.x = x
+        self.y = y
+    
+    def distance_squared(self) -> int:
+        return self.x * self.x + self.y * self.y
+    
+    def translate(self, dx: int, dy: int) -> None:
+        self.x = self.x + dx
+        self.y = self.y + dy
+
+class Animal:
+    name: str
+    
+    def __init__(self, name: str) -> None:
+        self.name = name
+    
+    def speak(self) -> str:
+        return "..."
+
+# Simplified inheritance test - don't access parent field directly
+class Dog(Animal):
+    breed: str
+    
+    def __init__(self, name: str, breed: str) -> None:
+        self.name = name  # Set directly instead of super()
+        self.breed = breed
+    
+    def bark(self) -> str:
+        return "Woof!"
+
+def main() -> int:
+    print("=== Bug Hunt 6: Classes ===")
+    
+    # Basic class
+    p: Point = Point(3, 4)
+    print("Point:", p.x, p.y)
+    dist: int = p.distance_squared()
+    print("Distance squared:", dist)
+    p.translate(1, 1)
+    print("After translate:", p.x, p.y)
+    
+    # Inheritance
+    dog: Dog = Dog("Buddy", "Labrador")
+    print("Dog breed:", dog.breed)
+    print("Dog barks:", dog.bark())
+    
+    print("=== Class tests passed! ===")
+    return 0

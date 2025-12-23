@@ -1,0 +1,23 @@
+# Bug Hunt 12: Imports
+# Test importing from another file
+
+import lib_12 as lib
+
+def main() -> int:
+    print("=== Bug Hunt 12: Imports ===")
+    
+    # Test function import
+    res: int = lib.add(10, 20)
+    print("lib.add(10, 20) =", res)
+    
+    diff: int = lib.subtract(50, 30)
+    print("lib.subtract(50, 30) =", diff)
+    
+    # Test class import
+    calc = lib.Calculator(100)
+    calc.add(50)
+    final_val: int = calc.get_value()
+    print("Calculator value:", final_val)
+    
+    print("=== Import tests done! ===")
+    return 0

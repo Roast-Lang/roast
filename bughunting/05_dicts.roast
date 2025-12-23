@@ -1,0 +1,37 @@
+# Bug Hunt 5: Dictionaries
+# Test dict operations
+
+def test_dict_creation() -> int:
+    empty: dict = {}
+    ages: dict = {"alice": 30, "bob": 25}
+    print("Empty dict:", empty)
+    print("Ages:", ages)
+    return 0
+
+def test_dict_operations() -> int:
+    data: dict = {}
+    
+    # Set values
+    data["name"] = "Roast"
+    data["version"] = 1
+    data["fast"] = True
+    print("Data:", data)
+    
+    # Get values
+    name: str = data["name"]
+    print("Name:", name)
+    
+    # Check if key exists
+    has_name: bool = "name" in data
+    has_missing: bool = "missing" in data
+    print("Has 'name':", has_name)
+    print("Has 'missing':", has_missing)
+    
+    return 0
+
+def main() -> int:
+    print("=== Bug Hunt 5: Dictionaries ===")
+    test_dict_creation()
+    test_dict_operations()
+    print("=== Dict tests passed! ===")
+    return 0

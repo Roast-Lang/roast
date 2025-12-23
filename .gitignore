@@ -34,5 +34,4 @@ coverage/
 cooked/
 
 test/*
-registry-server/
 docs/

@@ -4,10 +4,20 @@ use id_arena::Id;
 use roast_common::{Span, Symbol};
 use roast_typer::Type;
 
+/// A module-level global variable declaration.
+#[derive(Clone, Debug)]
+pub struct HirGlobal {
+    pub name: Symbol,
+    pub ty: Type,
+    pub span: Span,
+}
+
 /// A HIR module.
 pub struct HirModule {
     pub name: String,
     pub items: Vec<HirItem>,
+    /// Module-level global variable declarations (for codegen)
+    pub globals: Vec<HirGlobal>,
 }
 
 /// Top-level items in HIR.
@@ -262,11 +272,15 @@ pub enum HirExprKind {
     Call {
         callee: HirExprId,
         args: Vec<HirExprId>,
+        /// The callee's function type, for determining owned parameter semantics
+        callee_type: Option<Type>,
     },
     MethodCall {
         receiver: HirExprId,
         method: Symbol,
         args: Vec<HirExprId>,
+        /// The method's function type, for determining owned parameter semantics
+        method_type: Option<Type>,
     },
     Field {
         base: HirExprId,

@@ -492,8 +492,35 @@ impl Builder {
 
     fn is_binary_target(&self) -> bool {
         let entry = &self.project.config.package.entry;
-        entry.ends_with("main.roast") || entry.ends_with("main.ro")
+        // Any .roast or .ro file is a binary target (BUG-005 fix)
+        entry.ends_with(".roast") || entry.ends_with(".ro")
     }
+}
+
+/// Get the roastc path, trying PATH first, then the same directory as kitchen.
+fn get_roastc_path() -> PathBuf {
+    // Try PATH first
+    if let Ok(output) = Command::new("which").arg("roastc").output() {
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !path.is_empty() {
+                return PathBuf::from(path);
+            }
+        }
+    }
+    
+    // Fall back to same directory as current executable
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(exe_dir) = current_exe.parent() {
+            let roastc_path = exe_dir.join("roastc");
+            if roastc_path.exists() {
+                return roastc_path;
+            }
+        }
+    }
+    
+    // Last resort: just use "roastc" and hope for the best
+    PathBuf::from("roastc")
 }
 
 /// Run the built binary.
@@ -508,7 +535,8 @@ pub fn run(project: &Project, args: &[String]) -> Result<i32> {
     }
 
     // Run using roastc
-    let status = Command::new("roastc")
+    let roastc = get_roastc_path();
+    let status = Command::new(&roastc)
         .arg("run")
         .arg(&entry)
         .args(args)
@@ -557,7 +585,8 @@ pub fn test(project: &Project, filter: Option<&str>, verbose: bool) -> Result<Te
         }
 
         // Run test file
-        let status = Command::new("roastc")
+        let roastc = get_roastc_path();
+        let status = Command::new(&roastc)
             .arg("run")
             .arg(test_file)
             .status()?;

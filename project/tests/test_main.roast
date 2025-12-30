@@ -1,0 +1,11 @@
+# Tests for project
+
+def test_sanity() -> None:
+    """Basic sanity test."""
+    assert 1 + 1 == 2
+
+def test_strings() -> None:
+    """Test string operations."""
+    s = "hello"
+    assert len(s) == 5
+    assert s.upper() == "HELLO"

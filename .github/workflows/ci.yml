@@ -71,3 +71,39 @@ jobs:
       - name: Test Todo App
         run: |
           echo "1" | ./target/release/roastc run examples/todo_api/src/main.roast || true
+
+  # Windows support
+  windows-build:
+    name: Windows Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install LLVM
+        run: |
+          choco install llvm --version=18.1.8 -y
+          echo "LLVM_SYS_180_PREFIX=C:\Program Files\LLVM" >> $env:GITHUB_ENV
+      - name: Build
+        run: cargo build --release
+      - name: Test
+        run: cargo test --all
+
+  # macOS support
+  macos-build:
+    name: macOS Build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install LLVM
+        run: brew install llvm@18
+      - name: Build
+        run: |
+          export LLVM_SYS_180_PREFIX=$(brew --prefix llvm@18)
+          cargo build --release
+      - name: Test
+        run: |
+          export LLVM_SYS_180_PREFIX=$(brew --prefix llvm@18)
+          cargo test --all

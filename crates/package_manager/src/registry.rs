@@ -1,17 +1,33 @@
 //! Package registry client.
+//!
+//! Supports:
+//! - Public registries (registry.roastlang.wiki)
+//! - Private registries (self-hosted, corporate)
+//! - Local file-based registries (offline/testing)
+//! - Multiple authentication methods
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::fs;
+use crate::config::{RegistryConfig, RegistryAuth};
 
 /// Package registry client.
 pub struct Registry {
     base_url: String,
+    auth: Option<RegistryAuth>,
+    verify_ssl: bool,
+    ca_cert: Option<PathBuf>,
 }
 
 /// Local file-based registry for offline/testing use.
 pub struct LocalRegistry {
     root_path: PathBuf,
+}
+
+/// Private registry client with full authentication support.
+pub struct PrivateRegistry {
+    name: String,
+    config: RegistryConfig,
 }
 
 /// Package metadata from registry.
@@ -35,23 +51,77 @@ impl Registry {
     pub fn new(base_url: &str) -> Self {
         Self {
             base_url: base_url.to_string(),
+            auth: None,
+            verify_ssl: true,
+            ca_cert: None,
+        }
+    }
+    
+    /// Create a registry with configuration.
+    pub fn from_config(config: &RegistryConfig) -> Self {
+        Self {
+            base_url: config.url.clone(),
+            auth: Some(config.auth.clone()),
+            verify_ssl: config.verify_ssl,
+            ca_cert: config.ca_cert.as_ref().map(PathBuf::from),
         }
     }
 
     pub fn default_registry() -> Self {
-        Self::new("https://registry.roast-lang.org")
+        Self::new("https://registry.roastlang.wiki")
+    }
+    
+    /// Set authentication.
+    pub fn with_auth(mut self, auth: RegistryAuth) -> Self {
+        self.auth = Some(auth);
+        self
+    }
+    
+    /// Set SSL verification.
+    pub fn with_ssl_verify(mut self, verify: bool) -> Self {
+        self.verify_ssl = verify;
+        self
+    }
+    
+    /// Set custom CA certificate.
+    pub fn with_ca_cert(mut self, path: PathBuf) -> Self {
+        self.ca_cert = Some(path);
+        self
+    }
+    
+    /// Get the base URL.
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+    
+    /// Build HTTP headers with authentication.
+    fn build_headers(&self) -> Vec<(String, String)> {
+        let mut headers = vec![
+            ("User-Agent".to_string(), "roast-package-manager/0.1".to_string()),
+            ("Accept".to_string(), "application/json".to_string()),
+        ];
+        
+        if let Some(ref auth) = self.auth {
+            if let Some(auth_header) = auth.get_auth_header() {
+                headers.push(("Authorization".to_string(), auth_header));
+            }
+        }
+        
+        headers
     }
 
     /// Searches for packages.
     pub async fn search(&self, query: &str) -> Result<Vec<PackageMetadata>, RegistryError> {
         // Would make HTTP request to registry
         let _ = query;
+        let _headers = self.build_headers();
         Ok(Vec::new())
     }
 
     /// Gets package info.
     pub async fn get_package(&self, name: &str) -> Result<PackageMetadata, RegistryError> {
         // Would make HTTP request to registry
+        let _headers = self.build_headers();
         Err(RegistryError::NotFound(name.to_string()))
     }
 
@@ -63,13 +133,172 @@ impl Registry {
     ) -> Result<Vec<u8>, RegistryError> {
         // Would download package tarball
         let _ = (name, version);
+        let _headers = self.build_headers();
         Ok(Vec::new())
     }
 
     /// Publishes a package.
     pub async fn publish(&self, _tarball: &[u8], _token: &str) -> Result<(), RegistryError> {
         // Would upload package to registry
+        let _headers = self.build_headers();
         Ok(())
+    }
+}
+
+impl PrivateRegistry {
+    /// Create a new private registry client.
+    pub fn new(name: &str, config: RegistryConfig) -> Self {
+        Self {
+            name: name.to_string(),
+            config,
+        }
+    }
+    
+    /// Get the registry name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    
+    /// Get the registry URL.
+    pub fn url(&self) -> &str {
+        &self.config.url
+    }
+    
+    /// Check if this registry allows publishing.
+    pub fn can_publish(&self) -> bool {
+        self.config.publish
+    }
+    
+    /// Get the priority of this registry.
+    pub fn priority(&self) -> u32 {
+        self.config.priority
+    }
+    
+    /// Build HTTP headers with authentication.
+    fn build_headers(&self) -> Vec<(String, String)> {
+        let mut headers = vec![
+            ("User-Agent".to_string(), "roast-package-manager/0.1".to_string()),
+            ("Accept".to_string(), "application/json".to_string()),
+        ];
+        
+        if let Some(auth_header) = self.config.auth.get_auth_header() {
+            headers.push(("Authorization".to_string(), auth_header));
+        }
+        
+        headers
+    }
+    
+    /// Search for packages.
+    pub async fn search(&self, query: &str) -> Result<Vec<PackageMetadata>, RegistryError> {
+        let _headers = self.build_headers();
+        let _url = format!("{}/api/v1/search?q={}", self.config.url, query);
+        // Would make HTTP request
+        Ok(Vec::new())
+    }
+    
+    /// Get package metadata.
+    pub async fn get_package(&self, name: &str) -> Result<PackageMetadata, RegistryError> {
+        let _headers = self.build_headers();
+        let _url = format!("{}/api/v1/packages/{}", self.config.url, name);
+        // Would make HTTP request
+        Err(RegistryError::NotFound(name.to_string()))
+    }
+    
+    /// Download a package.
+    pub async fn download(&self, name: &str, version: &str) -> Result<Vec<u8>, RegistryError> {
+        let _headers = self.build_headers();
+        let _url = format!("{}/api/v1/packages/{}/{}/download", self.config.url, name, version);
+        // Would make HTTP request
+        Ok(Vec::new())
+    }
+    
+    /// Publish a package.
+    pub async fn publish(&self, tarball: &[u8]) -> Result<(), RegistryError> {
+        if !self.can_publish() {
+            return Err(RegistryError::Unauthorized);
+        }
+        
+        let _headers = self.build_headers();
+        let _url = format!("{}/api/v1/packages/publish", self.config.url);
+        let _ = tarball;
+        // Would make HTTP request
+        Ok(())
+    }
+    
+    /// Check connectivity to the registry.
+    pub async fn health_check(&self) -> Result<bool, RegistryError> {
+        let _url = format!("{}/health", self.config.url);
+        // Would make HTTP request
+        Ok(true)
+    }
+}
+
+/// Registry manager for handling multiple registries.
+pub struct RegistryManager {
+    registries: Vec<PrivateRegistry>,
+    default_registry: Option<String>,
+}
+
+impl RegistryManager {
+    /// Create a new registry manager.
+    pub fn new() -> Self {
+        Self {
+            registries: Vec::new(),
+            default_registry: None,
+        }
+    }
+    
+    /// Add a registry.
+    pub fn add_registry(&mut self, name: &str, config: RegistryConfig) {
+        if config.default {
+            self.default_registry = Some(name.to_string());
+        }
+        self.registries.push(PrivateRegistry::new(name, config));
+    }
+    
+    /// Get a registry by name.
+    pub fn get(&self, name: &str) -> Option<&PrivateRegistry> {
+        self.registries.iter().find(|r| r.name() == name)
+    }
+    
+    /// Get the default registry.
+    pub fn default(&self) -> Option<&PrivateRegistry> {
+        self.default_registry.as_ref()
+            .and_then(|name| self.get(name))
+    }
+    
+    /// Get all registries sorted by priority.
+    pub fn all_by_priority(&self) -> Vec<&PrivateRegistry> {
+        let mut sorted: Vec<_> = self.registries.iter().collect();
+        sorted.sort_by_key(|r| r.priority());
+        sorted
+    }
+    
+    /// Search across all registries.
+    pub async fn search_all(&self, query: &str) -> Vec<(String, Vec<PackageMetadata>)> {
+        let mut results = Vec::new();
+        for registry in self.all_by_priority() {
+            if let Ok(packages) = registry.search(query).await {
+                results.push((registry.name().to_string(), packages));
+            }
+        }
+        results
+    }
+    
+    /// Find a package in any registry.
+    pub async fn find_package(&self, name: &str) -> Option<(String, PackageMetadata)> {
+        for registry in self.all_by_priority() {
+            if let Ok(meta) = registry.get_package(name).await {
+                return Some((registry.name().to_string(), meta));
+            }
+        }
+        None
+    }
+}
+
+impl Default for RegistryManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -209,6 +438,8 @@ pub enum RegistryError {
     Unauthorized,
     RateLimited,
     Network(String),
+    InvalidResponse(String),
+    AuthenticationFailed(String),
 }
 
 impl std::fmt::Display for RegistryError {
@@ -218,6 +449,8 @@ impl std::fmt::Display for RegistryError {
             RegistryError::Unauthorized => write!(f, "unauthorized"),
             RegistryError::RateLimited => write!(f, "rate limited"),
             RegistryError::Network(e) => write!(f, "network error: {}", e),
+            RegistryError::InvalidResponse(e) => write!(f, "invalid response: {}", e),
+            RegistryError::AuthenticationFailed(e) => write!(f, "authentication failed: {}", e),
         }
     }
 }

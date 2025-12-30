@@ -27,6 +27,10 @@ pub struct HirBuilder<'a> {
     nested_functions: Vec<HirFunction>,
     /// Function signatures for default argument filling (function name symbol -> signature)
     function_sigs: HashMap<Symbol, FunctionSig>,
+    /// Names declared as global in the current function scope
+    global_names: std::collections::HashSet<Symbol>,
+    /// Names of variables that have been declared (as locals) in the current scope
+    declared_locals: std::collections::HashSet<Symbol>,
 }
 
 impl<'a> HirBuilder<'a> {
@@ -44,6 +48,8 @@ impl<'a> HirBuilder<'a> {
             class_mros: HashMap::new(),
             nested_functions: Vec::new(),
             function_sigs: HashMap::new(),
+            global_names: std::collections::HashSet::new(),
+            declared_locals: std::collections::HashSet::new(),
         }
     }
 
@@ -55,6 +61,7 @@ impl<'a> HirBuilder<'a> {
     pub fn build_module(&mut self, module: &Module) -> HirModule {
         let mut items = Vec::new();
         let mut top_level_stmts: Vec<&Stmt> = Vec::new();
+        let mut globals = Vec::new();
 
         for stmt in &module.body {
             if let Some(item) = self.build_item(stmt) {
@@ -62,6 +69,33 @@ impl<'a> HirBuilder<'a> {
             } else {
                 // Collect top-level statements that aren't function/class definitions
                 top_level_stmts.push(stmt);
+                
+                // Track global variable declarations
+                match &stmt.kind {
+                    StmtKind::Assign { targets, value, .. } => {
+                        for target in targets {
+                            if let ExprKind::Name { id, .. } = &target.kind {
+                                let ty = self.expr_type_from_span(value.span);
+                                globals.push(HirGlobal {
+                                    name: id.name,
+                                    ty,
+                                    span: stmt.span,
+                                });
+                            }
+                        }
+                    }
+                    StmtKind::AnnAssign { target, annotation, .. } => {
+                        if let ExprKind::Name { id, .. } = &target.kind {
+                            let ty = self.resolve_type(annotation);
+                            globals.push(HirGlobal {
+                                name: id.name,
+                                ty,
+                                span: stmt.span,
+                            });
+                        }
+                    }
+                    _ => {}
+                }
             }
         }
 
@@ -79,6 +113,7 @@ impl<'a> HirBuilder<'a> {
         HirModule {
             name: module.name.clone(),
             items,
+            globals,
         }
     }
 
@@ -212,7 +247,21 @@ impl<'a> HirBuilder<'a> {
         }).collect();
 
         let return_type = returns.map(|r| self.resolve_type(r)).unwrap_or(Type::NoneType);
+        
+        // Save and clear scope tracking for this function
+        let saved_globals = std::mem::take(&mut self.global_names);
+        let saved_locals = std::mem::take(&mut self.declared_locals);
+        
+        // Mark parameters as declared locals
+        for param in &params {
+            self.declared_locals.insert(param.name);
+        }
+        
         let hir_body = self.build_block(body, span);
+        
+        // Restore outer scope tracking
+        self.global_names = saved_globals;
+        self.declared_locals = saved_locals;
 
         // Register function signature for default argument filling at call sites
         self.function_sigs.insert(name.name, FunctionSig { params: params.clone() });
@@ -653,7 +702,7 @@ impl<'a> HirBuilder<'a> {
                             span,
                         });
                         let str_call = self.expr_arena.alloc(HirExpr {
-                            kind: HirExprKind::Call { callee: str_fn, args: vec![self_field] },
+                            kind: HirExprKind::Call { callee: str_fn, args: vec![self_field], callee_type: None },
                             ty: Type::Str,
                             span,
                         });
@@ -899,6 +948,7 @@ impl<'a> HirBuilder<'a> {
                                     kind: HirExprKind::Call {
                                         callee: hash_fn,
                                         args: vec![self_field],
+                                        callee_type: None,
                                     },
                                     ty: Type::Int,
                                     span,
@@ -1490,6 +1540,7 @@ impl<'a> HirBuilder<'a> {
                                 kind: HirExprKind::Call {
                                     callee: class_ref,
                                     args,
+                                    callee_type: None,
                                 },
                                 ty: Type::Any,
                                 span,
@@ -1570,7 +1621,7 @@ impl<'a> HirBuilder<'a> {
                                     span,
                                 });
                                 let str_call = self.expr_arena.alloc(HirExpr {
-                                    kind: HirExprKind::Call { callee: str_fn, args: vec![self_field] },
+                                    kind: HirExprKind::Call { callee: str_fn, args: vec![self_field], callee_type: None },
                                     ty: Type::Str,
                                     span,
                                 });
@@ -1652,6 +1703,7 @@ impl<'a> HirBuilder<'a> {
                                 kind: HirExprKind::Call {
                                     callee: class_ref,
                                     args,
+                                    callee_type: None,
                                 },
                                 ty: Type::Any,
                                 span,
@@ -1770,6 +1822,15 @@ impl<'a> HirBuilder<'a> {
     }
 
     fn build_block(&mut self, stmts: &[Stmt], span: Span) -> HirBlock {
+        // First pass: collect global declarations for this block
+        for s in stmts {
+            if let StmtKind::Global { names } = &s.kind {
+                for name in names {
+                    self.global_names.insert(name.name);
+                }
+            }
+        }
+        
         let hir_stmts: Vec<_> = stmts.iter()
             .flat_map(|s| self.build_stmt(s))
             .collect();
@@ -1778,6 +1839,14 @@ impl<'a> HirBuilder<'a> {
 
     fn build_stmt(&mut self, stmt: &Stmt) -> Vec<HirStmt> {
         let kind = match &stmt.kind {
+            // Handle global statement - already processed in build_block
+            StmtKind::Global { .. } => {
+                return vec![];
+            }
+            // Handle nonlocal statement - similar to global
+            StmtKind::Nonlocal { .. } => {
+                return vec![];
+            }
             StmtKind::Assign { targets, value } => {
                 if targets.len() == 1 {
                     let target = &targets[0];
@@ -1788,14 +1857,30 @@ impl<'a> HirBuilder<'a> {
                     }
 
                     if let ExprKind::Name { id, .. } = &target.kind {
-                        let init = self.build_expr(value);
-                        // Look up the type of the initializer expression
-                        let init_ty = self.expr_type_from_span(value.span);
-                        HirStmtKind::Let {
-                            name: id.name,
-                            ty: init_ty,
-                            init: Some(init),
-                            mutable: true,
+                        // Check if this name is declared as global
+                        if self.global_names.contains(&id.name) {
+                            // For global variables, generate an Assign to the global
+                            // rather than a Let that creates a new local
+                            let target_hir = self.build_expr(target);
+                            let val = self.build_expr(value);
+                            HirStmtKind::Assign { target: target_hir, value: val }
+                        } else if self.declared_locals.contains(&id.name) {
+                            // Variable was already declared, this is a reassignment
+                            let target_hir = self.build_expr(target);
+                            let val = self.build_expr(value);
+                            HirStmtKind::Assign { target: target_hir, value: val }
+                        } else {
+                            // First assignment to this local
+                            self.declared_locals.insert(id.name);
+                            let init = self.build_expr(value);
+                            // Look up the type of the initializer expression
+                            let init_ty = self.expr_type_from_span(value.span);
+                            HirStmtKind::Let {
+                                name: id.name,
+                                ty: init_ty,
+                                init: Some(init),
+                                mutable: true,
+                            }
                         }
                     } else {
                         let target_hir = self.build_expr(target);
@@ -2264,7 +2349,14 @@ impl<'a> HirBuilder<'a> {
                     }
                 }
                 
-                HirExprKind::Call { callee, args: hir_args }
+                // Lookup callee type for owned parameter move semantics
+                let callee_type = if let Some(name) = func_name {
+                    self.type_ctx.lookup(name).cloned()
+                } else {
+                    None
+                };
+                
+                HirExprKind::Call { callee, args: hir_args, callee_type }
             }
             ExprKind::Attribute { value, attr, .. } => {
                 let base = self.build_expr(value);
@@ -2468,7 +2560,7 @@ impl<'a> HirBuilder<'a> {
                     ty: Type::Unknown,
                     span: expr.span,
                 });
-                HirExprKind::Call { callee: str_func, args: vec![inner] }
+                HirExprKind::Call { callee: str_func, args: vec![inner], callee_type: None }
             }
             // Lambda expression
             ExprKind::Lambda { args, body } => {
@@ -2549,7 +2641,7 @@ impl<'a> HirBuilder<'a> {
                     span,
                 });
                 self.expr_arena.alloc(HirExpr {
-                    kind: HirExprKind::Call { callee: str_func, args: vec![inner] },
+                    kind: HirExprKind::Call { callee: str_func, args: vec![inner], callee_type: None },
                     ty: Type::Str,  // str() always returns Str
                     span,
                 })
@@ -2563,7 +2655,7 @@ impl<'a> HirBuilder<'a> {
                     span,
                 });
                 self.expr_arena.alloc(HirExpr {
-                    kind: HirExprKind::Call { callee: str_func, args: vec![inner] },
+                    kind: HirExprKind::Call { callee: str_func, args: vec![inner], callee_type: None },
                     ty: Type::Str,  // str() always returns Str
                     span,
                 })

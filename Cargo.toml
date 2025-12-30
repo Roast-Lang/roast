@@ -28,7 +28,7 @@ members = [
 # To enable: cargo build --features llvm
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0-rc1"
 edition = "2021"
 authors = ["Roast Language Team"]
 license = "MIT OR Apache-2.0"
@@ -107,3 +107,14 @@ strip = true
 [profile.dev]
 opt-level = 0
 debug = true
+
+# Optimize test builds to reduce memory usage
+[profile.test]
+opt-level = 0
+debug = false
+# Increase codegen units for faster incremental compilation
+codegen-units = 16
+
+# Speed up dev dependencies (like testing frameworks)
+[profile.dev.package."*"]
+opt-level = 1

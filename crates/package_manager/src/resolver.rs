@@ -66,7 +66,7 @@ impl Resolver {
                 name: name.to_string(),
                 version: version.clone(),
                 source: DepSource::Registry {
-                    url: "https://registry.roast-lang.org".to_string(),
+                    url: "https://registry.roastlang.wiki".to_string(),
                 },
             }),
             Dependency::Detailed(details) => {
@@ -79,7 +79,7 @@ impl Resolver {
                     }
                 } else {
                     DepSource::Registry {
-                        url: "https://registry.roast-lang.org".to_string(),
+                        url: "https://registry.roastlang.wiki".to_string(),
                     }
                 };
 

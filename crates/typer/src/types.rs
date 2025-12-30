@@ -133,6 +133,31 @@ pub enum Type {
 
     /// Error type (for error recovery).
     Error,
+
+    // ==========================================================================
+    // Higher-Kinded Types (HKT)
+    // ==========================================================================
+
+    /// Type constructor (e.g., List, Option - types that take type parameters).
+    /// Represents a type-level function: * -> *
+    TypeConstructor(TypeConstructorDef),
+
+    /// Higher-kinded type variable (e.g., F[_] where F is a type constructor).
+    /// Used for abstractions like Functor, Monad, etc.
+    HigherKinded {
+        /// The type constructor variable (e.g., F)
+        var: TypeVar,
+        /// The kind signature (number of type parameters it accepts)
+        kind: Kind,
+    },
+
+    /// Applied higher-kinded type (e.g., F[A] where F is a type constructor variable).
+    AppliedHK {
+        /// The type constructor being applied
+        constructor: Arc<Type>,
+        /// The type arguments
+        args: Vec<Type>,
+    },
 }
 
 impl Type {
@@ -262,6 +287,59 @@ impl Type {
             is_async,
         }
     }
+
+    // =========================================================================
+    // Higher-Kinded Type Constructors
+    // =========================================================================
+
+    /// Creates a type constructor type.
+    pub fn type_constructor(name: &str, kind: Kind) -> Type {
+        Type::TypeConstructor(TypeConstructorDef::new(name, kind))
+    }
+
+    /// Creates a higher-kinded type variable (e.g., F[_]).
+    pub fn higher_kinded(var: TypeVar, kind: Kind) -> Type {
+        Type::HigherKinded { var, kind }
+    }
+
+    /// Applies a type constructor to type arguments.
+    pub fn apply_hk(constructor: Type, args: Vec<Type>) -> Type {
+        Type::AppliedHK {
+            constructor: Arc::new(constructor),
+            args,
+        }
+    }
+
+    /// Check if this is a higher-kinded type.
+    pub fn is_higher_kinded(&self) -> bool {
+        matches!(self, Type::HigherKinded { .. } | Type::TypeConstructor(_))
+    }
+
+    /// Get the kind of this type.
+    pub fn kind(&self) -> Kind {
+        match self {
+            Type::TypeConstructor(tc) => tc.kind.clone(),
+            Type::HigherKinded { kind, .. } => kind.clone(),
+            Type::AppliedHK { constructor, args } => {
+                // Apply the constructor's kind to the arguments
+                let ctor_kind = constructor.kind();
+                Self::apply_kind(ctor_kind, args.len())
+            }
+            // All concrete types have kind *
+            _ => Kind::Star,
+        }
+    }
+
+    /// Apply a kind to reduce it by n arguments.
+    fn apply_kind(kind: Kind, n: usize) -> Kind {
+        if n == 0 {
+            return kind;
+        }
+        match kind {
+            Kind::Arrow(_, result) => Self::apply_kind(*result, n - 1),
+            other => other, // Can't apply further
+        }
+    }
 }
 
 impl Default for Type {
@@ -367,6 +445,20 @@ impl fmt::Display for Type {
             Type::Any => write!(f, "Any"),
             Type::SelfType => write!(f, "Self"),
             Type::Error => write!(f, "<error>"),
+            
+            // Higher-Kinded Types
+            Type::TypeConstructor(tc) => write!(f, "{}", tc),
+            Type::HigherKinded { var, kind } => write!(f, "{}[_] :: {}", var, kind),
+            Type::AppliedHK { constructor, args } => {
+                write!(f, "{}[", constructor)?;
+                for (i, arg) in args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", arg)?;
+                }
+                write!(f, "]")
+            }
         }
     }
 }
@@ -450,6 +542,232 @@ impl fmt::Display for LiteralType {
             LiteralType::Str(s) => write!(f, "Literal[\"{}\"]", s),
             LiteralType::Bytes(b) => write!(f, "Literal[b\"{}\"]", String::from_utf8_lossy(b)),
             LiteralType::None => write!(f, "Literal[None]"),
+        }
+    }
+}
+
+// =============================================================================
+// Higher-Kinded Types (HKT) Support
+// =============================================================================
+
+/// Kind represents the "type of a type" in a higher-kinded type system.
+/// 
+/// Examples:
+/// - `*` (Star): Concrete types like `int`, `str`, `List[int]`
+/// - `* -> *` (Arrow): Type constructors like `List`, `Option`
+/// - `* -> * -> *`: Type constructors taking two args like `Dict`, `Result`
+/// - `(* -> *) -> *`: Higher-kinded type constructors like `Functor`, `Monad`
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Kind {
+    /// A concrete type (kind: *)
+    Star,
+    /// A type constructor (kind: k1 -> k2)
+    Arrow(Box<Kind>, Box<Kind>),
+    /// A constraint kind (for type classes)
+    Constraint,
+}
+
+impl Kind {
+    /// Create a simple type constructor kind (* -> *)
+    pub fn unary() -> Self {
+        Kind::Arrow(Box::new(Kind::Star), Box::new(Kind::Star))
+    }
+    
+    /// Create a binary type constructor kind (* -> * -> *)
+    pub fn binary() -> Self {
+        Kind::Arrow(
+            Box::new(Kind::Star),
+            Box::new(Kind::Arrow(Box::new(Kind::Star), Box::new(Kind::Star)))
+        )
+    }
+    
+    /// Create a higher-kinded type constructor kind ((* -> *) -> *)
+    pub fn higher(inner: Kind) -> Self {
+        Kind::Arrow(Box::new(inner), Box::new(Kind::Star))
+    }
+    
+    /// Get the arity (number of type parameters)
+    pub fn arity(&self) -> usize {
+        match self {
+            Kind::Star => 0,
+            Kind::Constraint => 0,
+            Kind::Arrow(_, result) => 1 + result.arity(),
+        }
+    }
+    
+    /// Check if this is a proper type (kind: *)
+    pub fn is_proper(&self) -> bool {
+        matches!(self, Kind::Star)
+    }
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Kind::Star => write!(f, "*"),
+            Kind::Constraint => write!(f, "Constraint"),
+            Kind::Arrow(k1, k2) => {
+                match k1.as_ref() {
+                    Kind::Arrow(_, _) => write!(f, "({}) -> {}", k1, k2),
+                    _ => write!(f, "{} -> {}", k1, k2),
+                }
+            }
+        }
+    }
+}
+
+/// Definition of a type constructor for HKT.
+/// 
+/// A type constructor is a "template" that produces types when given type arguments.
+/// For example:
+/// - `List` is a type constructor with kind `* -> *`
+/// - `Dict` is a type constructor with kind `* -> * -> *`
+/// - `Functor` is a higher-kinded type constructor with kind `(* -> *) -> Constraint`
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TypeConstructorDef {
+    /// Name of the type constructor
+    pub name: String,
+    /// The kind of this type constructor
+    pub kind: Kind,
+    /// Type parameters (with their kinds)
+    pub params: Vec<(Symbol, Kind)>,
+    /// Associated types (for type classes)
+    pub associated_types: Vec<(String, Kind)>,
+}
+
+impl TypeConstructorDef {
+    /// Create a new type constructor definition
+    pub fn new(name: &str, kind: Kind) -> Self {
+        Self {
+            name: name.to_string(),
+            kind,
+            params: Vec::new(),
+            associated_types: Vec::new(),
+        }
+    }
+    
+    /// Create a unary type constructor (like List, Option)
+    pub fn unary(name: &str) -> Self {
+        Self::new(name, Kind::unary())
+    }
+    
+    /// Create a binary type constructor (like Dict, Result)
+    pub fn binary(name: &str) -> Self {
+        Self::new(name, Kind::binary())
+    }
+    
+    /// Add a type parameter
+    pub fn with_param(mut self, name: Symbol, kind: Kind) -> Self {
+        self.params.push((name, kind));
+        self
+    }
+    
+    /// Add an associated type
+    pub fn with_associated(mut self, name: &str, kind: Kind) -> Self {
+        self.associated_types.push((name.to_string(), kind));
+        self
+    }
+}
+
+impl fmt::Display for TypeConstructorDef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} :: {}", self.name, self.kind)
+    }
+}
+
+// =============================================================================
+// Built-in Type Classes (Functor, Applicative, Monad)
+// =============================================================================
+
+/// Common type class definitions for HKT-based abstractions.
+pub mod type_classes {
+    use super::*;
+    
+    /// Functor type class.
+    /// 
+    /// Represents types that can be mapped over.
+    /// Laws:
+    /// - Identity: fmap(id, x) == x
+    /// - Composition: fmap(f . g, x) == fmap(f, fmap(g, x))
+    pub fn functor_class() -> ProtocolType {
+        ProtocolType {
+            name: "Functor".to_string(),
+            members: vec![],
+            methods: vec![
+                // map[A, B](self: F[A], f: (A) -> B) -> F[B]
+                ("map".to_string(), Type::Any), // Simplified signature
+            ],
+        }
+    }
+    
+    /// Applicative type class.
+    /// 
+    /// Represents types that support pure and apply operations.
+    /// Laws:
+    /// - Identity: pure(id) <*> v == v
+    /// - Composition: pure(.) <*> u <*> v <*> w == u <*> (v <*> w)
+    /// - Homomorphism: pure(f) <*> pure(x) == pure(f(x))
+    /// - Interchange: u <*> pure(y) == pure($ y) <*> u
+    pub fn applicative_class() -> ProtocolType {
+        ProtocolType {
+            name: "Applicative".to_string(),
+            members: vec![],
+            methods: vec![
+                // pure[A](value: A) -> F[A]
+                ("pure".to_string(), Type::Any),
+                // apply[A, B](self: F[(A) -> B], arg: F[A]) -> F[B]
+                ("apply".to_string(), Type::Any),
+            ],
+        }
+    }
+    
+    /// Monad type class.
+    /// 
+    /// Represents types that support sequential composition.
+    /// Laws:
+    /// - Left identity: pure(a) >>= f == f(a)
+    /// - Right identity: m >>= pure == m
+    /// - Associativity: (m >>= f) >>= g == m >>= (x => f(x) >>= g)
+    pub fn monad_class() -> ProtocolType {
+        ProtocolType {
+            name: "Monad".to_string(),
+            members: vec![],
+            methods: vec![
+                // bind[A, B](self: M[A], f: (A) -> M[B]) -> M[B]
+                ("bind".to_string(), Type::Any),
+                // flatMap is an alias for bind
+                ("flatMap".to_string(), Type::Any),
+            ],
+        }
+    }
+    
+    /// Foldable type class.
+    /// 
+    /// Represents types that can be folded to a summary value.
+    pub fn foldable_class() -> ProtocolType {
+        ProtocolType {
+            name: "Foldable".to_string(),
+            members: vec![],
+            methods: vec![
+                // fold[A, B](self: F[A], init: B, f: (B, A) -> B) -> B
+                ("fold".to_string(), Type::Any),
+                ("reduce".to_string(), Type::Any),
+            ],
+        }
+    }
+    
+    /// Traversable type class.
+    /// 
+    /// Represents types that can be traversed with effects.
+    pub fn traversable_class() -> ProtocolType {
+        ProtocolType {
+            name: "Traversable".to_string(),
+            members: vec![],
+            methods: vec![
+                // traverse[A, B, G](self: T[A], f: (A) -> G[B]) -> G[T[B]]
+                ("traverse".to_string(), Type::Any),
+                ("sequence".to_string(), Type::Any),
+            ],
         }
     }
 }

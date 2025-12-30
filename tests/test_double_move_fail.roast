@@ -1,0 +1,16 @@
+# Test: double-move violations (these should FAIL to compile)
+# Run with: roastc run test_double_move_fail.roast
+# Expected: Borrow check error
+
+def consume(x: owned list[int]) -> int:
+    """Takes ownership of x"""
+    return len(x)
+
+def main():
+    data: list[int] = [1, 2, 3]
+    result1 = consume(data)
+    # ERROR: This should fail - data was already moved
+    result2 = consume(data)
+    print(result1, result2)
+
+main()

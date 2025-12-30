@@ -1,0 +1,80 @@
+# Simple HTTP Server - Loop Test
+
+def handle_request(client: int) -> None:
+    """Handle a single HTTP request."""
+    raw = tcp_client_read(client, 4096)
+    if len(raw) == 0:
+        tcp_client_close(client)
+        return
+    
+    # Parse first line to get method and path
+    first_line = ""
+    for c in raw:
+        if c == "\r" or c == "\n":
+            break
+        first_line = first_line + c
+    
+    # Split by space
+    parts: list[str] = []
+    current = ""
+    for c in first_line:
+        if c == " ":
+            if len(current) > 0:
+                parts.append(current)
+            current = ""
+        else:
+            current = current + c
+    if len(current) > 0:
+        parts.append(current)
+    
+    method = ""
+    path = ""
+    if len(parts) >= 2:
+        method = parts[0]
+        path = parts[1]
+    
+    print(f"[REQ] {method} {path}")
+    
+    # Simple routing
+    body = ""
+    if path == "/health":
+        body = '{"status":"ok"}'
+    elif path == "/":
+        body = "Hello from Roast!"
+    else:
+        body = '{"error":"not found"}'
+    
+    response = "HTTP/1.1 200 OK\r\n"
+    response = response + "Content-Type: application/json\r\n"
+    response = response + "Content-Length: " + str(len(body)) + "\r\n"
+    response = response + "Connection: close\r\n"
+    response = response + "\r\n"
+    response = response + body
+    
+    tcp_client_write(client, response)
+    tcp_client_close(client)
+
+
+def main() -> int:
+    print("Starting simple HTTP server on port 8888...")
+    server = tcp_server_create("0.0.0.0", 8888)
+    if server < 0:
+        print("Failed to create server!")
+        return 1
+    
+    print("Server running! Test with: curl http://localhost:8888/health")
+    
+    count = 0
+    while count < 10:  # Handle 10 requests then exit
+        client = tcp_server_accept(server)
+        if client >= 0:
+            count = count + 1
+            print(f"[{count}] Handling client...")
+            handle_request(client)
+            print(f"[{count}] Done")
+    
+    print("Handled 10 requests, shutting down.")
+    tcp_server_close(server)
+    return 0
+
+main()

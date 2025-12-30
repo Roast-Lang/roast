@@ -1,4 +1,10 @@
 //! Diagnostic reporting infrastructure.
+//!
+//! This module provides rich error messages with:
+//! - Primary and secondary source spans
+//! - Error codes for categorization
+//! - Hints and suggestions for fixes
+//! - "Did you mean?" suggestions for typos
 
 use crate::span::Span;
 use codespan_reporting::diagnostic::{self, Label, Severity};
@@ -136,6 +142,32 @@ impl Diagnostic {
     /// Adds a note.
     pub fn with_note(mut self, note: impl Into<String>) -> Self {
         self.notes.push(note.into());
+        self
+    }
+
+    /// Adds a hint about how to fix the error.
+    /// Hints appear as "hint: ..." notes.
+    pub fn with_hint(mut self, hint: impl Into<String>) -> Self {
+        self.notes.push(format!("hint: {}", hint.into()));
+        self
+    }
+
+    /// Adds a suggestion with replacement text.
+    /// Format: "suggestion: try `<replacement>`"
+    pub fn with_suggestion(mut self, suggestion: impl Into<String>) -> Self {
+        self.notes.push(format!("suggestion: try `{}`", suggestion.into()));
+        self
+    }
+
+    /// Adds a "did you mean?" suggestion for typos.
+    pub fn with_did_you_mean(mut self, suggestion: impl Into<String>) -> Self {
+        self.notes.push(format!("did you mean `{}`?", suggestion.into()));
+        self
+    }
+
+    /// Adds a help message explaining the error.
+    pub fn with_help(mut self, help: impl Into<String>) -> Self {
+        self.notes.push(format!("help: {}", help.into()));
         self
     }
 

@@ -1,0 +1,46 @@
+# Test nested function calls with TWO global dicts
+
+counter: int = 4
+data1: dict[int, str] = {}
+data2: dict[int, int] = {}
+
+def inner_func() -> list[int]:
+    print(f"Inner: counter = {counter}")
+    result: list[int] = []
+    for i in range(1, counter):
+        print(f"  i = {i}")
+        if i in data2:
+            print(f"    i in data2")
+            val = data2[i]
+            print(f"    data2[{i}] = {val}")
+            if val == 1:
+                print(f"      val == 1, appending")
+                result.append(i)
+        else:
+            print(f"    i not in data2")
+    print(f"Inner: returning list with {len(result)} items")
+    return result
+
+def outer_func() -> str:
+    print("Outer: calling inner...")
+    items = inner_func()
+    print(f"Outer: got {len(items)} items")
+    return "OK"
+
+def main() -> int:
+    print("Setup: adding to dicts...")
+    data1[1] = "A"
+    data1[2] = "B"
+    data1[3] = "C"
+    
+    data2[1] = 1
+    data2[2] = 1
+    data2[3] = 2
+    
+    print("")
+    print("Main: calling outer...")
+    result = outer_func()
+    print(f"Main: result = {result}")
+    return 0
+
+main()

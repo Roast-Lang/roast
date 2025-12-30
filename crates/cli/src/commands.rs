@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 use std::time::Instant;
 
-use roast_common::{DiagnosticSink, Interner};
+use roast_common::{DiagnosticSink, Interner, BuildCache};
 use roast_parser::parse_module;
 use roast_typer::{TypeContext, TypeChecker};
 use roast_codegen::{CodeEmitter, TargetConfig, target::OptLevel, CodeGenerator};
@@ -2047,6 +2047,135 @@ pub fn build_llvm(
     build_llvm_with_opts(path, output, opt_level, debug, false, false)
 }
 
+/// Build with LLVM backend with incremental compilation support.
+/// When `incremental` is true, only recompiles files that have changed.
+pub fn build_llvm_incremental(
+    path: &Path,
+    output: Option<&Path>,
+    opt_level: u32,
+    debug: bool,
+    incremental: bool,
+    clean_cache: bool,
+) -> Result<()> {
+    let start = Instant::now();
+    
+    // Find all source files
+    let files = if path.is_dir() {
+        find_roast_files(path)?
+    } else {
+        vec![path.to_path_buf()]
+    };
+
+    if files.is_empty() {
+        bail!("no Roast files found in {}", path.display());
+    }
+
+    // Determine project root and cache path
+    let project_root = if path.is_dir() {
+        path.to_path_buf()
+    } else {
+        path.parent().unwrap_or(Path::new(".")).to_path_buf()
+    };
+    let cache_path = roast_common::incremental::default_cache_path(&project_root);
+
+    // Handle clean_cache flag
+    if clean_cache {
+        if cache_path.exists() {
+            fs::remove_file(&cache_path).ok();
+            println!("{} Cleared build cache", "   Cleaned:".yellow().bold());
+        }
+    }
+
+    // Load or create build cache
+    let mut cache = if incremental {
+        BuildCache::load_or_new(&cache_path)
+    } else {
+        BuildCache::new()
+    };
+
+    // Create build plan
+    let plan = if incremental {
+        cache.create_build_plan(&files)
+    } else {
+        // Without incremental, compile everything
+        roast_common::incremental::BuildPlan {
+            to_compile: files.clone(),
+            unchanged: Vec::new(),
+            deleted: Vec::new(),
+            total_files: files.len(),
+            layers: vec![files.clone()],
+        }
+    };
+
+    // Report incremental stats
+    if incremental && !plan.unchanged.is_empty() {
+        let skip_pct = plan.skip_percentage();
+        println!(
+            "{} Skipping {:.0}% ({}/{}) unchanged files",
+            " Incremental".cyan().bold(),
+            skip_pct,
+            plan.unchanged.len(),
+            plan.total_files
+        );
+    }
+
+    if !plan.needs_compilation() {
+        println!(
+            "{} in {:.2}s (nothing to compile)",
+            "    Finished".green().bold(),
+            start.elapsed().as_secs_f64()
+        );
+        return Ok(());
+    }
+
+    println!(
+        "{} {} file(s)",
+        "   Compiling".green().bold(),
+        plan.to_compile.len()
+    );
+
+    // Compile each file that needs it
+    let mut total_errors = 0;
+    for file in &plan.to_compile {
+        match build_llvm_with_opts(file, output, opt_level, debug, true, false) {
+            Ok(()) => {
+                // Update cache entry
+                if incremental {
+                    let output_path = output.map(|p| p.to_path_buf()).unwrap_or_else(|| {
+                        let stem = file.file_stem().unwrap_or_default();
+                        let cooked_dir = file.parent().unwrap_or(Path::new(".")).join("cooked");
+                        cooked_dir.join(stem)
+                    });
+                    // TODO: Extract actual dependencies from imports
+                    cache.update(file, Some(output_path), Vec::new()).ok();
+                }
+            }
+            Err(e) => {
+                eprintln!("{}: {}", file.display(), e);
+                total_errors += 1;
+            }
+        }
+    }
+
+    // Save cache
+    if incremental {
+        cache.save(&cache_path).ok();
+    }
+
+    if total_errors > 0 {
+        bail!("compilation failed with {} error(s)", total_errors);
+    }
+
+    println!(
+        "{} in {:.2}s",
+        "    Finished".green().bold(),
+        start.elapsed().as_secs_f64()
+    );
+
+    Ok(())
+}
+
+
 /// Build with LLVM backend with output options.
 pub fn build_llvm_with_opts(
     path: &Path,
@@ -2177,6 +2306,12 @@ pub fn build_llvm_with_opts(
         module_aliases: &std::collections::HashSet<roast_common::Symbol>,
         python_modules: &std::collections::HashMap<roast_common::Symbol, String>,
     | -> Result<()> {
+        // Register module-level global variables first (with their types)
+        for global in &hir_module.globals {
+            let name = interner.resolve(global.name).unwrap_or_default();
+            codegen.register_module_global(global.name.as_raw(), &name, global.ty.clone());
+        }
+        
         for item in &hir_module.items {
             match item {
                 roast_hir::HirItem::Function(func) => {
@@ -2184,10 +2319,12 @@ pub fn build_llvm_with_opts(
                     let func_name_str = interner.resolve(func.name).unwrap_or_default();
                     let mangled_name = format!("roast_fn_{}", func.name.as_raw());
 
-                    if func_name_str == "__module_init__" {
+                    if func_name_str == "main" {
+                        // main() always takes priority as entry point
                         *entry_point = Some(mangled_name.clone());
                         *entry_point_void = matches!(func.return_type, roast_typer::Type::NoneType);
-                    } else if func_name_str == "main" && entry_point.is_none() {
+                    } else if func_name_str == "__module_init__" && entry_point.is_none() {
+                        // __module_init__ only used if no main() function found
                         *entry_point = Some(mangled_name.clone());
                         *entry_point_void = matches!(func.return_type, roast_typer::Type::NoneType);
                     }
@@ -2387,6 +2524,15 @@ pub fn build_llvm_with_opts(
     
     // ===== Compile main module AFTER imports =====
     {
+        // Re-register main module's symbols to ensure they're available after imports
+        // (imports may have overwritten some symbol IDs with their own interner mappings)
+        for i in 0..interner.len() {
+            let sym = roast_common::Symbol::from_raw(i as u32);
+            if let Some(name) = interner.resolve(sym) {
+                codegen.register_symbol(i as u32, name);
+            }
+        }
+        
         let mut hir_builder = HirBuilder::new(&interner, &mut type_ctx, &mut diagnostics);
         let hir_module = hir_builder.build_module(&module);
         

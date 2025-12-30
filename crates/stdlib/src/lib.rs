@@ -107,6 +107,27 @@ pub mod signal;
 pub mod mmap;
 pub mod timezone;
 
+// Compression
+pub mod compression;
+
+// Observability
+pub mod metrics;
+pub mod tracing;
+
+// URL and CLI
+pub mod url;
+pub mod cli;
+
+// UUID
+pub mod uuid;
+
+// Statistics
+pub mod statistics;
+
+// Config formats
+pub mod yaml;
+pub mod toml;
+
 /// Standard library prelude - commonly used items.
 pub mod prelude {
     pub use crate::builtins::*;

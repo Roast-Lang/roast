@@ -89,6 +89,21 @@ pub fn register_builtins(ctx: &mut crate::context::TypeContext, interner: &roast
         ("NotImplementedError", exception_type()),
         ("StopIteration", exception_type()),
         ("ZeroDivisionError", exception_type()),
+        // TCP Server functions
+        ("tcp_server_create", tcp_server_create_type()),
+        ("tcp_server_accept", tcp_server_accept_type()),
+        ("tcp_server_close", tcp_server_close_type()),
+        ("tcp_client_read", tcp_client_read_type()),
+        ("tcp_client_write", tcp_client_write_type()),
+        ("tcp_client_close", tcp_client_close_type()),
+        // Logging functions
+        ("log_debug", log_message_type()),
+        ("log_info", log_message_type()),
+        ("log_warning", log_message_type()),
+        ("log_error", log_message_type()),
+        ("log_critical", log_message_type()),
+        ("log_set_level", log_set_level_type()),
+        ("log_get_level", log_get_level_type()),
     ];
 
     for (name, ty) in func_builtins {
@@ -1020,6 +1035,178 @@ pub fn exception_type() -> Type {
             },
         ],
         returns: Arc::new(Type::Any), // Returns exception object
+        is_async: false,
+    }
+}
+
+// =============================================================================
+// TCP Server Functions
+// =============================================================================
+
+/// tcp_server_create(host: str, port: int) -> int
+/// Creates a TCP server bound to host:port, returns server handle or -1 on error
+pub fn tcp_server_create_type() -> Type {
+    Type::Callable {
+        params: vec![
+            FuncParam {
+                name: None,
+                ty: Type::Str,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+            FuncParam {
+                name: None,
+                ty: Type::Int,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+        ],
+        returns: Arc::new(Type::Int),
+        is_async: false,
+    }
+}
+
+/// tcp_server_accept(server_handle: int) -> int
+/// Accepts a client connection, returns client handle or -1 on error
+pub fn tcp_server_accept_type() -> Type {
+    Type::Callable {
+        params: vec![
+            FuncParam {
+                name: None,
+                ty: Type::Int,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+        ],
+        returns: Arc::new(Type::Int),
+        is_async: false,
+    }
+}
+
+/// tcp_server_close(server_handle: int) -> None
+/// Closes a TCP server
+pub fn tcp_server_close_type() -> Type {
+    Type::Callable {
+        params: vec![
+            FuncParam {
+                name: None,
+                ty: Type::Int,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+        ],
+        returns: Arc::new(Type::NoneType),
+        is_async: false,
+    }
+}
+
+/// tcp_client_read(client_handle: int, max_bytes: int) -> str
+/// Reads data from client, returns data as string
+pub fn tcp_client_read_type() -> Type {
+    Type::Callable {
+        params: vec![
+            FuncParam {
+                name: None,
+                ty: Type::Int,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+            FuncParam {
+                name: None,
+                ty: Type::Int,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+        ],
+        returns: Arc::new(Type::Str),
+        is_async: false,
+    }
+}
+
+/// tcp_client_write(client_handle: int, data: str) -> int
+/// Writes data to client, returns bytes written or -1 on error
+pub fn tcp_client_write_type() -> Type {
+    Type::Callable {
+        params: vec![
+            FuncParam {
+                name: None,
+                ty: Type::Int,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+            FuncParam {
+                name: None,
+                ty: Type::Str,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+        ],
+        returns: Arc::new(Type::Int),
+        is_async: false,
+    }
+}
+
+/// tcp_client_close(client_handle: int) -> None
+/// Closes a client connection
+pub fn tcp_client_close_type() -> Type {
+    Type::Callable {
+        params: vec![
+            FuncParam {
+                name: None,
+                ty: Type::Int,
+                default: false,
+                kind: ParamKind::Regular,
+            },
+        ],
+        returns: Arc::new(Type::NoneType),
+        is_async: false,
+    }
+}
+
+// =============================================================================
+// Logging Functions
+// =============================================================================
+
+/// log_debug(message: str) -> None
+/// log_info(message: str) -> None
+/// log_warning(message: str) -> None
+/// log_error(message: str) -> None
+/// log_critical(message: str) -> None
+/// Log a message at the specified level
+pub fn log_message_type() -> Type {
+    Type::Callable {
+        params: vec![FuncParam {
+            name: None,
+            ty: Type::Str,
+            default: false,
+            kind: ParamKind::Regular,
+        }],
+        returns: Arc::new(Type::NoneType),
+        is_async: false,
+    }
+}
+
+/// log_set_level(level: int) -> None
+/// Set the global log level (10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL)
+pub fn log_set_level_type() -> Type {
+    Type::Callable {
+        params: vec![FuncParam {
+            name: None,
+            ty: Type::Int,
+            default: false,
+            kind: ParamKind::Regular,
+        }],
+        returns: Arc::new(Type::NoneType),
+        is_async: false,
+    }
+}
+
+/// log_get_level() -> int
+/// Get the current global log level
+pub fn log_get_level_type() -> Type {
+    Type::Callable {
+        params: vec![],
+        returns: Arc::new(Type::Int),
         is_async: false,
     }
 }

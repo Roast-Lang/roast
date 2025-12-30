@@ -29,6 +29,13 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "fuzz_typer"
+path = "fuzz_targets/fuzz_typer.rs"
+test = false
+doc = false
+bench = false
+
 [profile.release]
 debug = 1
 opt-level = 3

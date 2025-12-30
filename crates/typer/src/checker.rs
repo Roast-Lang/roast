@@ -337,6 +337,11 @@ impl<'a> TypeChecker<'a> {
             Type::Complex | Type::Complex64 | Type::Complex128 => true,
             Type::Literal(_) => true,
             Type::Alias { target, .. } => self.is_send_type(target),
+            
+            // Higher-kinded types - check the arguments
+            Type::TypeConstructor(_) => true,
+            Type::HigherKinded { .. } => true,
+            Type::AppliedHK { args, .. } => args.iter().all(|t| self.is_send_type(t)),
         }
     }
 
@@ -1841,6 +1846,21 @@ impl<'a> TypeChecker<'a> {
                 Type::Slice
             }
 
+            // BUG-004 fix: F-strings (JoinedStr) should type as Str
+            ExprKind::JoinedStr { values } => {
+                // Type check all constituent parts
+                for value in values {
+                    self.check_expr(value);
+                }
+                Type::Str
+            }
+
+            // FormattedValue (f-string interpolation) also produces Str
+            ExprKind::FormattedValue { value, .. } => {
+                self.check_expr(value);
+                Type::Str
+            }
+
             _ => Type::Unknown,
         }
     }
@@ -1879,10 +1899,19 @@ impl<'a> TypeChecker<'a> {
             return self.ctx.join(&left, &right);
         }
 
-        // String operations
-        if matches!(&left, Type::Str) && matches!(op, BinOp::Add | BinOp::Mult) {
+        // Helper to check if a type contains Str (for Union types like str | None)
+        let contains_str = |ty: &Type| -> bool {
+            match ty {
+                Type::Str => true,
+                Type::Union(variants) => variants.iter().any(|v| matches!(v, Type::Str)),
+                _ => false,
+            }
+        };
+
+        // String operations - also handle Union types containing Str
+        if contains_str(&left) && matches!(op, BinOp::Add | BinOp::Mult) {
             match op {
-                BinOp::Add if matches!(&right, Type::Str) => return Type::Str,
+                BinOp::Add if contains_str(&right) => return Type::Str,
                 BinOp::Mult if right.is_integer() => return Type::Str,
                 _ => {}
             }
@@ -1891,7 +1920,7 @@ impl<'a> TypeChecker<'a> {
         // Mutable string reference operations: &mut str += str
         if let Type::Ref { inner, mutable: true } = &left {
             if matches!(inner.as_ref(), Type::Str) && op == BinOp::Add {
-                if matches!(&right, Type::Str) {
+                if contains_str(&right) {
                     // &mut str += str returns the mutable reference for chaining
                     return left.clone();
                 }
@@ -1966,7 +1995,10 @@ impl<'a> TypeChecker<'a> {
                 // Any types can be compared for equality
             }
             CmpOp::Lt | CmpOp::LtE | CmpOp::Gt | CmpOp::GtE => {
-                if !self.ctx.is_subtype(&left, &right) && !self.ctx.is_subtype(&right, &left) {
+                // BUG-002 fix: Allow comparison between any numeric types (int/float)
+                if left.is_numeric() && right.is_numeric() {
+                    // Numeric types are always comparable
+                } else if !self.ctx.is_subtype(&left, &right) && !self.ctx.is_subtype(&right, &left) {
                     self.diagnostics.report(
                         Diagnostic::error(format!(
                             "'{}' not supported between instances of '{}' and '{}'",

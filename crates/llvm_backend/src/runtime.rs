@@ -195,6 +195,14 @@ declare i64 @roast_socket_send(i64, i8*) nounwind
 declare i8* @roast_socket_recv(i64, i64) nounwind
 declare void @roast_socket_close(i64) nounwind
 
+; TCP Server operations
+declare i64 @roast_tcp_server_create(i8*, i64) nounwind
+declare i64 @roast_tcp_server_accept(i64) nounwind
+declare i8* @roast_tcp_client_read(i64, i64) nounwind
+declare i64 @roast_tcp_client_write(i64, i8*) nounwind
+declare void @roast_tcp_client_close(i64) nounwind
+declare void @roast_tcp_server_close(i64) nounwind
+
 ; Process/subprocess operations
 declare i64 @roast_subprocess_call(i8*) nounwind
 declare i8* @roast_subprocess_output(i8*) nounwind

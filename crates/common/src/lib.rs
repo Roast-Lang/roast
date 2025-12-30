@@ -4,6 +4,7 @@
 
 pub mod diagnostics;
 pub mod error_codes;
+pub mod error_hints;
 pub mod env;
 pub mod incremental;
 pub mod interner;
@@ -13,6 +14,8 @@ pub mod symbol;
 
 pub use diagnostics::{Diagnostic, DiagnosticKind, DiagnosticSink};
 pub use error_codes::{ErrorInfo, lookup_error, explain_error};
+pub use error_hints::{undefined_name_hints, type_mismatch_hints, attribute_error_hints, 
+                      borrow_error_hints, import_error_hints};
 pub use env::{RoastEnv, roast_home, cache_dir, no_color};
 pub use incremental::{BuildCache, FileEntry};
 pub use security::{SecurityError, RecursionGuard, TimeoutGuard, ResourceLimits};

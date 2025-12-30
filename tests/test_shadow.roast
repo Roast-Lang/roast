@@ -1,0 +1,10 @@
+def main() -> int:
+    a: int = 10
+    b: int = 20
+    print(f"a={a}, b={b}")
+    
+    temp: int = b
+    print(f"temp={temp}")
+    print(f"After temp=b: a={a}")
+    
+    return 0

@@ -1,0 +1,36 @@
+# Minimal TCP server test
+
+def main() -> int:
+    print("Creating TCP server...")
+    server = tcp_server_create("0.0.0.0", 8888)
+    print("Server handle: " + str(server))
+    
+    if server < 0:
+        print("Failed to create server")
+        return 1
+    
+    print("Waiting for connection...")
+    client = tcp_server_accept(server)
+    print("Client handle: " + str(client))
+    
+    if client < 0:
+        print("Failed to accept client")
+        tcp_server_close(server)
+        return 1
+    
+    print("Reading from client...")
+    data = tcp_client_read(client, 1024)
+    print("Received data")
+    
+    print("Sending response...")
+    response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
+    written = tcp_client_write(client, response)
+    print("Wrote bytes: " + str(written))
+    
+    tcp_client_close(client)
+    tcp_server_close(server)
+    
+    print("Done!")
+    return 0
+
+main()

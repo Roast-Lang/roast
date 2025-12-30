@@ -1,0 +1,16 @@
+# Python FFI Test
+# This demonstrates calling Python modules from Roast
+# Build with: roastc build test_python_ffi.roast
+# For actual Python calls, rebuild runtime with: cargo build --features python-ffi
+
+import py:math
+
+def main():
+    # Call Python's math module
+    result = math.sqrt(16.0)
+    print(f"sqrt(16) = {result}")
+    
+    pi = math.pi
+    print(f"pi = {pi}")
+
+main()

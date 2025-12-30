@@ -1,0 +1,68 @@
+# Test list iteration from function return
+
+items_db: dict[int, str] = {}
+items_owner: dict[int, int] = {}
+next_item_id: int = 1
+
+def add_item(user_id: int, title: str) -> int:
+    global next_item_id
+    item_id = next_item_id
+    next_item_id = next_item_id + 1
+    items_db[item_id] = title
+    items_owner[item_id] = user_id
+    print(f"Added item {item_id}: {title}")
+    return item_id
+
+def get_user_items(user_id: int) -> list[int]:
+    result: list[int] = []
+    print(f"Getting items for user {user_id}, checking items 1 to {next_item_id}")
+    for iid in range(1, next_item_id):
+        print(f"  Checking item {iid}")
+        if iid in items_owner:
+            print(f"    Item {iid} exists in items_owner")
+            if items_owner[iid] == user_id:
+                print(f"    Item {iid} belongs to user {user_id}")
+                result.append(iid)
+    print(f"Found {len(result)} items")
+    return result
+
+def list_items(user_id: int) -> str:
+    print("1. Getting user items...")
+    item_ids = get_user_items(user_id)
+    print(f"2. Got {len(item_ids)} items")
+    
+    items_json = "["
+    first = True
+    print("3. Starting iteration...")
+    for iid in item_ids:
+        print(f"4. Processing item {iid}")
+        if not first:
+            items_json = items_json + ","
+        if iid in items_db:
+            print(f"5. Getting title for item {iid}")
+            title = items_db[iid]
+            print(f"6. Title: {title}")
+            items_json = items_json + '{"id":' + str(iid) + '}'
+        first = False
+    items_json = items_json + "]"
+    print("7. Done iterating")
+    return items_json
+
+def main() -> int:
+    print("=== Test List Iteration ===")
+    
+    # Add some items
+    add_item(1, "Task 1")
+    add_item(1, "Task 2")
+    add_item(2, "Other Task")
+    
+    print("")
+    print("Listing items for user 1:")
+    result = list_items(1)
+    print(f"Result: {result}")
+    
+    print("")
+    print("Done!")
+    return 0
+
+main()

@@ -46,7 +46,7 @@ pub use trust::{TrustStore, TrustLevel, TrustDecision, VerificationStatus};
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Default registry URL.
-pub const DEFAULT_REGISTRY: &str = "https://registry.roast-lang.org";
+pub const DEFAULT_REGISTRY: &str = "https://registry.roastlang.wiki";
 
 /// Kitchen result type.
 pub type Result<T> = std::result::Result<T, Error>;

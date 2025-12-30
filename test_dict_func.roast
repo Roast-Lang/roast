@@ -1,0 +1,47 @@
+# Test dict access in function with global variable range
+
+items_db: dict[int, str] = {}
+items_owner: dict[int, int] = {}
+next_item_id: int = 1
+
+def add_item(owner: int, title: str) -> int:
+    global next_item_id
+    item_id = next_item_id
+    next_item_id = next_item_id + 1
+    items_db[item_id] = title
+    items_owner[item_id] = owner
+    print(f"Added item {item_id}: {title} (owner={owner})")
+    return item_id
+
+def check_items() -> int:
+    print(f"Checking items 1 to {next_item_id}")
+    count = 0
+    for iid in range(1, next_item_id):
+        print(f"  Item {iid}")
+        if iid in items_owner:
+            owner = items_owner[iid]
+            print(f"    Owner = {owner}")
+            if owner == 1:
+                print(f"    Matches user 1")
+                count = count + 1
+            else:
+                print(f"    Does not match user 1")
+    print(f"Found {count} items for user 1")
+    return count
+
+def main() -> int:
+    print("1. Adding items...")
+    add_item(1, "Task 1")
+    add_item(1, "Task 2") 
+    add_item(2, "Task 3")
+    
+    print("")
+    print("2. Checking items...")
+    result = check_items()
+    print(f"Result: {result}")
+    
+    print("")
+    print("3. Done!")
+    return 0
+
+main()

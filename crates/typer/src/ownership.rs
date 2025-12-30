@@ -180,8 +180,10 @@ impl OwnershipAnalyzer {
                 info.traits.insert(TypeTrait::Sized);
             }
 
-            // Strings are Clone but not Copy
+            // Strings are Copy because they're reference-counted in the runtime.
+            // Copying a string just increments its refcount.
             Type::Str | Type::Bytes => {
+                info.traits.insert(TypeTrait::Copy);
                 info.traits.insert(TypeTrait::Clone);
                 info.traits.insert(TypeTrait::Send);
                 info.traits.insert(TypeTrait::Sync);
@@ -222,9 +224,11 @@ impl OwnershipAnalyzer {
                 }
             }
 
-            // Collections need drop
+            // Collections are Copy because they're reference-counted in the runtime.
+            // Copying a collection just increments its refcount.
             Type::List(elem) => {
                 let elem_info = self.analyze(elem);
+                info.traits.insert(TypeTrait::Copy);
                 info.traits.insert(TypeTrait::Clone);
                 info.traits.insert(TypeTrait::Sized);
                 info.needs_drop = true;
@@ -238,6 +242,7 @@ impl OwnershipAnalyzer {
             }
 
             Type::Dict(key, val) => {
+                info.traits.insert(TypeTrait::Copy);
                 info.traits.insert(TypeTrait::Clone);
                 info.traits.insert(TypeTrait::Sized);
                 info.needs_drop = true;
@@ -254,6 +259,7 @@ impl OwnershipAnalyzer {
 
             Type::Set(elem) => {
                 let elem_info = self.analyze(elem);
+                info.traits.insert(TypeTrait::Copy);
                 info.traits.insert(TypeTrait::Clone);
                 info.traits.insert(TypeTrait::Sized);
                 info.needs_drop = true;
@@ -335,14 +341,19 @@ impl OwnershipAnalyzer {
                 info.traits.insert(TypeTrait::Clone);
             }
 
-            // Any type - assume worst case
+            // Any type - assume it's reference-counted (common in Roast)
             Type::Any => {
+                info.traits.insert(TypeTrait::Copy);
+                info.traits.insert(TypeTrait::Clone);
                 info.traits.insert(TypeTrait::Sized);
                 info.needs_drop = true;
             }
 
-            // Error/Unknown - be conservative
+            // Error/Unknown - in Roast, most types are reference-counted, so treat as Copy.
+            // This allows f-string results and other untyped expressions to be used multiple times.
             Type::Error | Type::Unknown | Type::Never => {
+                info.traits.insert(TypeTrait::Copy);
+                info.traits.insert(TypeTrait::Clone);
                 info.traits.insert(TypeTrait::Sized);
             }
 

@@ -1,0 +1,15 @@
+def test(a: int, b: int) -> int:
+    print(f"Before loop: a={a}, b={b}")
+    while b != 0:
+        temp: int = b
+        b = a % b
+        a = temp
+        print(f"In loop: a={a}, b={b}")
+        break
+    print(f"After loop: a={a}, b={b}")
+    return a
+
+def main() -> int:
+    r: int = test(48, 18)
+    print(f"result={r}, expected=18")
+    return 0

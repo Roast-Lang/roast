@@ -1,0 +1,18 @@
+def gcd(a: int, b: int) -> int:
+    print(f"Entry: a={a}, b={b}")
+    while b != 0:
+        print(f"Loop: a={a}, b={b}")
+        temp: int = b
+        print(f"After temp=b: temp={temp}, a={a}, b={b}")
+        new_b: int = a % b
+        print(f"After new_b=a%b: new_b={new_b}, a={a}, b={b}")
+        a = temp
+        print(f"After a=temp: a={a}, temp={temp}")
+        b = new_b
+        print(f"After b=new_b: b={b}")
+    return a
+
+def main() -> int:
+    result: int = gcd(48, 18)
+    print(f"Result: {result}")
+    return 0

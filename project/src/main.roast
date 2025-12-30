@@ -1,0 +1,28 @@
+# Logging Test Application
+# This tests the universal logging system
+
+def main():
+    # Set log level to DEBUG (10) to see all logs
+    log_set_level(10)
+    
+    # Test all log levels
+    log_debug("This is a debug message")
+    log_info("This is an info message")
+    log_warning("This is a warning message")
+    log_error("This is an error message")
+    log_critical("This is a critical message")
+    
+    # Get current log level
+    level = log_get_level()
+    log_info("Current log level is: " + str(level))
+    
+    # Test setting level to WARNING (30) - should hide DEBUG and INFO
+    log_set_level(30)
+    log_debug("This DEBUG message should NOT appear")
+    log_info("This INFO message should NOT appear")
+    log_warning("This WARNING message SHOULD appear")
+    log_error("This ERROR message SHOULD appear")
+    
+    print("Logging test complete!")
+
+main()

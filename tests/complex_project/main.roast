@@ -1,0 +1,554 @@
+# Complex Test Project - Main Entry Point
+# Tests: multi-module imports, class inheritance, nested operations
+# Goal: Find compiler bugs through comprehensive testing
+
+from modules.math_utils import add, subtract, multiply, divide, power
+from modules.math_utils import factorial, gcd, is_even, is_odd, abs_val
+from modules.math_utils import clamp, sum_range
+from modules.classes import Entity, Player, Inventory, Game
+from modules.collections import sum_list, product_list, find_min, find_max
+from modules.collections import filter_positive, filter_negative, filter_even
+from modules.collections import filter_odd, double_all, square_all
+from modules.collections import reverse_list, contains, count_occurrences
+from modules.collections import unique, flatten, zip_lists, merge_sorted
+
+
+def print_header(title: str) -> None:
+    print("")
+    print("=" * 60)
+    print(f"  {title}")
+    print("=" * 60)
+
+
+def test_math_utils() -> int:
+    """Test mathematical utility functions"""
+    print_header("TESTING MATH UTILS")
+    errors: int = 0
+    
+    # Basic arithmetic
+    if add(2, 3) != 5:
+        print("FAIL: add(2, 3) != 5")
+        errors = errors + 1
+    else:
+        print("PASS: add(2, 3) == 5")
+    
+    if subtract(10, 4) != 6:
+        print("FAIL: subtract(10, 4) != 6")
+        errors = errors + 1
+    else:
+        print("PASS: subtract(10, 4) == 6")
+    
+    if multiply(7, 8) != 56:
+        print("FAIL: multiply(7, 8) != 56")
+        errors = errors + 1
+    else:
+        print("PASS: multiply(7, 8) == 56")
+    
+    if divide(20, 4) != 5:
+        print("FAIL: divide(20, 4) != 5")
+        errors = errors + 1
+    else:
+        print("PASS: divide(20, 4) == 5")
+    
+    # Division by zero
+    if divide(10, 0) != 0:
+        print("FAIL: divide(10, 0) != 0")
+        errors = errors + 1
+    else:
+        print("PASS: divide(10, 0) == 0 (handled)")
+    
+    # Power
+    if power(2, 10) != 1024:
+        print("FAIL: power(2, 10) != 1024")
+        errors = errors + 1
+    else:
+        print("PASS: power(2, 10) == 1024")
+    
+    # Factorial
+    if factorial(5) != 120:
+        print("FAIL: factorial(5) != 120")
+        errors = errors + 1
+    else:
+        print("PASS: factorial(5) == 120")
+    
+    # GCD
+    if gcd(48, 18) != 6:
+        print("FAIL: gcd(48, 18) != 6")
+        errors = errors + 1
+    else:
+        print("PASS: gcd(48, 18) == 6")
+    
+    # Even/Odd
+    if not is_even(4) or is_even(5):
+        print("FAIL: is_even() incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: is_even() works correctly")
+    
+    if not is_odd(5) or is_odd(4):
+        print("FAIL: is_odd() incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: is_odd() works correctly")
+    
+    # Absolute value
+    if abs_val(-42) != 42 or abs_val(42) != 42:
+        print("FAIL: abs_val() incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: abs_val() works correctly")
+    
+    # Clamp
+    if clamp(50, 0, 100) != 50:
+        print("FAIL: clamp(50, 0, 100) != 50")
+        errors = errors + 1
+    else:
+        print("PASS: clamp(50, 0, 100) == 50")
+    
+    if clamp(-10, 0, 100) != 0:
+        print("FAIL: clamp(-10, 0, 100) != 0")
+        errors = errors + 1
+    else:
+        print("PASS: clamp(-10, 0, 100) == 0")
+    
+    if clamp(200, 0, 100) != 100:
+        print("FAIL: clamp(200, 0, 100) != 100")
+        errors = errors + 1
+    else:
+        print("PASS: clamp(200, 0, 100) == 100")
+    
+    # Sum range
+    if sum_range(1, 11) != 55:
+        print(f"FAIL: sum_range(1, 11) != 55, got {sum_range(1, 11)}")
+        errors = errors + 1
+    else:
+        print("PASS: sum_range(1, 11) == 55")
+    
+    print(f"\nMath Utils: {errors} errors")
+    return errors
+
+
+def test_classes() -> int:
+    """Test class creation and methods"""
+    print_header("TESTING CLASSES")
+    errors: int = 0
+    
+    # Test Entity
+    entity: Entity = Entity(1, "TestEntity")
+    if entity.get_id() != 1:
+        print("FAIL: entity.get_id() != 1")
+        errors = errors + 1
+    else:
+        print("PASS: Entity.get_id() works")
+    
+    if entity.get_name() != "TestEntity":
+        print("FAIL: entity.get_name() != 'TestEntity'")
+        errors = errors + 1
+    else:
+        print("PASS: Entity.get_name() works")
+    
+    if not entity.is_active():
+        print("FAIL: entity should be active")
+        errors = errors + 1
+    else:
+        print("PASS: Entity starts active")
+    
+    entity.deactivate()
+    if entity.is_active():
+        print("FAIL: entity should be deactivated")
+        errors = errors + 1
+    else:
+        print("PASS: Entity.deactivate() works")
+    
+    # Test Player (inheritance)
+    player: Player = Player(1, "Hero", 1)
+    if player.get_level() != 1:
+        print("FAIL: player.get_level() != 1")
+        errors = errors + 1
+    else:
+        print("PASS: Player.get_level() works")
+    
+    player.level_up()
+    if player.get_level() != 2:
+        print("FAIL: player.get_level() != 2 after level_up")
+        errors = errors + 1
+    else:
+        print("PASS: Player.level_up() works")
+    
+    player.add_score(100)
+    if player.score != 100:
+        print("FAIL: player.score != 100")
+        errors = errors + 1
+    else:
+        print("PASS: Player.add_score() works")
+    
+    player.take_damage(50)
+    if player.health != 60:
+        print(f"FAIL: player.health != 60, got {player.health}")
+        errors = errors + 1
+    else:
+        print("PASS: Player.take_damage() works")
+    
+    player.heal(20)
+    if player.health != 80:
+        print(f"FAIL: player.health != 80, got {player.health}")
+        errors = errors + 1
+    else:
+        print("PASS: Player.heal() works")
+    
+    # Test Inventory
+    inv: Inventory = Inventory(3)
+    if not inv.is_empty():
+        print("FAIL: inventory should be empty")
+        errors = errors + 1
+    else:
+        print("PASS: Inventory starts empty")
+    
+    inv.add_item("sword")
+    inv.add_item("shield")
+    if inv.count() != 2:
+        print("FAIL: inventory count != 2")
+        errors = errors + 1
+    else:
+        print("PASS: Inventory.add_item() works")
+    
+    if not inv.has_item("sword"):
+        print("FAIL: inventory should have sword")
+        errors = errors + 1
+    else:
+        print("PASS: Inventory.has_item() works")
+    
+    inv.add_item("potion")
+    if not inv.is_full():
+        print("FAIL: inventory should be full")
+        errors = errors + 1
+    else:
+        print("PASS: Inventory.is_full() works")
+    
+    # Can't add more when full
+    result: bool = inv.add_item("helmet")
+    if result:
+        print("FAIL: should not add to full inventory")
+        errors = errors + 1
+    else:
+        print("PASS: Cannot add to full inventory")
+    
+    inv.remove_item("shield")
+    if inv.has_item("shield"):
+        print("FAIL: shield should be removed")
+        errors = errors + 1
+    else:
+        print("PASS: Inventory.remove_item() works")
+    
+    # Test Game (composition)
+    game: Game = Game()
+    p1: Player = game.add_player("Alice")
+    p2: Player = game.add_player("Bob")
+    
+    if game.get_player_count() != 2:
+        print("FAIL: game should have 2 players")
+        errors = errors + 1
+    else:
+        print("PASS: Game.add_player() works")
+    
+    game.start()
+    if not game.running:
+        print("FAIL: game should be running")
+        errors = errors + 1
+    else:
+        print("PASS: Game.start() works")
+    
+    active: list[Player] = game.get_active_players()
+    if len(active) != 2:
+        print("FAIL: should have 2 active players")
+        errors = errors + 1
+    else:
+        print("PASS: Game.get_active_players() works")
+    
+    # Kill a player
+    p1.take_damage(200)
+    active = game.get_active_players()
+    if len(active) != 1:
+        print("FAIL: should have 1 active player after death")
+        errors = errors + 1
+    else:
+        print("PASS: Dead player removed from active")
+    
+    print(f"\nClasses: {errors} errors")
+    return errors
+
+
+def test_collections() -> int:
+    """Test collection utility functions"""
+    print_header("TESTING COLLECTIONS")
+    errors: int = 0
+    
+    nums: list[int] = [1, 2, 3, 4, 5]
+    
+    if sum_list(nums) != 15:
+        print("FAIL: sum_list([1,2,3,4,5]) != 15")
+        errors = errors + 1
+    else:
+        print("PASS: sum_list() works")
+    
+    if product_list(nums) != 120:
+        print("FAIL: product_list([1,2,3,4,5]) != 120")
+        errors = errors + 1
+    else:
+        print("PASS: product_list() works")
+    
+    if find_min(nums) != 1:
+        print("FAIL: find_min([1,2,3,4,5]) != 1")
+        errors = errors + 1
+    else:
+        print("PASS: find_min() works")
+    
+    if find_max(nums) != 5:
+        print("FAIL: find_max([1,2,3,4,5]) != 5")
+        errors = errors + 1
+    else:
+        print("PASS: find_max() works")
+    
+    # Filter tests
+    mixed: list[int] = [-2, -1, 0, 1, 2, 3, 4]
+    
+    pos: list[int] = filter_positive(mixed)
+    if len(pos) != 4:
+        print(f"FAIL: filter_positive should have 4 items, got {len(pos)}")
+        errors = errors + 1
+    else:
+        print("PASS: filter_positive() works")
+    
+    neg: list[int] = filter_negative(mixed)
+    if len(neg) != 2:
+        print(f"FAIL: filter_negative should have 2 items, got {len(neg)}")
+        errors = errors + 1
+    else:
+        print("PASS: filter_negative() works")
+    
+    evens: list[int] = filter_even(nums)
+    if len(evens) != 2:
+        print(f"FAIL: filter_even should have 2 items, got {len(evens)}")
+        errors = errors + 1
+    else:
+        print("PASS: filter_even() works")
+    
+    odds: list[int] = filter_odd(nums)
+    if len(odds) != 3:
+        print(f"FAIL: filter_odd should have 3 items, got {len(odds)}")
+        errors = errors + 1
+    else:
+        print("PASS: filter_odd() works")
+    
+    # Transform tests
+    doubled: list[int] = double_all(nums)
+    if sum_list(doubled) != 30:
+        print("FAIL: double_all() incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: double_all() works")
+    
+    squared: list[int] = square_all(nums)
+    if sum_list(squared) != 55:
+        print("FAIL: square_all() incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: square_all() works")
+    
+    # Reverse
+    rev: list[int] = reverse_list(nums)
+    if rev[0] != 5 or rev[4] != 1:
+        print("FAIL: reverse_list() incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: reverse_list() works")
+    
+    # Contains
+    if not contains(nums, 3):
+        print("FAIL: contains() should find 3")
+        errors = errors + 1
+    else:
+        print("PASS: contains() works")
+    
+    if contains(nums, 99):
+        print("FAIL: contains() should not find 99")
+        errors = errors + 1
+    else:
+        print("PASS: contains() returns false correctly")
+    
+    # Count occurrences
+    dups: list[int] = [1, 2, 2, 3, 3, 3]
+    if count_occurrences(dups, 3) != 3:
+        print("FAIL: count_occurrences() incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: count_occurrences() works")
+    
+    # Unique
+    uniq: list[int] = unique(dups)
+    if len(uniq) != 3:
+        print("FAIL: unique() should have 3 items")
+        errors = errors + 1
+    else:
+        print("PASS: unique() works")
+    
+    # Merge sorted
+    a: list[int] = [1, 3, 5]
+    b: list[int] = [2, 4, 6]
+    merged: list[int] = merge_sorted(a, b)
+    if len(merged) != 6:
+        print("FAIL: merge_sorted should have 6 items")
+        errors = errors + 1
+    else:
+        print("PASS: merge_sorted() length correct")
+    
+    if merged[0] != 1 or merged[5] != 6:
+        print("FAIL: merge_sorted() order incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: merge_sorted() order correct")
+    
+    print(f"\nCollections: {errors} errors")
+    return errors
+
+
+def test_nested_operations() -> int:
+    """Test complex nested operations"""
+    print_header("TESTING NESTED OPERATIONS")
+    errors: int = 0
+    
+    # Create a game with multiple players and complex interactions
+    game: Game = Game()
+    
+    # Add several players
+    names: list[str] = ["Alice", "Bob", "Charlie", "Diana"]
+    for name in names:
+        game.add_player(name)
+    
+    if game.get_player_count() != 4:
+        print("FAIL: should have 4 players")
+        errors = errors + 1
+    else:
+        print("PASS: Created 4 players")
+    
+    game.start()
+    
+    # Give each player different scores using imported math
+    for player in game.players:
+        score: int = power(player.get_id(), 3)
+        player.add_score(score)
+    
+    # Check scores: 1^3=1, 2^3=8, 3^3=27, 4^3=64
+    if game.players[0].score != 1:
+        print(f"FAIL: player 0 score should be 1, got {game.players[0].score}")
+        errors = errors + 1
+    else:
+        print("PASS: Player 0 score correct")
+    
+    if game.players[3].score != 64:
+        print(f"FAIL: player 3 score should be 64, got {game.players[3].score}")
+        errors = errors + 1
+    else:
+        print("PASS: Player 3 score correct")
+    
+    # Test inventory with game
+    inventories: list[Inventory] = []
+    for player in game.players:
+        inv: Inventory = Inventory(5)
+        level: int = player.get_level()
+        i: int = 0
+        while i < level:
+            inv.add_item("item")
+            i = i + 1
+        inventories.append(inv)
+    
+    if len(inventories) != 4:
+        print("FAIL: should have 4 inventories")
+        errors = errors + 1
+    else:
+        print("PASS: Created 4 inventories")
+    
+    # Level up some players and check health changes
+    game.players[0].level_up()
+    game.players[0].level_up()
+    if game.players[0].get_level() != 3:
+        print(f"FAIL: player 0 level should be 3, got {game.players[0].get_level()}")
+        errors = errors + 1
+    else:
+        print("PASS: Double level up works")
+    
+    # Using math functions with class methods
+    damage: int = multiply(game.players[0].get_level(), 10)
+    game.players[1].take_damage(damage)
+    expected_health: int = subtract(100, damage)
+    if game.players[1].health != expected_health:
+        print(f"FAIL: calculated damage incorrect")
+        errors = errors + 1
+    else:
+        print("PASS: Math + class method combination works")
+    
+    # Collect scores into a list and use collection functions
+    scores: list[int] = []
+    for player in game.players:
+        scores.append(player.score)
+    
+    total_score: int = sum_list(scores)
+    if total_score != 100:
+        print(f"FAIL: total scores should be 100, got {total_score}")
+        errors = errors + 1
+    else:
+        print("PASS: Score collection sum correct")
+    
+    max_score: int = find_max(scores)
+    if max_score != 64:
+        print(f"FAIL: max score should be 64, got {max_score}")
+        errors = errors + 1
+    else:
+        print("PASS: Max score correct")
+    
+    # Filter high scorers (> 10)
+    high_scores: list[int] = [s for s in scores if s > 10]
+    if len(high_scores) != 2:
+        print(f"FAIL: should have 2 high scorers, got {len(high_scores)}")
+        errors = errors + 1
+    else:
+        print("PASS: Filter high scorers works")
+    
+    # Test end game turns
+    initial_turn: int = game.turn
+    i: int = 0
+    while i < 5:
+        game.end_turn()
+        i = i + 1
+    if game.turn != add(initial_turn, 5):
+        print("FAIL: turns not incremented correctly")
+        errors = errors + 1
+    else:
+        print("PASS: Turn increment works")
+    
+    print(f"\nNested Operations: {errors} errors")
+    return errors
+
+
+def main() -> int:
+    """Run all tests and report results"""
+    print("\n" + "=" * 60)
+    print("       COMPLEX TEST PROJECT - BUG DISCOVERY")
+    print("=" * 60)
+    print("Testing multi-module imports, classes, inheritance,")
+    print("nested operations, and edge cases.")
+    
+    total_errors: int = 0
+    
+    total_errors = total_errors + test_math_utils()
+    total_errors = total_errors + test_classes()
+    total_errors = total_errors + test_collections()
+    total_errors = total_errors + test_nested_operations()
+    
+    print_header("FINAL RESULTS")
+    if total_errors == 0:
+        print("✅ ALL TESTS PASSED!")
+    else:
+        print(f"❌ {total_errors} TOTAL ERRORS FOUND")
+    
+    return total_errors

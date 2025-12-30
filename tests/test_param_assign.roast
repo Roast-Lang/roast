@@ -1,0 +1,10 @@
+def test(a: int, b: int) -> int:
+    print(f"Entry: a={a}, b={b}")
+    a = 999
+    print(f"After a=999: a={a}, b={b}")
+    return a
+
+def main() -> int:
+    result: int = test(10, 20)
+    print(f"Result: {result}")
+    return 0

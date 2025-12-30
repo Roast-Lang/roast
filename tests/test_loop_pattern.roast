@@ -1,0 +1,24 @@
+def test(a: int, b: int) -> int:
+    print(f"Entry: a={a}, b={b}")
+    
+    iteration: int = 0
+    while b != 0:
+        print(f"Iter {iteration}: a={a}, b={b}")
+        
+        # The exact GCD pattern
+        temp: int = b
+        b = a % b
+        a = temp
+        
+        print(f"  After swap: a={a}, b={b}")
+        iteration = iteration + 1
+        
+        if iteration > 5:
+            break
+    
+    return a
+
+def main() -> int:
+    result: int = test(48, 18)
+    print(f"Expected 6, got: {result}")
+    return 0

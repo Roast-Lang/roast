@@ -65,6 +65,31 @@ pub extern "C" fn roast_try_exec(func_ptr: extern "C" fn()) -> c_long {
 }
 
 // ============================================================================
+// Logging Infrastructure (used throughout runtime)
+// ============================================================================
+
+use std::sync::atomic::AtomicI32;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Global log level (DEBUG=10, INFO=20, WARNING=30, ERROR=40, CRITICAL=50)
+static LOG_LEVEL: AtomicI32 = AtomicI32::new(20); // Default: INFO
+
+/// Get current timestamp as formatted string (HH:MM:SS.mmm)
+fn get_log_timestamp() -> String {
+    let now = SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    
+    let secs = now.as_secs();
+    let hours = (secs / 3600) % 24;
+    let mins = (secs / 60) % 60;
+    let secs_part = secs % 60;
+    let millis = now.subsec_millis();
+    
+    format!("{:02}:{:02}:{:02}.{:03}", hours, mins, secs_part, millis)
+}
+
+// ============================================================================
 // Type Tags and Value Representation
 // ============================================================================
 
@@ -125,6 +150,8 @@ pub extern "C" fn roast_alloc(size: c_long) -> *mut c_void {
     if size <= 0 {
         return ptr::null_mut();
     }
+    // SAFETY: Layout is valid because size > 0 and alignment is 8 (power of 2).
+    // The returned pointer is either null (allocation failed) or valid.
     unsafe {
         let layout = Layout::from_size_align(size as usize, 8).unwrap();
         alloc(layout) as *mut c_void
@@ -145,6 +172,9 @@ pub extern "C" fn roast_incref(ptr: *mut c_void) {
     if ptr.is_null() {
         return;
     }
+    // SAFETY: Caller guarantees ptr points to a valid ObjectHeader.
+    // The null check above handles the null case.
+    // AtomicUsize::fetch_add is lock-free and thread-safe.
     unsafe {
         let header = ptr as *mut ObjectHeader;
         (*header).refcount.fetch_add(1, Ordering::Relaxed);
@@ -156,10 +186,26 @@ pub extern "C" fn roast_decref(ptr: *mut c_void) {
     if ptr.is_null() {
         return;
     }
+    // SAFETY: Caller guarantees ptr points to a valid ObjectHeader.
+    // We check for invalid refcounts (0 or very large) to catch double-frees.
+    // We check type_tag bounds to detect corrupted memory.
+    // Atomic fence ensures visibility of all writes before deallocation.
     unsafe {
         let header = ptr as *mut ObjectHeader;
+        // Safety check: don't free objects with suspicious refcounts
+        // This can happen with static/global strings or double-frees
+        let current_refcount = (*header).refcount.load(Ordering::Acquire);
+        if current_refcount == 0 || current_refcount > 1_000_000_000 {
+            // Already freed or corrupted - skip
+            return;
+        }
         if (*header).refcount.fetch_sub(1, Ordering::Release) == 1 {
             std::sync::atomic::fence(Ordering::Acquire);
+            // Double-check we're not freeing something already freed
+            if (*header).type_tag as u8 > TypeTag::BigInt as u8 {
+                // Invalid type tag - probably already freed or corrupted
+                return;
+            }
             // Free based on type
             match (*header).type_tag {
                 TypeTag::Str => roast_str_free(ptr as *mut RoastString),
@@ -312,7 +358,12 @@ pub extern "C" fn roast_int_to_str(value: c_long) -> *mut RoastString {
 
 #[no_mangle]
 pub extern "C" fn roast_float_to_str(value: c_double) -> *mut RoastString {
-    let s = format!("{}", value);
+    let mut s = format!("{}", value);
+    // Ensure decimal point is shown for whole numbers (Python-like behavior)
+    // e.g., 1.0 should display as "1.0" not "1"
+    if !s.contains('.') && !s.contains('e') && !s.contains('E') {
+        s.push_str(".0");
+    }
     let cstr = CString::new(s).unwrap();
     roast_str_from_cstr(cstr.as_ptr())
 }
@@ -950,7 +1001,12 @@ pub extern "C" fn roast_str_swapcase(s: *const RoastString) -> *mut RoastString 
 fn roast_str_free(s: *mut RoastString) {
     if s.is_null() { return; }
     unsafe {
-        if !(*s).data.is_null() {
+        // Safety check: verify the object looks valid before freeing
+        let header = &(*s).header;
+        if header.type_tag != TypeTag::Str {
+            return; // Wrong type or corrupted, don't free
+        }
+        if !(*s).data.is_null() && (*s).capacity > 0 && (*s).capacity < 1_000_000_000 {
             let layout = Layout::from_size_align((*s).capacity, 1).unwrap();
             dealloc((*s).data, layout);
         }
@@ -1478,12 +1534,49 @@ pub extern "C" fn roast_list_contains(list: *const RoastList, value: c_long) -> 
     if list.is_null() { return false; }
     unsafe {
         for i in 0..(*list).len {
-            if *(*list).data.add(i) == value {
+            let item = *(*list).data.add(i);
+            if roast_values_equal(item, value) {
                 return true;
             }
         }
         false
     }
+}
+
+/// Compare two Roast values for equality.
+/// For strings, compares content. For other types, compares raw values.
+fn roast_values_equal(a: c_long, b: c_long) -> bool {
+    // Fast path: exact same value/pointer
+    if a == b { return true; }
+    
+    // Check if both might be strings and compare by content
+    let ptr_a = a as *const c_void;
+    let ptr_b = b as *const c_void;
+    
+    if ptr_a.is_null() || ptr_b.is_null() { return false; }
+    if !is_likely_pointer(a) || !is_likely_pointer(b) { return false; }
+    
+    unsafe {
+        let header_a = ptr_a as *const ObjectHeader;
+        let header_b = ptr_b as *const ObjectHeader;
+        
+        // Both must be strings for content comparison
+        if (*header_a).type_tag == TypeTag::Str && (*header_b).type_tag == TypeTag::Str {
+            let s_a = ptr_a as *const RoastString;
+            let s_b = ptr_b as *const RoastString;
+            
+            // Different lengths = not equal
+            if (*s_a).len != (*s_b).len { return false; }
+            if (*s_a).len == 0 { return true; } // Both empty strings
+            
+            // Compare content byte by byte
+            let slice_a = std::slice::from_raw_parts((*s_a).data, (*s_a).len);
+            let slice_b = std::slice::from_raw_parts((*s_b).data, (*s_b).len);
+            return slice_a == slice_b;
+        }
+    }
+    
+    false // Different pointer values that aren't equal strings
 }
 
 #[no_mangle]
@@ -1824,16 +1917,22 @@ pub extern "C" fn roast_dict_set(dict: *mut RoastDict, key: c_long, value: c_lon
 #[no_mangle]
 pub extern "C" fn roast_dict_get(dict: *const RoastDict, key: c_long) -> c_long {
     if dict.is_null() { return 0; }
-    let hash_key = dict_hash_key(key);
-    // Return value from (key, value) tuple
-    unsafe { (*(*dict).map).get(&hash_key).map(|(_, v)| *v).unwrap_or(0) }
+    unsafe {
+        if (*dict).map.is_null() { return 0; }
+        let hash_key = dict_hash_key(key);
+        // Return value from (key, value) tuple
+        (*(*dict).map).get(&hash_key).map(|(_, v)| *v).unwrap_or(0)
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn roast_dict_contains(dict: *const RoastDict, key: c_long) -> bool {
     if dict.is_null() { return false; }
-    let hash_key = dict_hash_key(key);
-    unsafe { (*(*dict).map).contains_key(&hash_key) }
+    unsafe {
+        if (*dict).map.is_null() { return false; }
+        let hash_key = dict_hash_key(key);
+        (*(*dict).map).contains_key(&hash_key)
+    }
 }
 
 #[no_mangle]
@@ -2442,6 +2541,10 @@ pub extern "C" fn roast_iter_next(iter: *mut RoastIterator, done: *mut bool) -> 
         match (*iter).source_type {
             TypeTag::List => {
                 let list = (*iter).source as *const RoastList;
+                if list.is_null() || (*list).data.is_null() {
+                    if !done.is_null() { *done = true; }
+                    return 0;
+                }
                 if (*iter).index >= (*list).len {
                     if !done.is_null() { *done = true; }
                     return 0;
@@ -2477,10 +2580,12 @@ pub extern "C" fn roast_iter_next(iter: *mut RoastIterator, done: *mut bool) -> 
                     if !done.is_null() { *done = true; }
                     return 0;
                 }
-                let value = *(*s).data.add((*iter).index) as c_long;
+                // Return a single-character string, not a byte value
+                // This ensures `for c in "hello":` yields string characters
+                let char_str = roast_str_index(s, (*iter).index as c_long);
                 (*iter).index += 1;
                 if !done.is_null() { *done = false; }
-                value
+                char_str as c_long
             }
             TypeTag::Enumerate => {
                 // Enumerate yields (index, value) tuples
@@ -4196,7 +4301,12 @@ pub extern "C" fn roast_print_int(value: c_long) {
 
 #[no_mangle]
 pub extern "C" fn roast_print_float(value: c_double) {
-    print!("{}", value);
+    let mut s = format!("{}", value);
+    // Ensure decimal point is shown for whole numbers (Python-like behavior)
+    if !s.contains('.') && !s.contains('e') && !s.contains('E') {
+        s.push_str(".0");
+    }
+    print!("{}", s);
 }
 
 #[no_mangle]
@@ -4231,84 +4341,6 @@ pub extern "C" fn roast_print_roast_str(s: *const RoastString) {
         let slice = std::slice::from_raw_parts((*s).data, (*s).len);
         if let Ok(string) = std::str::from_utf8(slice) {
             print!("{}", string);
-        }
-    }
-}
-
-// ============================================================================
-// Logging Module (standard library)
-// ============================================================================
-
-static mut LOG_LEVEL: i32 = 2; // Default: WARNING (0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR, 4=CRITICAL)
-
-/// Set the global log level
-#[no_mangle]
-pub extern "C" fn roast_logging_set_level(level: c_long) {
-    unsafe { LOG_LEVEL = level as i32; }
-}
-
-/// Get current log level
-#[no_mangle]
-pub extern "C" fn roast_logging_get_level() -> c_long {
-    unsafe { LOG_LEVEL as c_long }
-}
-
-/// Log debug message (level 0)
-#[no_mangle]
-pub extern "C" fn roast_logging_debug(msg: *const RoastString) {
-    unsafe {
-        if LOG_LEVEL <= 0 {
-            eprint!("[DEBUG] ");
-            roast_print_roast_str(msg);
-            eprintln!();
-        }
-    }
-}
-
-/// Log info message (level 1)
-#[no_mangle]
-pub extern "C" fn roast_logging_info(msg: *const RoastString) {
-    unsafe {
-        if LOG_LEVEL <= 1 {
-            print!("[INFO] ");
-            roast_print_roast_str(msg);
-            println!();
-        }
-    }
-}
-
-/// Log warning message (level 2)
-#[no_mangle]
-pub extern "C" fn roast_logging_warning(msg: *const RoastString) {
-    unsafe {
-        if LOG_LEVEL <= 2 {
-            eprint!("[WARNING] ");
-            roast_print_roast_str(msg);
-            eprintln!();
-        }
-    }
-}
-
-/// Log error message (level 3)
-#[no_mangle]
-pub extern "C" fn roast_logging_error(msg: *const RoastString) {
-    unsafe {
-        if LOG_LEVEL <= 3 {
-            eprint!("[ERROR] ");
-            roast_print_roast_str(msg);
-            eprintln!();
-        }
-    }
-}
-
-/// Log critical message (level 4)
-#[no_mangle]
-pub extern "C" fn roast_logging_critical(msg: *const RoastString) {
-    unsafe {
-        if LOG_LEVEL <= 4 {
-            eprint!("[CRITICAL] ");
-            roast_print_roast_str(msg);
-            eprintln!();
         }
     }
 }
@@ -5245,6 +5277,171 @@ pub extern "C" fn roast_socket_close(handle: c_long) -> c_long {
 }
 
 // ============================================================================
+// TCP Server Module (for building HTTP servers)
+// ============================================================================
+
+// Storage for TCP listeners (servers)
+static TCP_LISTENERS: Lazy<Mutex<Vec<Option<TcpListener>>>> = Lazy::new(|| Mutex::new(Vec::new()));
+
+// Storage for accepted client connections
+static CLIENT_CONNECTIONS: Lazy<Mutex<Vec<Option<TcpStream>>>> = Lazy::new(|| Mutex::new(Vec::new()));
+
+/// Create a TCP server (bind and listen on a port)
+/// Returns server handle on success, -1 on error
+#[no_mangle]
+pub extern "C" fn roast_tcp_server_create(host: *const RoastString, port: c_long) -> c_long {
+    if host.is_null() { return -1; }
+    
+    unsafe {
+        let slice = std::slice::from_raw_parts((*host).data, (*host).len);
+        if let Ok(host_str) = std::str::from_utf8(slice) {
+            let addr = format!("{}:{}", host_str, port);
+            match TcpListener::bind(&addr) {
+                Ok(listener) => {
+                    // Log server startup
+                    eprintln!(
+                        "\x1b[2m[{}]\x1b[0m \x1b[32mINFO    \x1b[0m Server listening on http://{}",
+                        get_log_timestamp(), addr
+                    );
+                    
+                    let mut listeners = TCP_LISTENERS.lock().unwrap();
+                    listeners.push(Some(listener));
+                    (listeners.len() - 1) as c_long
+                }
+                Err(e) => {
+                    eprintln!(
+                        "\x1b[2m[{}]\x1b[0m \x1b[31mERROR   \x1b[0m Failed to bind to {}: {}",
+                        get_log_timestamp(), addr, e
+                    );
+                    -1
+                }
+            }
+        } else {
+            -1
+        }
+    }
+}
+
+/// Accept a client connection (blocking)
+/// Returns client handle on success, -1 on error
+#[no_mangle]
+pub extern "C" fn roast_tcp_server_accept(server_handle: c_long) -> c_long {
+    if server_handle < 0 { return -1; }
+    
+    let listeners = TCP_LISTENERS.lock().unwrap();
+    if let Some(Some(listener)) = listeners.get(server_handle as usize) {
+        // Clone the listener to release the lock during accept
+        let listener_clone = match listener.try_clone() {
+            Ok(l) => l,
+            Err(_) => return -1,
+        };
+        drop(listeners);  // Release the lock before blocking accept
+        
+        match listener_clone.accept() {
+            Ok((stream, addr)) => {
+                // Log connection at DEBUG level (only shows if log level is DEBUG)
+                let current_level = LOG_LEVEL.load(Ordering::Relaxed);
+                if current_level <= 10 {
+                    eprintln!(
+                        "\x1b[2m[{}]\x1b[0m \x1b[36mDEBUG   \x1b[0m Connection from {}",
+                        get_log_timestamp(), addr
+                    );
+                }
+                
+                let mut clients = CLIENT_CONNECTIONS.lock().unwrap();
+                clients.push(Some(stream));
+                (clients.len() - 1) as c_long
+            }
+            Err(_) => -1,
+        }
+    } else {
+        -1
+    }
+}
+
+/// Read data from a client connection
+/// Returns the data as a string, or empty string on error
+#[no_mangle]
+pub extern "C" fn roast_tcp_client_read(client_handle: c_long, max_bytes: c_long) -> *mut RoastString {
+    if client_handle < 0 { 
+        // Return empty string instead of null for safety
+        return roast_str_from_cstr(c"".as_ptr());
+    }
+    
+    let mut clients = CLIENT_CONNECTIONS.lock().unwrap();
+    if let Some(Some(stream)) = clients.get_mut(client_handle as usize) {
+        let mut buf = vec![0u8; max_bytes as usize];
+        match stream.read(&mut buf) {
+            Ok(n) => {
+                buf.truncate(n);
+                // Return raw bytes as string (handles binary data)
+                let s = String::from_utf8_lossy(&buf).to_string();
+                drop(clients);  // Release lock before allocating
+                return roast_str_from_cstr(
+                    std::ffi::CString::new(s).unwrap().as_ptr()
+                );
+            }
+            Err(e) => {
+                eprintln!("[roast_tcp_client_read] Error reading: {}", e);
+            }
+        }
+    }
+    // Return empty string instead of null for safety
+    roast_str_from_cstr(c"".as_ptr())
+}
+
+/// Write data to a client connection
+/// Returns bytes written on success, -1 on error
+#[no_mangle]
+pub extern "C" fn roast_tcp_client_write(client_handle: c_long, data: *const RoastString) -> c_long {
+    if client_handle < 0 || data.is_null() { return -1; }
+    
+    unsafe {
+        let slice = std::slice::from_raw_parts((*data).data, (*data).len);
+        let mut clients = CLIENT_CONNECTIONS.lock().unwrap();
+        if let Some(Some(stream)) = clients.get_mut(client_handle as usize) {
+            match stream.write_all(slice) {
+                Ok(_) => {
+                    let _ = stream.flush();
+                    slice.len() as c_long
+                }
+                Err(_) => -1,
+            }
+        } else {
+            -1
+        }
+    }
+}
+
+/// Close a client connection
+#[no_mangle]
+pub extern "C" fn roast_tcp_client_close(client_handle: c_long) -> c_long {
+    if client_handle < 0 { return -1; }
+    
+    let mut clients = CLIENT_CONNECTIONS.lock().unwrap();
+    if let Some(slot) = clients.get_mut(client_handle as usize) {
+        *slot = None; // Drop closes the connection
+        0
+    } else {
+        -1
+    }
+}
+
+/// Close a TCP server
+#[no_mangle]
+pub extern "C" fn roast_tcp_server_close(server_handle: c_long) -> c_long {
+    if server_handle < 0 { return -1; }
+    
+    let mut listeners = TCP_LISTENERS.lock().unwrap();
+    if let Some(slot) = listeners.get_mut(server_handle as usize) {
+        *slot = None; // Drop closes the listener
+        0
+    } else {
+        -1
+    }
+}
+
+// ============================================================================
 // Async Runtime Module (GIL-free, Rust/Go-style parallelism)
 // ============================================================================
 // No GIL! True parallelism with:
@@ -5718,7 +5915,7 @@ pub extern "C" fn roast_random_choice(list: *const RoastList) -> c_long {
 // DateTime Module (standard library)
 // ============================================================================
 
-use std::time::{SystemTime, UNIX_EPOCH};
+// Note: SystemTime already imported at line 72
 
 /// Get current Unix timestamp (seconds since epoch)
 #[no_mangle]
@@ -6265,6 +6462,36 @@ pub extern "C" fn roast_print(value: c_long) -> c_long {
                         println!("}}");
                         return 0;
                     }
+                    TypeTag::Object => {
+                        // Print object with class name and attributes
+                        let obj = ptr as *const RoastObject;
+                        let class = (*obj).class;
+                        
+                        // Get class name
+                        let class_name = if !class.is_null() && !(*class).name.is_null() {
+                            let name_str = (*class).name;
+                            let slice = std::slice::from_raw_parts((*name_str).data, (*name_str).len);
+                            std::str::from_utf8(slice).unwrap_or("<unknown>").to_string()
+                        } else {
+                            "<object>".to_string()
+                        };
+                        
+                        // Print class name and attributes
+                        print!("{}(", class_name);
+                        if !(*obj).attrs.is_null() {
+                            let attrs = &*(*obj).attrs;
+                            let mut first = true;
+                            for (&key, &val) in attrs.iter() {
+                                if !first { print!(", "); }
+                                first = false;
+                                // Key is typically a symbol/hash, show value instead
+                                let val_str = value_to_display_string(val);
+                                print!("{}", val_str);
+                            }
+                        }
+                        println!(")");
+                        return 0;
+                    }
                     _ => {}
                 }
             }
@@ -6496,6 +6723,32 @@ fn value_to_display_string(value: c_long) -> String {
                     s.push('}');
                     return s;
                 }
+                TypeTag::Object => {
+                    // Format object with class name and attributes
+                    let obj = ptr as *const RoastObject;
+                    let class = (*obj).class;
+                    
+                    let class_name = if !class.is_null() && !(*class).name.is_null() {
+                        let name_str = (*class).name;
+                        let slice = std::slice::from_raw_parts((*name_str).data, (*name_str).len);
+                        std::str::from_utf8(slice).unwrap_or("<unknown>").to_string()
+                    } else {
+                        "<object>".to_string()
+                    };
+                    
+                    let mut s = format!("{}(", class_name);
+                    if !(*obj).attrs.is_null() {
+                        let attrs = &*(*obj).attrs;
+                        let mut first = true;
+                        for (&_key, &val) in attrs.iter() {
+                            if !first { s.push_str(", "); }
+                            first = false;
+                            s.push_str(&value_to_display_string(val));
+                        }
+                    }
+                    s.push(')');
+                    return s;
+                }
                 _ => {}
             }
         }
@@ -6550,7 +6803,8 @@ pub extern "C" fn roast_str(value: c_long) -> c_long {
                     for i in 0..(*list).len {
                         if i > 0 { s.push_str(", "); }
                         let elem = *(*list).data.add(i);
-                        s.push_str(&format!("{}", elem));
+                        // Use value_to_display_string for proper string formatting
+                        s.push_str(&value_to_display_string(elem));
                     }
                     s.push(']');
                     let cstr = CString::new(s).unwrap();
@@ -7909,4 +8163,244 @@ pub extern "C" fn roast_test_assert_in_range(
     
     eprintln!("AssertionError: {} ({} not in [{}, {}])", msg_str, value, low, high);
     panic!("Test assertion failed: {} not in range [{}, {}]", value, low, high);
+}
+
+// ============================================================================
+// Universal Logging Module
+// ============================================================================
+// A universal logging system usable by any Roast application:
+// - Web servers, GUI apps, CLI tools, background services
+// - Configurable log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+// - Colored terminal output with timestamps
+// - Named loggers for different components
+// ============================================================================
+
+/// ANSI color codes
+const COLOR_RESET: &str = "\x1b[0m";
+const COLOR_CYAN: &str = "\x1b[36m";      // DEBUG
+const COLOR_GREEN: &str = "\x1b[32m";     // INFO
+const COLOR_YELLOW: &str = "\x1b[33m";    // WARNING
+const COLOR_RED: &str = "\x1b[31m";       // ERROR
+const COLOR_BOLD_RED: &str = "\x1b[1;31m"; // CRITICAL
+const COLOR_DIM: &str = "\x1b[2m";        // Timestamp
+
+/// Internal log function with level, color, and message
+fn log_with_level(level: i32, level_name: &str, color: &str, logger_name: &str, message: &str) {
+    let current_level = LOG_LEVEL.load(Ordering::Relaxed);
+    if level < current_level {
+        return;
+    }
+    
+    let timestamp = get_log_timestamp();
+    let logger_part = if logger_name.is_empty() { 
+        String::new() 
+    } else { 
+        format!(" [{}]", logger_name) 
+    };
+    
+    eprintln!(
+        "{}[{}]{} {}{:8}{}{} {}",
+        COLOR_DIM, timestamp, COLOR_RESET,
+        color, level_name, COLOR_RESET,
+        logger_part, message
+    );
+}
+
+/// Set the global log level
+/// Levels: DEBUG=10, INFO=20, WARNING=30, ERROR=40, CRITICAL=50
+#[no_mangle]
+pub extern "C" fn roast_log_set_level(level: c_long) {
+    LOG_LEVEL.store(level as i32, Ordering::Relaxed);
+}
+
+/// Get the current log level
+#[no_mangle]
+pub extern "C" fn roast_log_get_level() -> c_long {
+    LOG_LEVEL.load(Ordering::Relaxed) as c_long
+}
+
+/// Log a DEBUG message (level 10)
+#[no_mangle]
+pub extern "C" fn roast_log_debug(message: *const RoastString) {
+    roast_log_debug_named(std::ptr::null(), message);
+}
+
+/// Log a DEBUG message with logger name
+#[no_mangle]
+pub extern "C" fn roast_log_debug_named(logger: *const RoastString, message: *const RoastString) {
+    if message.is_null() { return; }
+    
+    unsafe {
+        let msg_slice = std::slice::from_raw_parts((*message).data, (*message).len);
+        let msg_str = std::str::from_utf8(msg_slice).unwrap_or("<invalid utf8>");
+        
+        let logger_str = if logger.is_null() {
+            ""
+        } else {
+            let slice = std::slice::from_raw_parts((*logger).data, (*logger).len);
+            std::str::from_utf8(slice).unwrap_or("")
+        };
+        
+        log_with_level(10, "DEBUG", COLOR_CYAN, logger_str, msg_str);
+    }
+}
+
+/// Log an INFO message (level 20)
+#[no_mangle]
+pub extern "C" fn roast_log_info(message: *const RoastString) {
+    roast_log_info_named(std::ptr::null(), message);
+}
+
+/// Log an INFO message with logger name
+#[no_mangle]
+pub extern "C" fn roast_log_info_named(logger: *const RoastString, message: *const RoastString) {
+    if message.is_null() { return; }
+    
+    unsafe {
+        let msg_slice = std::slice::from_raw_parts((*message).data, (*message).len);
+        let msg_str = std::str::from_utf8(msg_slice).unwrap_or("<invalid utf8>");
+        
+        let logger_str = if logger.is_null() {
+            ""
+        } else {
+            let slice = std::slice::from_raw_parts((*logger).data, (*logger).len);
+            std::str::from_utf8(slice).unwrap_or("")
+        };
+        
+        log_with_level(20, "INFO", COLOR_GREEN, logger_str, msg_str);
+    }
+}
+
+/// Log a WARNING message (level 30)
+#[no_mangle]
+pub extern "C" fn roast_log_warning(message: *const RoastString) {
+    roast_log_warning_named(std::ptr::null(), message);
+}
+
+/// Log a WARNING message with logger name
+#[no_mangle]
+pub extern "C" fn roast_log_warning_named(logger: *const RoastString, message: *const RoastString) {
+    if message.is_null() { return; }
+    
+    unsafe {
+        let msg_slice = std::slice::from_raw_parts((*message).data, (*message).len);
+        let msg_str = std::str::from_utf8(msg_slice).unwrap_or("<invalid utf8>");
+        
+        let logger_str = if logger.is_null() {
+            ""
+        } else {
+            let slice = std::slice::from_raw_parts((*logger).data, (*logger).len);
+            std::str::from_utf8(slice).unwrap_or("")
+        };
+        
+        log_with_level(30, "WARNING", COLOR_YELLOW, logger_str, msg_str);
+    }
+}
+
+/// Log an ERROR message (level 40)
+#[no_mangle]
+pub extern "C" fn roast_log_error(message: *const RoastString) {
+    roast_log_error_named(std::ptr::null(), message);
+}
+
+/// Log an ERROR message with logger name
+#[no_mangle]
+pub extern "C" fn roast_log_error_named(logger: *const RoastString, message: *const RoastString) {
+    if message.is_null() { return; }
+    
+    unsafe {
+        let msg_slice = std::slice::from_raw_parts((*message).data, (*message).len);
+        let msg_str = std::str::from_utf8(msg_slice).unwrap_or("<invalid utf8>");
+        
+        let logger_str = if logger.is_null() {
+            ""
+        } else {
+            let slice = std::slice::from_raw_parts((*logger).data, (*logger).len);
+            std::str::from_utf8(slice).unwrap_or("")
+        };
+        
+        log_with_level(40, "ERROR", COLOR_RED, logger_str, msg_str);
+    }
+}
+
+/// Log a CRITICAL message (level 50)
+#[no_mangle]
+pub extern "C" fn roast_log_critical(message: *const RoastString) {
+    roast_log_critical_named(std::ptr::null(), message);
+}
+
+/// Log a CRITICAL message with logger name
+#[no_mangle]
+pub extern "C" fn roast_log_critical_named(logger: *const RoastString, message: *const RoastString) {
+    if message.is_null() { return; }
+    
+    unsafe {
+        let msg_slice = std::slice::from_raw_parts((*message).data, (*message).len);
+        let msg_str = std::str::from_utf8(msg_slice).unwrap_or("<invalid utf8>");
+        
+        let logger_str = if logger.is_null() {
+            ""
+        } else {
+            let slice = std::slice::from_raw_parts((*logger).data, (*logger).len);
+            std::str::from_utf8(slice).unwrap_or("")
+        };
+        
+        log_with_level(50, "CRITICAL", COLOR_BOLD_RED, logger_str, msg_str);
+    }
+}
+
+/// Log with custom level (for advanced use)
+#[no_mangle]
+pub extern "C" fn roast_log(level: c_long, message: *const RoastString) {
+    if message.is_null() { return; }
+    
+    let (level_name, color) = match level as i32 {
+        0..=10 => ("DEBUG", COLOR_CYAN),
+        11..=20 => ("INFO", COLOR_GREEN),
+        21..=30 => ("WARNING", COLOR_YELLOW),
+        31..=40 => ("ERROR", COLOR_RED),
+        _ => ("CRITICAL", COLOR_BOLD_RED),
+    };
+    
+    unsafe {
+        let msg_slice = std::slice::from_raw_parts((*message).data, (*message).len);
+        let msg_str = std::str::from_utf8(msg_slice).unwrap_or("<invalid utf8>");
+        log_with_level(level as i32, level_name, color, "", msg_str);
+    }
+}
+
+/// Log an HTTP request (convenience for web servers)
+/// Format: "METHOD /path STATUS - DURATIONms"
+#[no_mangle]
+pub extern "C" fn roast_log_http_request(
+    method: *const RoastString,
+    path: *const RoastString,
+    status: c_long,
+    duration_ms: c_double
+) {
+    if method.is_null() || path.is_null() { return; }
+    
+    unsafe {
+        let method_slice = std::slice::from_raw_parts((*method).data, (*method).len);
+        let method_str = std::str::from_utf8(method_slice).unwrap_or("???");
+        
+        let path_slice = std::slice::from_raw_parts((*path).data, (*path).len);
+        let path_str = std::str::from_utf8(path_slice).unwrap_or("/");
+        
+        let status_color = match status {
+            200..=299 => COLOR_GREEN,
+            300..=399 => COLOR_CYAN,
+            400..=499 => COLOR_YELLOW,
+            _ => COLOR_RED,
+        };
+        
+        let message = format!(
+            "{} {} {}{}{} - {:.2}ms",
+            method_str, path_str,
+            status_color, status, COLOR_RESET,
+            duration_ms
+        );
+        
+        log_with_level(20, "HTTP", COLOR_GREEN, "", &message);
+    }
 }

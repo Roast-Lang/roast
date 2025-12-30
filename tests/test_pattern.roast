@@ -1,0 +1,17 @@
+def test(a: int, b: int) -> int:
+    print(f"Entry: a={a}, b={b}")
+    
+    # Declare new local assigned to b
+    temp: int = b
+    print(f"After temp=b: temp={temp}")
+    
+    # Now read a and b in a binary operation
+    result: int = a % b
+    print(f"a%b: result={result}, a={a}, b={b}")
+    
+    return result
+
+def main() -> int:
+    result: int = test(48, 18)
+    print(f"Expected 48%18=12, got: {result}")
+    return 0

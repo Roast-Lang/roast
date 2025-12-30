@@ -34,7 +34,13 @@ fn is_builtin(name: &str) -> bool {
         // File I/O
         "open" |
         // Async builtins
-        "asyncio_run" | "asyncio_sleep"
+        "asyncio_run" | "asyncio_sleep" |
+        // TCP Server builtins
+        "tcp_server_create" | "tcp_server_accept" | "tcp_server_close" |
+        "tcp_client_read" | "tcp_client_write" | "tcp_client_close" |
+        // Logging builtins
+        "log_debug" | "log_info" | "log_warning" | "log_error" | "log_critical" |
+        "log_set_level" | "log_get_level"
     )
 }
 
@@ -94,7 +100,7 @@ fn get_builtin_method_by_kind(collection_kind: &str, method_name: &str) -> Optio
             "extend" => Some("roast_list_extend"),
             "index" => Some("roast_list_index"),
             "insert" => Some("roast_list_insert"),
-            "remove" => Some("roast_list_remove"),
+            "remove" => Some("roast_list_remove_value"),
             "reverse" => Some("roast_list_reverse"),
             "sort" => Some("roast_list_sort"),
             _ => None,
@@ -273,6 +279,8 @@ pub struct ClassInfo {
     /// Class variables (name -> (type tag, initial value as i64))
     /// Type tags: 0=int, 1=float, 2=str, 3=bool
     pub class_variables: HashMap<String, (i32, i64)>,
+    /// Constructor function name (e.g., "@roast_fn_123") for correct cross-module calls
+    pub constructor_fn: Option<String>,
 }
 
 /// High-level LLVM backend interface for CLI integration.
@@ -522,6 +530,11 @@ pub struct LlvmCodeGen {
     debug_metadata_id: u32,
     /// Debug info: function metadata (function_name -> metadata_id)
     debug_functions: HashMap<String, u32>,
+    /// Module-level global variables (symbol ID -> (global var name, type))
+    module_globals: HashMap<u32, (String, Type)>,
+    /// Direct mapping from class constructor symbol IDs to constructor function names
+    /// This allows fallback lookup when symbol name resolution fails due to interner conflicts
+    constructor_sym_to_fn: HashMap<u32, String>,
 }
 
 impl LlvmCodeGen {
@@ -543,7 +556,32 @@ impl LlvmCodeGen {
             python_modules: HashMap::new(),
             debug_metadata_id: 0,
             debug_functions: HashMap::new(),
+            module_globals: HashMap::new(),
+            constructor_sym_to_fn: HashMap::new(),
         }
+    }
+
+    /// Register a module-level global variable with its type.
+    pub fn register_module_global(&mut self, sym: u32, name: &str, ty: Type) {
+        let global_name = format!("@roast_global_{}", sym);
+        // Emit global variable declaration
+        self.declarations.push(format!("{} = global i64 0\n", global_name.clone()));
+        self.module_globals.insert(sym, (global_name, ty));
+    }
+
+    /// Check if a symbol refers to a module-level global variable.
+    pub fn is_module_global(&self, sym: u32) -> bool {
+        self.module_globals.contains_key(&sym)
+    }
+
+    /// Get the LLVM global variable name for a module global.
+    pub fn get_module_global_name(&self, sym: u32) -> Option<&str> {
+        self.module_globals.get(&sym).map(|(s, _)| s.as_str())
+    }
+    
+    /// Get the type of a module global.
+    pub fn get_module_global_type(&self, sym: u32) -> Option<&Type> {
+        self.module_globals.get(&sym).map(|(_, ty)| ty)
     }
 
     /// Register a Python module import (py:module_name).
@@ -632,6 +670,14 @@ impl LlvmCodeGen {
     /// Register a symbol name for resolution.
     pub fn register_symbol(&mut self, sym_id: u32, name: &str) {
         self.symbol_names.insert(sym_id, name.to_string());
+        
+        // If this symbol name corresponds to a known class, also register it
+        // in constructor_sym_to_fn so that constructor calls from this module work
+        if let Some(info) = self.class_info.get(name) {
+            if let Some(ref constructor_fn) = info.constructor_fn {
+                self.constructor_sym_to_fn.insert(sym_id, constructor_fn.clone());
+            }
+        }
     }
 
     /// Resolve a symbol to its name.
@@ -730,7 +776,26 @@ entry:
             init_args_str = init_args_str,
         );
 
-        self.functions.insert(func_name, constructor_ir);
+        self.functions.insert(func_name.clone(), constructor_ir);
+        
+        // Store the constructor function name in class_info for cross-module instantiation
+        let constructor_fn_name = format!("@{}", func_name);
+        let info = self.class_info.entry(class_name.to_string()).or_default();
+        info.constructor_fn = Some(constructor_fn_name.clone());
+        
+        // Also store direct mapping from class symbol ID to constructor function
+        // This enables fallback lookup when symbol name resolution fails
+        self.constructor_sym_to_fn.insert(class_sym_id, constructor_fn_name.clone());
+        
+        // Refresh constructor mappings for any symbols that resolve to this class name
+        // This handles imports that registered their symbols BEFORE this class was compiled
+        let symbols_for_class: Vec<u32> = self.symbol_names.iter()
+            .filter_map(|(&sym_id, name)| if name == class_name { Some(sym_id) } else { None })
+            .collect();
+        for sym_id in symbols_for_class {
+            self.constructor_sym_to_fn.insert(sym_id, constructor_fn_name.clone());
+        }
+        
         Ok(())
     }
 
@@ -763,7 +828,26 @@ entry:
             class_name = class_name,
         );
 
-        self.functions.insert(func_name, constructor_ir);
+        self.functions.insert(func_name.clone(), constructor_ir);
+        
+        // Store the constructor function name in class_info for cross-module instantiation
+        let constructor_fn_name = format!("@{}", func_name);
+        let info = self.class_info.entry(class_name.to_string()).or_default();
+        info.constructor_fn = Some(constructor_fn_name.clone());
+        
+        // Also store direct mapping from class symbol ID to constructor function  
+        // This enables fallback lookup when symbol name resolution fails
+        self.constructor_sym_to_fn.insert(class_sym_id, constructor_fn_name.clone());
+        
+        // Refresh constructor mappings for any symbols that resolve to this class name
+        // This handles imports that registered their symbols BEFORE this class was compiled
+        let symbols_for_class: Vec<u32> = self.symbol_names.iter()
+            .filter_map(|(&sym_id, name)| if name == class_name { Some(sym_id) } else { None })
+            .collect();
+        for sym_id in symbols_for_class {
+            self.constructor_sym_to_fn.insert(sym_id, constructor_fn_name.clone());
+        }
+        
         Ok(())
     }
 
@@ -874,6 +958,15 @@ entry:
             ir.push('\n');
         }
         
+        // Module-level global variables
+        if !self.module_globals.is_empty() {
+            ir.push_str("; Module-level global variables\n");
+            for decl in &self.declarations {
+                ir.push_str(decl);
+            }
+            ir.push('\n');
+        }
+        
         // Method name string constants for dynamic dispatch registration
         for (class_name, info) in &self.class_info {
             for (method_name, method_sym) in &info.method_syms {
@@ -980,7 +1073,7 @@ entry:
         ir.push_str("declare void @roast_list_sort(i8*) nounwind\n");
         ir.push_str("declare i64 @roast_list_pop_at(i8*, i64) nounwind\n");
         ir.push_str("declare void @roast_list_insert(i8*, i64, i64) nounwind\n");
-        ir.push_str("declare void @roast_list_remove(i8*, i64) nounwind\n");
+        ir.push_str("declare i1 @roast_list_remove_value(i8*, i64) nounwind\n");
         ir.push_str("declare void @roast_list_clear(i8*) nounwind\n");
         ir.push_str("declare void @roast_list_reverse(i8*) nounwind\n");
         ir.push_str("declare i64 @roast_list_index(i8*, i64) nounwind\n");
@@ -1206,6 +1299,16 @@ entry:
         ir.push_str("declare i64 @roast_file_readline(i64) nounwind\n");
         ir.push('\n');
 
+        // TCP Server functions
+        ir.push_str("; TCP Server\n");
+        ir.push_str("declare i64 @roast_tcp_server_create(i8*, i64) nounwind\n");
+        ir.push_str("declare i64 @roast_tcp_server_accept(i64) nounwind\n");
+        ir.push_str("declare void @roast_tcp_server_close(i64) nounwind\n");
+        ir.push_str("declare i8* @roast_tcp_client_read(i64, i64) nounwind\n");
+        ir.push_str("declare i64 @roast_tcp_client_write(i64, i8*) nounwind\n");
+        ir.push_str("declare void @roast_tcp_client_close(i64) nounwind\n");
+        ir.push('\n');
+
         // Python FFI functions (for py:* imports)
         ir.push_str("; Python FFI\n");
         ir.push_str("declare i64 @roast_py_import(i8*) nounwind\n");
@@ -1213,6 +1316,17 @@ entry:
         ir.push_str("declare i64 @roast_py_call(i64, i8*) nounwind\n");
         ir.push_str("declare i8* @roast_py_to_str(i64) nounwind\n");
         ir.push_str("declare i64 @roast_py_to_int(i64) nounwind\n");
+        ir.push('\n');
+
+        // Logging functions
+        ir.push_str("; Logging\n");
+        ir.push_str("declare void @roast_log_debug(i8*) nounwind\n");
+        ir.push_str("declare void @roast_log_info(i8*) nounwind\n");
+        ir.push_str("declare void @roast_log_warning(i8*) nounwind\n");
+        ir.push_str("declare void @roast_log_error(i8*) nounwind\n");
+        ir.push_str("declare void @roast_log_critical(i8*) nounwind\n");
+        ir.push_str("declare void @roast_log_set_level(i64) nounwind\n");
+        ir.push_str("declare i64 @roast_log_get_level() nounwind\n");
         ir.push('\n');
 
         // Generate class initialization function
@@ -1748,7 +1862,7 @@ impl<'a> FunctionGen<'a> {
             "roast_list_insert" => ("void", format!("i8* {}, i64 {}, i64 {}", receiver_ptr,
                 arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"),
                 arg_vals.get(2).map(|s| s.as_str()).unwrap_or("0"))),
-            "roast_list_remove" => ("void", format!("i8* {}, i64 {}", receiver_ptr, arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"))),
+            "roast_list_remove_value" => ("i1", format!("i8* {}, i64 {}", receiver_ptr, arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"))),
             "roast_list_extend" => {
                 let other_ptr = self.i64_to_ptr(arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"));
                 ("void", format!("i8* {}, i8* {}", receiver_ptr, other_ptr))
@@ -1836,7 +1950,7 @@ impl<'a> FunctionGen<'a> {
             "@roast_list_insert" => ("void", format!("i8* {}, i64 {}, i64 {}", receiver_ptr,
                 arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"),
                 arg_vals.get(2).map(|s| s.as_str()).unwrap_or("0"))),
-            "@roast_list_remove" => ("void", format!("i8* {}, i64 {}", receiver_ptr, arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"))),
+            "@roast_list_remove_value" => ("i1", format!("i8* {}, i64 {}", receiver_ptr, arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"))),
             "@roast_list_extend" => {
                 let other_ptr = self.i64_to_ptr(arg_vals.get(1).map(|s| s.as_str()).unwrap_or("0"));
                 ("void", format!("i8* {}, i8* {}", receiver_ptr, other_ptr))
@@ -1949,6 +2063,8 @@ impl<'a> FunctionGen<'a> {
             Type::Int8 => "i8",
             Type::Int16 => "i16",
             Type::Int32 => "i32",
+            // Float types need to be stored as double for LLVM arithmetic
+            // Conversion to i64 happens only when passing to/from functions
             Type::Float | Type::Float64 => "double",
             Type::Float32 => "float",
             // NoneType: use i64 for variables (0 = None), void only for function returns
@@ -2021,6 +2137,10 @@ impl<'a> FunctionGen<'a> {
         // Jump from entry to bb0 (this separates allocas from control flow)
         self.ir.push_str("  br label %bb0\n");
 
+        // DEBUG: Dump block 0 terminator
+        if let Some(b0) = self.body.blocks.first() {
+        }
+
         // Generate ALL blocks with their labels (including bb0)
         for block in self.body.blocks.iter() {
             self.ir.push_str(&format!("bb{}:\n", block.id));
@@ -2055,6 +2175,16 @@ impl<'a> FunctionGen<'a> {
                     let place_ty = self.get_place_type(place);
                     let ty = Self::type_to_llvm(&place_ty);
                     self.ir.push_str(&format!("  store {} {}, {}* {}\n", ty, val, ty, ptr));
+                    
+                    // Also store to module global if this local corresponds to one
+                    // This is how module-level variables become accessible to other functions
+                    if let Some(local) = self.body.locals.iter().find(|l| l.id == place.local) {
+                        if let Some(sym) = local.name {
+                            if let Some(global_name) = self.codegen.get_module_global_name(sym.as_raw()) {
+                                self.ir.push_str(&format!("  store {} {}, {}* {}\n", ty, val, ty, global_name));
+                            }
+                        }
+                    }
                     
                     // For non-Copy types (lists, strings, objects), we need to increment the
                     // reference count when assigning. This way when both the source and destination
@@ -3118,7 +3248,8 @@ impl<'a> FunctionGen<'a> {
                                             MirOperand::Constant(c) => {
                                                 match c {
                                                     MirConstant::Int(v) => format!("{}", v),
-                                                    MirConstant::Float(f) => format!("{}", (*f as i64)),
+                                                    // BUG-003 fix: Use to_bits() to convert float to i64 representation
+                                                    MirConstant::Float(f) => format!("{}", f.to_bits()),
                                                     MirConstant::Bool(b) => if *b { "1".to_string() } else { "0".to_string() },
                                                     _ => "0".to_string(),
                                                 }
@@ -3314,6 +3445,17 @@ impl<'a> FunctionGen<'a> {
                 self.ir.push_str(&format!("  {} = call i64 @roast_str_to_int(i8* inttoptr (i64 {} to i8*))\n", result, val));
             }
             _ => {
+                // For any other type to Str conversion, use roast_str which handles
+                // lists, dicts, and other container types properly
+                if matches!(target_ty, Type::Str) {
+                    // roast_str takes any value (as i64) and returns a RoastString* (as i64)
+                    // We need to convert the result to i8* for string operations
+                    let str_ptr = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = call i64 @roast_str(i64 {})\n", str_ptr, val));
+                    let cast_result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = inttoptr i64 {} to i8*\n", cast_result, str_ptr));
+                    return Ok(cast_result);
+                }
                 // No cast needed or unsupported - just return the value
                 return Ok(val);
             }
@@ -3398,6 +3540,10 @@ impl<'a> FunctionGen<'a> {
                         return Type::Str;
                     }
                 }
+                // Check for module-level global variable types
+                if let Some(ty) = self.codegen.get_module_global_type(sym.as_raw()) {
+                    return ty.clone();
+                }
                 Type::Int // Functions are represented as pointers
             }
         }
@@ -3431,6 +3577,14 @@ impl<'a> FunctionGen<'a> {
                 self.generate_constant(constant)
             }
             MirOperand::Global(sym) => {
+                // Check for module-level global variables first
+                if let Some(global_name) = self.codegen.get_module_global_name(sym.as_raw()).map(|s| s.to_string()) {
+                    // Load from the global variable
+                    let result = self.fresh_value();
+                    self.ir.push_str(&format!("  {} = load i64, i64* {}\n", result, global_name));
+                    return Ok(result);
+                }
+                
                 // Check for magic variables like __name__
                 if let Some(name) = self.codegen.resolve_symbol(sym.as_raw()) {
                     if name == "__name__" {
@@ -3676,11 +3830,27 @@ impl<'a> FunctionGen<'a> {
     }
 
     /// Generate an operand and ensure it's an i64.
-    /// Bool is already stored as i64, so no extension needed.
+    /// Floats are bitcast from double to i64 for uniform value passing.
     fn generate_operand_as_i64(&mut self, operand: &MirOperand) -> LlvmResult<String> {
         let val = self.generate_operand(operand)?;
-        // Bool is now stored as i64, so no extension needed
-        Ok(val)
+        let ty = self.operand_type(operand);
+        
+        // BUG-003 fix: Bitcast float operands from double to i64
+        if matches!(ty, Type::Float | Type::Float64) {
+            let result = self.fresh_value();
+            self.ir.push_str(&format!("  {} = bitcast double {} to i64\n", result, val));
+            Ok(result)
+        } else if matches!(ty, Type::Float32) {
+            // Float32 needs to extend to double first, then bitcast
+            let ext = self.fresh_value();
+            self.ir.push_str(&format!("  {} = fpext float {} to double\n", ext, val));
+            let result = self.fresh_value();
+            self.ir.push_str(&format!("  {} = bitcast double {} to i64\n", result, ext));
+            Ok(result)
+        } else {
+            // Non-float types are already i64
+            Ok(val)
+        }
     }
 
     fn generate_constant(&mut self, constant: &MirConstant) -> LlvmResult<String> {
@@ -4006,9 +4176,12 @@ impl<'a> FunctionGen<'a> {
                                     .collect::<Vec<_>>()
                                     .join(", ");
                                 
-                                // Call the constructor wrapper function @roast_fn_CLASS_SYM_ID(args...)
-                                // The constructor function was registered by compile_class_constructor
-                                let constructor_fn = format!("@roast_fn_{}", sym_id);
+                                // Call the constructor wrapper function
+                                // Use stored constructor_fn for correct cross-module calls
+                                let constructor_fn = self.codegen.class_info.get(name)
+                                    .and_then(|info| info.constructor_fn.as_ref())
+                                    .cloned()
+                                    .unwrap_or_else(|| format!("@roast_fn_{}", sym_id));
                                 let result = self.fresh_value();
                                 if args_str.is_empty() {
                                     self.ir.push_str(&format!(
@@ -4114,8 +4287,11 @@ impl<'a> FunctionGen<'a> {
                                 }
                             }
                         } else {
-                            // Fallback to raw ID - check if this is a class method
-                            if let Some((class_name, class_sym)) = self.codegen.find_class_owning_method(sym_id) {
+                            // Fallback to raw ID - first check if this is a class constructor by symbol ID
+                            // (This handles cross-module constructor calls where symbol name resolution fails)
+                            if let Some(constructor_fn) = self.codegen.constructor_sym_to_fn.get(&sym_id) {
+                                constructor_fn.clone()
+                            } else if let Some((class_name, class_sym)) = self.codegen.find_class_owning_method(sym_id) {
                                 format!("@roast_fn_{}_{}", class_name, class_sym)
                             } else {
                                 format!("@roast_fn_{}", sym_id)
@@ -4751,6 +4927,78 @@ impl<'a> FunctionGen<'a> {
                             "  {} = call i64 @roast_rc_create(i64 {})\n",
                             result, val
                         ));
+                    } else if func_name == "@roast_tcp_server_create" {
+                        // tcp_server_create(host: str, port: int) -> int
+                        // First argument is a string (needs pointer conversion)
+                        let host_ptr = self.i64_to_ptr(&arg_vals[0]);
+                        let port_val = &arg_vals[1];
+                        self.ir.push_str(&format!(
+                            "  {} = call i64 @roast_tcp_server_create(i8* {}, i64 {})\n",
+                            result, host_ptr, port_val
+                        ));
+                    } else if func_name == "@roast_tcp_server_accept" {
+                        // tcp_server_accept(server_handle: int) -> int
+                        self.ir.push_str(&format!(
+                            "  {} = call i64 @roast_tcp_server_accept(i64 {})\n",
+                            result, arg_vals[0]
+                        ));
+                    } else if func_name == "@roast_tcp_server_close" {
+                        // tcp_server_close(server_handle: int) -> None
+                        self.ir.push_str(&format!(
+                            "  call void @roast_tcp_server_close(i64 {})\n",
+                            arg_vals[0]
+                        ));
+                        self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
+                    } else if func_name == "@roast_tcp_client_read" {
+                        // tcp_client_read(client_handle: int, max_bytes: int) -> str
+                        let str_ptr = self.fresh_value();
+                        self.ir.push_str(&format!(
+                            "  {} = call i8* @roast_tcp_client_read(i64 {}, i64 {})\n",
+                            str_ptr, arg_vals[0], arg_vals[1]
+                        ));
+                        // Convert string pointer to i64
+                        self.ir.push_str(&format!(
+                            "  {} = ptrtoint i8* {} to i64\n",
+                            result, str_ptr
+                        ));
+                    } else if func_name == "@roast_tcp_client_write" {
+                        // tcp_client_write(client_handle: int, data: str) -> int
+                        let data_ptr = self.i64_to_ptr(&arg_vals[1]);
+                        self.ir.push_str(&format!(
+                            "  {} = call i64 @roast_tcp_client_write(i64 {}, i8* {})\n",
+                            result, arg_vals[0], data_ptr
+                        ));
+                    } else if func_name == "@roast_tcp_client_close" {
+                        // tcp_client_close(client_handle: int) -> None
+                        self.ir.push_str(&format!(
+                            "  call void @roast_tcp_client_close(i64 {})\n",
+                            arg_vals[0]
+                        ));
+                        self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
+                    } else if func_name == "@roast_log_debug" || func_name == "@roast_log_info" || 
+                              func_name == "@roast_log_warning" || func_name == "@roast_log_error" ||
+                              func_name == "@roast_log_critical" {
+                        // log_*(message: str) -> None
+                        let msg_ptr = self.i64_to_ptr(&arg_vals[0]);
+                        let fn_name = func_name.trim_start_matches('@');
+                        self.ir.push_str(&format!(
+                            "  call void @{}(i8* {})\n",
+                            fn_name, msg_ptr
+                        ));
+                        self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
+                    } else if func_name == "@roast_log_set_level" {
+                        // log_set_level(level: int) -> None
+                        self.ir.push_str(&format!(
+                            "  call void @roast_log_set_level(i64 {})\n",
+                            arg_vals[0]
+                        ));
+                        self.ir.push_str(&format!("  {} = add i64 0, 0\n", result));
+                    } else if func_name == "@roast_log_get_level" {
+                        // log_get_level() -> int
+                        self.ir.push_str(&format!(
+                            "  {} = call i64 @roast_log_get_level()\n",
+                            result
+                        ));
                     } else {
                         let args_str = arg_vals.iter().map(|a| format!("i64 {}", a)).collect::<Vec<_>>().join(", ");
                         self.ir.push_str(&format!("  {} = call i64 {}({})\n", result, func_name, args_str));
@@ -4987,9 +5235,19 @@ impl<'a> FunctionGen<'a> {
                             ));
                         }
                         _ => {
-                            // Fall back to static dispatch for 3+ args (rare case)
-                            // This path should ideally never be taken for imported classes
-                            let func_name = format!("@roast_fn_{}", method.as_raw());
+                            // Fall back to static dispatch for 3+ args
+                            // Try to find which class defines this method by scanning all known classes
+                            let mut func_name = format!("@roast_fn_{}", method.as_raw());
+                            
+                            // Search all registered classes for this method
+                            for (class_name, class_info) in &self.codegen.class_info {
+                                if class_info.methods.contains(&method.as_raw()) {
+                                    // Found the class that defines this method
+                                    func_name = format!("@roast_fn_{}_{}", class_name, method.as_raw());
+                                    break;
+                                }
+                            }
+                            
                             let mut arg_vals = vec![receiver_val.clone()];
                             for arg in args {
                                 arg_vals.push(self.generate_operand_as_i64(arg)?);
@@ -5241,23 +5499,54 @@ impl<'a> FunctionGen<'a> {
 
     fn get_place_ptr(&self, place: &MirPlace) -> String {
         let result = self.locals.get(&place.local).cloned().unwrap_or_else(|| format!("%local{}", place.local));
-        // eprintln!("[LLVM DEBUG lookup] local_id={} -> ptr={}", place.local, result);
         result
     }
 
 
     fn get_place_type(&self, place: &MirPlace) -> Type {
-        // Find the type from locals or params
+        // Find the base type from locals or params
+        let mut base_ty = Type::Int;
         for local in &self.body.locals {
             if local.id == place.local {
-                return local.ty.clone();
+                base_ty = local.ty.clone();
+                break;
             }
         }
-        for param in &self.body.params {
-            if param.local.id == place.local {
-                return param.local.ty.clone();
+        if matches!(base_ty, Type::Int) {
+            for param in &self.body.params {
+                if param.local.id == place.local {
+                    base_ty = param.local.ty.clone();
+                    break;
+                }
             }
         }
-        Type::Int
+        
+        // Apply projections to determine final type
+        let mut current_ty = base_ty;
+        for proj in &place.projections {
+            match proj {
+                MirProjection::Field(_) => {
+                    // Field access - type is unknown without more info
+                    current_ty = Type::Unknown;
+                }
+                MirProjection::Index(_) => {
+                    // Index into container - return element/value type
+                    current_ty = match current_ty {
+                        Type::List(ref elem_ty) => elem_ty.as_ref().clone(),
+                        Type::Dict(_, ref val_ty) => val_ty.as_ref().clone(),
+                        Type::Str => Type::Str, // str[i] returns str (single character)
+                        _ => Type::Unknown,
+                    };
+                }
+                MirProjection::Slice { .. } => {
+                    // Slice preserves container type (list[1:3] -> list)
+                }
+                MirProjection::Deref => {
+                    // Dereference - type is unknown
+                    current_ty = Type::Unknown;
+                }
+            }
+        }
+        current_ty
     }
 }

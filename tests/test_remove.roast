@@ -1,0 +1,8 @@
+def main() -> int:
+    items: list[str] = ["sword", "shield", "potion"]
+    print(f"Before: {items}")
+    
+    items.remove("shield")
+    
+    print(f"After remove: {items}")
+    return 0

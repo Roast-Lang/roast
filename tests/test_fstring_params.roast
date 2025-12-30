@@ -1,0 +1,8 @@
+def test(a: int, b: int) -> int:
+    print(f"a={a}, b={b}")
+    return a
+
+def main() -> int:
+    r: int = test(10, 3)
+    print(f"result={r}")
+    return 0

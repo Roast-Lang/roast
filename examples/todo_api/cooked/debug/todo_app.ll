@@ -2,57 +2,57 @@
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-@.str.2 = private unnamed_addr constant [5 x i8] c"done\00"
-@.str.13 = private unnamed_addr constant [22 x i8] c"  4 - Show statistics\00"
-@.str.29 = private unnamed_addr constant [2 x i8] c" \00"
-@.str.9 = private unnamed_addr constant [10 x i8] c"Commands:\00"
-@.str.16 = private unnamed_addr constant [21 x i8] c"Adding demo todos...\00"
-@.str.31 = private unnamed_addr constant [19 x i8] c"Enter todo title: \00"
-@.str.34 = private unnamed_addr constant [3 x i8] c") \00"
-@.str.14 = private unnamed_addr constant [20 x i8] c"  5 - Save and exit\00"
-@.str.0 = private unnamed_addr constant [3 x i8] c"id\00"
-@.str.26 = private unnamed_addr constant [4 x i8] c"[x]\00"
-@.str.28 = private unnamed_addr constant [3 x i8] c"  \00"
-@.str.6 = private unnamed_addr constant [2 x i8] c"=\00"
-@.str.27 = private unnamed_addr constant [4 x i8] c"[ ]\00"
-@.str.42 = private unnamed_addr constant [9 x i8] c"  Done: \00"
-@.str.50 = private unnamed_addr constant [9 x i8] c"Goodbye!\00"
-@.str.45 = private unnamed_addr constant [2 x i8] c"%\00"
-@.str.21 = private unnamed_addr constant [22 x i8] c"Enter command (1-5): \00"
-@.str.18 = private unnamed_addr constant [16 x i8] c"Build a web app\00"
-@.str.33 = private unnamed_addr constant [9 x i8] c"Added: (\00"
-@.str.38 = private unnamed_addr constant [14 x i8] c"Marked done: \00"
-@.str.39 = private unnamed_addr constant [2 x i8] c"5\00"
-@.str.41 = private unnamed_addr constant [10 x i8] c"  Total: \00"
-@.str.12 = private unnamed_addr constant [21 x i8] c"  3 - Mark todo done\00"
-@.str.37 = private unnamed_addr constant [16 x i8] c"Todo not found!\00"
-@.str.20 = private unnamed_addr constant [19 x i8] c"Added 3 demo todos\00"
-@.str.5 = private unnamed_addr constant [2 x i8] c"r\00"
-@.str.49 = private unnamed_addr constant [10 x i8] c"Saved to \00"
-@.str.47 = private unnamed_addr constant [26 x i8] c"Unknown command. Try 1-5.\00"
 @.str.1 = private unnamed_addr constant [6 x i8] c"title\00"
-@.str.25 = private unnamed_addr constant [16 x i8] c"  No todos yet!\00"
-@.str.43 = private unnamed_addr constant [12 x i8] c"  Pending: \00"
-@.str.24 = private unnamed_addr constant [2 x i8] c"2\00"
-@.str.15 = private unnamed_addr constant [15 x i8] c"/tmp/todos.txt\00"
-@.str.10 = private unnamed_addr constant [21 x i8] c"  1 - List all todos\00"
-@.str.8 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.11 = private unnamed_addr constant [19 x i8] c"  2 - Add new todo\00"
-@.str.19 = private unnamed_addr constant [20 x i8] c"Write documentation\00"
-@.str.3 = private unnamed_addr constant [2 x i8] c"|\00"
-@.str.7 = private unnamed_addr constant [38 x i8] c"       TODO APP - Roast Language Demo\00"
-@.str.17 = private unnamed_addr constant [24 x i8] c"Learn Roast programming\00"
-@.str.4 = private unnamed_addr constant [2 x i8] c"w\00"
-@.str.23 = private unnamed_addr constant [19 x i8] c"--- Your Todos ---\00"
-@.str.30 = private unnamed_addr constant [3 x i8] c": \00"
-@.str.32 = private unnamed_addr constant [2 x i8] c"3\00"
-@.str.22 = private unnamed_addr constant [2 x i8] c"1\00"
-@.str.35 = private unnamed_addr constant [29 x i8] c"Enter todo ID to mark done: \00"
-@.str.40 = private unnamed_addr constant [19 x i8] c"--- Statistics ---\00"
-@.str.44 = private unnamed_addr constant [15 x i8] c"  Completion: \00"
-@.str.46 = private unnamed_addr constant [18 x i8] c"Saving to file...\00"
+@.str.16 = private unnamed_addr constant [21 x i8] c"Adding demo todos...\00"
 @.str.36 = private unnamed_addr constant [2 x i8] c"4\00"
+@.str.43 = private unnamed_addr constant [12 x i8] c"  Pending: \00"
+@.str.28 = private unnamed_addr constant [3 x i8] c"  \00"
+@.str.23 = private unnamed_addr constant [19 x i8] c"--- Your Todos ---\00"
+@.str.0 = private unnamed_addr constant [3 x i8] c"id\00"
+@.str.25 = private unnamed_addr constant [16 x i8] c"  No todos yet!\00"
+@.str.30 = private unnamed_addr constant [3 x i8] c": \00"
+@.str.34 = private unnamed_addr constant [3 x i8] c") \00"
+@.str.13 = private unnamed_addr constant [22 x i8] c"  4 - Show statistics\00"
+@.str.44 = private unnamed_addr constant [15 x i8] c"  Completion: \00"
+@.str.45 = private unnamed_addr constant [2 x i8] c"%\00"
+@.str.50 = private unnamed_addr constant [9 x i8] c"Goodbye!\00"
+@.str.46 = private unnamed_addr constant [18 x i8] c"Saving to file...\00"
+@.str.8 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.35 = private unnamed_addr constant [29 x i8] c"Enter todo ID to mark done: \00"
+@.str.37 = private unnamed_addr constant [16 x i8] c"Todo not found!\00"
+@.str.41 = private unnamed_addr constant [10 x i8] c"  Total: \00"
+@.str.18 = private unnamed_addr constant [16 x i8] c"Build a web app\00"
+@.str.47 = private unnamed_addr constant [26 x i8] c"Unknown command. Try 1-5.\00"
+@.str.31 = private unnamed_addr constant [19 x i8] c"Enter todo title: \00"
+@.str.9 = private unnamed_addr constant [10 x i8] c"Commands:\00"
+@.str.40 = private unnamed_addr constant [19 x i8] c"--- Statistics ---\00"
+@.str.33 = private unnamed_addr constant [9 x i8] c"Added: (\00"
+@.str.10 = private unnamed_addr constant [21 x i8] c"  1 - List all todos\00"
+@.str.32 = private unnamed_addr constant [2 x i8] c"3\00"
+@.str.6 = private unnamed_addr constant [2 x i8] c"=\00"
+@.str.4 = private unnamed_addr constant [2 x i8] c"w\00"
+@.str.12 = private unnamed_addr constant [21 x i8] c"  3 - Mark todo done\00"
+@.str.39 = private unnamed_addr constant [2 x i8] c"5\00"
+@.str.5 = private unnamed_addr constant [2 x i8] c"r\00"
+@.str.3 = private unnamed_addr constant [2 x i8] c"|\00"
+@.str.11 = private unnamed_addr constant [19 x i8] c"  2 - Add new todo\00"
+@.str.20 = private unnamed_addr constant [19 x i8] c"Added 3 demo todos\00"
 @.str.48 = private unnamed_addr constant [2 x i8] c"\0A\00"
+@.str.14 = private unnamed_addr constant [20 x i8] c"  5 - Save and exit\00"
+@.str.29 = private unnamed_addr constant [2 x i8] c" \00"
+@.str.27 = private unnamed_addr constant [4 x i8] c"[ ]\00"
+@.str.7 = private unnamed_addr constant [38 x i8] c"       TODO APP - Roast Language Demo\00"
+@.str.42 = private unnamed_addr constant [9 x i8] c"  Done: \00"
+@.str.15 = private unnamed_addr constant [15 x i8] c"/tmp/todos.txt\00"
+@.str.38 = private unnamed_addr constant [14 x i8] c"Marked done: \00"
+@.str.49 = private unnamed_addr constant [10 x i8] c"Saved to \00"
+@.str.26 = private unnamed_addr constant [4 x i8] c"[x]\00"
+@.str.21 = private unnamed_addr constant [22 x i8] c"Enter command (1-5): \00"
+@.str.17 = private unnamed_addr constant [24 x i8] c"Learn Roast programming\00"
+@.str.24 = private unnamed_addr constant [2 x i8] c"2\00"
+@.str.19 = private unnamed_addr constant [20 x i8] c"Write documentation\00"
+@.str.2 = private unnamed_addr constant [5 x i8] c"done\00"
+@.str.22 = private unnamed_addr constant [2 x i8] c"1\00"
 
 @.classname.Todo = private unnamed_addr constant [5 x i8] c"Todo\00"
 
@@ -142,6 +142,7 @@ declare i64 @roast_list_index(i8*, i64) nounwind
 declare i8* @roast_list_copy(i8*) nounwind
 declare void @roast_list_extend(i8*, i8*) nounwind
 declare i8* @roast_list_slice(i8*, i64, i64, i64) nounwind
+declare i1 @roast_list_eq(i8*, i8*) nounwind
 
 ; Dict operations
 declare i8* @roast_dict_new() nounwind
@@ -159,6 +160,7 @@ declare i64 @roast_dict_pop(i8*, i64, i64) nounwind
 declare void @roast_dict_update(i8*, i8*) nounwind
 declare i8* @roast_dict_copy(i8*) nounwind
 declare i64 @roast_dict_setdefault(i8*, i64, i64) nounwind
+declare i1 @roast_dict_eq(i8*, i8*) nounwind
 
 ; Set operations
 declare i8* @roast_set_new() nounwind
@@ -226,6 +228,8 @@ declare i64 @roast_pow_int(i64, i64) nounwind
 declare double @roast_pow_float(double, double) nounwind
 declare i64 @roast_abs_int(i64) nounwind
 declare double @roast_abs_float(double) nounwind
+declare i64 @roast_floordiv(i64, i64) nounwind
+declare i64 @roast_mod(i64, i64) nounwind
 
 ; Async operations
 declare i64 @roast_await(i8*) nounwind
@@ -277,6 +281,7 @@ declare i64 @roast_is_property(i64) nounwind
 
 ; Builtin functions
 declare i64 @roast_print(i64) nounwind
+declare i64 @roast_print_value(i64) nounwind
 declare i64 @roast_len(i64) nounwind
 declare i64 @roast_type(i64) nounwind
 declare i64 @roast_int(i64) nounwind
@@ -288,6 +293,8 @@ declare i64 @roast_dict(i64) nounwind
 declare i64 @roast_set(i64) nounwind
 declare i64 @roast_tuple(i64) nounwind
 declare i64 @roast_range(i64, i64, i64) nounwind
+declare i64 @roast_enumerate(i64, i64) nounwind
+declare i64 @roast_zip(i64, i64) nounwind
 declare i64 @roast_abs(i64) nounwind
 declare i64 @roast_min(i64, i64) nounwind
 declare i64 @roast_max(i64, i64) nounwind
@@ -296,13 +303,12 @@ declare i64 @roast_max_list(i64) nounwind
 declare i64 @roast_sum(i64) nounwind
 declare i64 @roast_sorted(i64) nounwind
 declare i64 @roast_reversed(i64) nounwind
-declare i64 @roast_enumerate(i64, i64) nounwind
-declare i64 @roast_zip(i64, i64) nounwind
 declare i64 @roast_map(i64, i64) nounwind
 declare i64 @roast_filter(i64, i64) nounwind
 declare i64 @roast_input(i64) nounwind
 declare i64 @roast_ord(i64) nounwind
 declare i64 @roast_chr(i64) nounwind
+declare void @roast_class_set_mro(i8*, i8*) nounwind
 declare i64 @roast_repr(i64) nounwind
 declare i64 @roast_hash(i64) nounwind
 declare i64 @roast_id(i64) nounwind
@@ -321,11 +327,31 @@ declare i64 @roast_file_write(i64, i64) nounwind
 declare void @roast_file_close(i64) nounwind
 declare i64 @roast_file_readline(i64) nounwind
 
+; TCP Server
+declare i64 @roast_tcp_server_create(i8*, i64) nounwind
+declare i64 @roast_tcp_server_accept(i64) nounwind
+declare void @roast_tcp_server_close(i64) nounwind
+declare i8* @roast_tcp_client_read(i64, i64) nounwind
+declare i64 @roast_tcp_client_write(i64, i8*) nounwind
+declare void @roast_tcp_client_close(i64) nounwind
+
+; Python FFI
+declare i64 @roast_py_import(i8*) nounwind
+declare i64 @roast_py_getattr(i64, i8*) nounwind
+declare i64 @roast_py_call(i64, i8*) nounwind
+declare i8* @roast_py_to_str(i64) nounwind
+declare i64 @roast_py_to_int(i64) nounwind
+
 ; Class initialization
 define internal void @roast_init_classes() {
 entry:
   %class.Todo = call i8* @roast_class_new(i8* getelementptr ([5 x i8], [5 x i8]* @.classname.Todo, i32 0, i32 0), i8* null)
   store i8* %class.Todo, i8** @.class.Todo
+  %mro.list.Todo = call i8* @roast_list_new(i64 1)
+  %mro.ptr.Todo.0 = load i8*, i8** @.class.Todo
+  %mro.val.Todo.0 = ptrtoint i8* %mro.ptr.Todo.0 to i64
+  call void @roast_list_append(i8* %mro.list.Todo, i64 %mro.val.Todo.0)
+  call void @roast_class_set_mro(i8* %class.Todo, i8* %mro.list.Todo)
   %method_ptr.Todo.91 = ptrtoint i64 (i64, ...)* @roast_fn_Todo_91 to i64
   call void @roast_class_add_method(i8* %class.Todo, i8* getelementptr ([10 x i8], [10 x i8]* @.methodname.Todo.91, i32 0, i32 0), i64 %method_ptr.Todo.91)
   %method_ptr.Todo.92 = ptrtoint i64 (i64, ...)* @roast_fn_Todo_92 to i64
@@ -333,197 +359,6 @@ entry:
   %method_ptr.Todo.60 = ptrtoint i64 (i64, ...)* @roast_fn_Todo_60 to i64
   call void @roast_class_add_method(i8* %class.Todo, i8* getelementptr ([9 x i8], [9 x i8]* @.methodname.Todo.60, i32 0, i32 0), i64 %method_ptr.Todo.60)
   ret void
-}
-
-define i64 @roast_fn_179() {
-entry:
-  %v0 = alloca i64
-  %v1 = call i64 @roast_fn_126()
-  store i64 %v1, i64* %v0
-  br label %bb1
-bb1:
-  ret i64 0
-}
-
-define i64 @roast_fn_96(i64 %arg0, i64 %arg1) {
-entry:
-  %v0 = alloca i64
-  %v1 = alloca i64
-  %v2 = alloca i64
-  %v3 = alloca i64
-  %v4 = alloca i64
-  %v5 = alloca i64
-  store i64 %arg0, i64* %v0
-  store i64 %arg1, i64* %v1
-  %v6 = load i64, i64* %v0
-  %v7 = getelementptr [2 x i8], [2 x i8]* @.str.4, i64 0, i64 0
-  %v8 = call i8* @roast_str_new(i8* %v7, i64 1)
-  %v9 = ptrtoint i8* %v8 to i64
-  %v10 = call i64 @roast_open(i64 %v6, i64 %v9)
-  store i64 %v10, i64* %v3
-  br label %bb1
-bb1:
-  %v11 = load i64, i64* %v3
-  store i64 %v11, i64* %v2
-  %v12 = load i64, i64* %v2
-  %v14 = load i64, i64* %v1
-  %v13 = call i64 @roast_file_write(i64 %v12, i64 %v14)
-  store i64 %v13, i64* %v4
-  br label %bb2
-bb2:
-  %v15 = load i64, i64* %v2
-  call void @roast_file_close(i64 %v15)
-  %v16 = add i64 0, 0
-  store i64 %v16, i64* %v5
-  br label %bb3
-bb3:
-  ret i64 0
-}
-
-define i64 @roast_fn_102(i64 %arg0) {
-entry:
-  %v0 = alloca i64
-  %v1 = alloca i64
-  %v2 = alloca i64
-  %v3 = alloca i64
-  %v4 = alloca i64
-  %v5 = alloca i64
-  store i64 %arg0, i64* %v0
-  %v6 = load i64, i64* %v0
-  %v7 = getelementptr [2 x i8], [2 x i8]* @.str.5, i64 0, i64 0
-  %v8 = call i8* @roast_str_new(i8* %v7, i64 1)
-  %v9 = ptrtoint i8* %v8 to i64
-  %v10 = call i64 @roast_open(i64 %v6, i64 %v9)
-  store i64 %v10, i64* %v2
-  br label %bb1
-bb1:
-  %v11 = load i64, i64* %v2
-  store i64 %v11, i64* %v1
-  %v12 = load i64, i64* %v1
-  %v13 = call i64 @roast_file_read(i64 %v12)
-  store i64 %v13, i64* %v4
-  br label %bb2
-bb2:
-  %v14 = load i64, i64* %v4
-  store i64 %v14, i64* %v3
-  %v15 = inttoptr i64 %v14 to i8*
-  call void @roast_incref(i8* %v15)
-  %v16 = load i64, i64* %v1
-  call void @roast_file_close(i64 %v16)
-  %v17 = add i64 0, 0
-  store i64 %v17, i64* %v5
-  br label %bb3
-bb3:
-  %v18 = load i64, i64* %v3
-  %v19 = inttoptr i64 %v18 to i8*
-  call void @roast_decref(i8* %v19)
-  %v20 = load i64, i64* %v3
-  ret i64 %v20
-}
-
-
-define i64 @roast_fn_87(i64 %arg0, i64 %arg1, i64 %arg2) {
-entry:
-    ; Load class pointer from global
-    %class_ptr = load i8*, i8** @.class.Todo
-    ; Create a new object with the class pointer
-    %obj = call i8* @roast_object_new(i8* %class_ptr)
-
-    ; Convert object pointer to i64 for storage and passing
-    %self_i64 = ptrtoint i8* %obj to i64
-
-    ; Call __init__ with self and all arguments
-    call i64 @roast_fn_Todo_60(i64 %self_i64, i64 %arg0, i64 %arg1, i64 %arg2)
-
-    ; Return the object (as i64)
-    ret i64 %self_i64
-}
-
-define i64 @roast_fn_126() {
-entry:
-  %v0 = alloca i64
-  %v1 = call i64 @roast_fn_108()
-  store i64 %v1, i64* %v0
-  br label %bb1
-bb1:
-  ret i64 0
-}
-
-define i64 @roast_fn_105() {
-entry:
-  %v0 = alloca i64
-  %v1 = alloca i64
-  %v2 = alloca i64
-  %v3 = alloca i64
-  %v4 = alloca i64
-  %v5 = alloca i64
-  %v6 = getelementptr [2 x i8], [2 x i8]* @.str.6, i64 0, i64 0
-  %v7 = call i8* @roast_str_new(i8* %v6, i64 1)
-  %v8 = ptrtoint i8* %v7 to i64
-  %v10 = inttoptr i64 %v8 to i8*
-  %v11 = call i8* @roast_str_repeat(i8* %v10, i64 50)
-  %v9 = ptrtoint i8* %v11 to i64
-  store i64 %v9, i64* %v1
-  %v12 = load i64, i64* %v1
-  %v13 = call i64 @roast_print(i64 %v12)
-  store i64 %v13, i64* %v0
-  br label %bb1
-bb1:
-  %v14 = getelementptr [38 x i8], [38 x i8]* @.str.7, i64 0, i64 0
-  %v15 = call i8* @roast_str_new(i8* %v14, i64 37)
-  %v16 = ptrtoint i8* %v15 to i64
-  %v17 = call i64 @roast_print(i64 %v16)
-  store i64 %v17, i64* %v2
-  br label %bb2
-bb2:
-  %v18 = getelementptr [2 x i8], [2 x i8]* @.str.6, i64 0, i64 0
-  %v19 = call i8* @roast_str_new(i8* %v18, i64 1)
-  %v20 = ptrtoint i8* %v19 to i64
-  %v22 = inttoptr i64 %v20 to i8*
-  %v23 = call i8* @roast_str_repeat(i8* %v22, i64 50)
-  %v21 = ptrtoint i8* %v23 to i64
-  store i64 %v21, i64* %v4
-  %v24 = load i64, i64* %v4
-  %v25 = call i64 @roast_print(i64 %v24)
-  store i64 %v25, i64* %v3
-  br label %bb3
-bb3:
-  %v26 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v27 = call i8* @roast_str_new(i8* %v26, i64 0)
-  %v28 = ptrtoint i8* %v27 to i64
-  %v29 = call i64 @roast_print(i64 %v28)
-  store i64 %v29, i64* %v5
-  br label %bb4
-bb4:
-  ret i64 0
-}
-
-define i64 @roast_fn_Todo_60(i64 %arg0, i64 %arg1, i64 %arg2, i64 %arg3) {
-entry:
-  %v0 = alloca i64
-  %v1 = alloca i64
-  %v2 = alloca i64
-  %v3 = alloca i64
-  store i64 %arg0, i64* %v0
-  store i64 %arg1, i64* %v1
-  store i64 %arg2, i64* %v2
-  store i64 %arg3, i64* %v3
-  %v4 = load i64, i64* %v0
-  %v5 = inttoptr i64 %v4 to i8*
-  %v6 = load i64, i64* %v1
-  %v7 = getelementptr [3 x i8], [3 x i8]* @.str.0, i64 0, i64 0
-  call void @roast_object_setattr(i8* %v5, i8* %v7, i64 %v6)
-  %v8 = load i64, i64* %v0
-  %v9 = inttoptr i64 %v8 to i8*
-  %v10 = load i64, i64* %v2
-  %v11 = getelementptr [6 x i8], [6 x i8]* @.str.1, i64 0, i64 0
-  call void @roast_object_setattr(i8* %v9, i8* %v11, i64 %v10)
-  %v12 = load i64, i64* %v0
-  %v13 = inttoptr i64 %v12 to i8*
-  %v14 = load i64, i64* %v3
-  %v15 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
-  call void @roast_object_setattr(i8* %v13, i8* %v15, i64 %v14)
-  ret i64 0
 }
 
 define i64 @roast_fn_Todo_92(i64 %arg0) {
@@ -540,6 +375,8 @@ entry:
   %v9 = alloca i64
   %v10 = alloca i64
   store i64 %arg0, i64* %v0
+  br label %bb0
+bb0:
   %v11 = load i64, i64* %v0
   %v12 = getelementptr [3 x i8], [3 x i8]* @.str.0, i64 0, i64 0
   %v13 = inttoptr i64 %v11 to i8*
@@ -606,7 +443,55 @@ bb3:
   ret i64 %v57
 }
 
-define i64 @roast_fn_107() {
+
+define i64 @roast_fn_87(i64 %arg0, i64 %arg1, i64 %arg2) {
+entry:
+    ; Load class pointer from global
+    %class_ptr = load i8*, i8** @.class.Todo
+    ; Create a new object with the class pointer
+    %obj = call i8* @roast_object_new(i8* %class_ptr)
+
+    ; Convert object pointer to i64 for storage and passing
+    %self_i64 = ptrtoint i8* %obj to i64
+
+    ; Call __init__ with self and all arguments
+    call i64 @roast_fn_Todo_60(i64 %self_i64, i64 %arg0, i64 %arg1, i64 %arg2)
+
+    ; Return the object (as i64)
+    ret i64 %self_i64
+}
+
+define i64 @roast_fn_Todo_60(i64 %arg0, i64 %arg1, i64 %arg2, i64 %arg3) {
+entry:
+  %v0 = alloca i64
+  %v1 = alloca i64
+  %v2 = alloca i64
+  %v3 = alloca i64
+  store i64 %arg0, i64* %v0
+  store i64 %arg1, i64* %v1
+  store i64 %arg2, i64* %v2
+  store i64 %arg3, i64* %v3
+  br label %bb0
+bb0:
+  %v4 = load i64, i64* %v0
+  %v5 = inttoptr i64 %v4 to i8*
+  %v6 = load i64, i64* %v1
+  %v7 = getelementptr [3 x i8], [3 x i8]* @.str.0, i64 0, i64 0
+  call void @roast_object_setattr(i8* %v5, i8* %v7, i64 %v6)
+  %v8 = load i64, i64* %v0
+  %v9 = inttoptr i64 %v8 to i8*
+  %v10 = load i64, i64* %v2
+  %v11 = getelementptr [6 x i8], [6 x i8]* @.str.1, i64 0, i64 0
+  call void @roast_object_setattr(i8* %v9, i8* %v11, i64 %v10)
+  %v12 = load i64, i64* %v0
+  %v13 = inttoptr i64 %v12 to i8*
+  %v14 = load i64, i64* %v3
+  %v15 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
+  call void @roast_object_setattr(i8* %v13, i8* %v15, i64 %v14)
+  ret i64 0
+}
+
+define i64 @roast_fn_96(i64 %arg0, i64 %arg1) {
 entry:
   %v0 = alloca i64
   %v1 = alloca i64
@@ -614,68 +499,73 @@ entry:
   %v3 = alloca i64
   %v4 = alloca i64
   %v5 = alloca i64
-  %v6 = alloca i64
-  %v7 = getelementptr [10 x i8], [10 x i8]* @.str.9, i64 0, i64 0
-  %v8 = call i8* @roast_str_new(i8* %v7, i64 9)
+  store i64 %arg0, i64* %v0
+  store i64 %arg1, i64* %v1
+  br label %bb0
+bb0:
+  %v6 = load i64, i64* %v0
+  %v7 = getelementptr [2 x i8], [2 x i8]* @.str.4, i64 0, i64 0
+  %v8 = call i8* @roast_str_new(i8* %v7, i64 1)
   %v9 = ptrtoint i8* %v8 to i64
-  %v10 = call i64 @roast_print(i64 %v9)
-  store i64 %v10, i64* %v0
+  %v10 = call i64 @roast_open(i64 %v6, i64 %v9)
+  store i64 %v10, i64* %v3
   br label %bb1
 bb1:
-  %v11 = getelementptr [21 x i8], [21 x i8]* @.str.10, i64 0, i64 0
-  %v12 = call i8* @roast_str_new(i8* %v11, i64 20)
-  %v13 = ptrtoint i8* %v12 to i64
-  %v14 = call i64 @roast_print(i64 %v13)
-  store i64 %v14, i64* %v1
+  %v11 = load i64, i64* %v3
+  store i64 %v11, i64* %v2
+  %v12 = load i64, i64* %v2
+  %v14 = load i64, i64* %v1
+  %v13 = call i64 @roast_file_write(i64 %v12, i64 %v14)
+  store i64 %v13, i64* %v4
   br label %bb2
 bb2:
-  %v15 = getelementptr [19 x i8], [19 x i8]* @.str.11, i64 0, i64 0
-  %v16 = call i8* @roast_str_new(i8* %v15, i64 18)
-  %v17 = ptrtoint i8* %v16 to i64
-  %v18 = call i64 @roast_print(i64 %v17)
-  store i64 %v18, i64* %v2
+  %v15 = load i64, i64* %v2
+  call void @roast_file_close(i64 %v15)
+  %v16 = add i64 0, 0
+  store i64 %v16, i64* %v5
   br label %bb3
 bb3:
-  %v19 = getelementptr [21 x i8], [21 x i8]* @.str.12, i64 0, i64 0
-  %v20 = call i8* @roast_str_new(i8* %v19, i64 20)
-  %v21 = ptrtoint i8* %v20 to i64
-  %v22 = call i64 @roast_print(i64 %v21)
-  store i64 %v22, i64* %v3
-  br label %bb4
-bb4:
-  %v23 = getelementptr [22 x i8], [22 x i8]* @.str.13, i64 0, i64 0
-  %v24 = call i8* @roast_str_new(i8* %v23, i64 21)
-  %v25 = ptrtoint i8* %v24 to i64
-  %v26 = call i64 @roast_print(i64 %v25)
-  store i64 %v26, i64* %v4
-  br label %bb5
-bb5:
-  %v27 = getelementptr [20 x i8], [20 x i8]* @.str.14, i64 0, i64 0
-  %v28 = call i8* @roast_str_new(i8* %v27, i64 19)
-  %v29 = ptrtoint i8* %v28 to i64
-  %v30 = call i64 @roast_print(i64 %v29)
-  store i64 %v30, i64* %v5
-  br label %bb6
-bb6:
-  %v31 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v32 = call i8* @roast_str_new(i8* %v31, i64 0)
-  %v33 = ptrtoint i8* %v32 to i64
-  %v34 = call i64 @roast_print(i64 %v33)
-  store i64 %v34, i64* %v6
-  br label %bb7
-bb7:
   ret i64 0
 }
 
-define i64 @roast_fn_Todo_91(i64 %arg0) {
+define i64 @roast_fn_102(i64 %arg0) {
 entry:
   %v0 = alloca i64
+  %v1 = alloca i64
+  %v2 = alloca i64
+  %v3 = alloca i64
+  %v4 = alloca i64
+  %v5 = alloca i64
   store i64 %arg0, i64* %v0
-  %v1 = load i64, i64* %v0
-  %v2 = inttoptr i64 %v1 to i8*
-  %v3 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
-  call void @roast_object_setattr(i8* %v2, i8* %v3, i64 1)
-  ret i64 0
+  br label %bb0
+bb0:
+  %v6 = load i64, i64* %v0
+  %v7 = getelementptr [2 x i8], [2 x i8]* @.str.5, i64 0, i64 0
+  %v8 = call i8* @roast_str_new(i8* %v7, i64 1)
+  %v9 = ptrtoint i8* %v8 to i64
+  %v10 = call i64 @roast_open(i64 %v6, i64 %v9)
+  store i64 %v10, i64* %v2
+  br label %bb1
+bb1:
+  %v11 = load i64, i64* %v2
+  store i64 %v11, i64* %v1
+  %v12 = load i64, i64* %v1
+  %v13 = call i64 @roast_file_read(i64 %v12)
+  store i64 %v13, i64* %v4
+  br label %bb2
+bb2:
+  %v14 = load i64, i64* %v4
+  store i64 %v14, i64* %v3
+  %v15 = inttoptr i64 %v14 to i8*
+  call void @roast_incref(i8* %v15)
+  %v16 = load i64, i64* %v1
+  call void @roast_file_close(i64 %v16)
+  %v17 = add i64 0, 0
+  store i64 %v17, i64* %v5
+  br label %bb3
+bb3:
+  %v18 = load i64, i64* %v3
+  ret i64 %v18
 }
 
 define i64 @roast_fn_108() {
@@ -913,6 +803,8 @@ entry:
   %v230 = alloca i64
   %v231 = alloca i64
   %v232 = alloca i64
+  br label %bb0
+bb0:
   %v233 = call i64 @roast_fn_105()
   store i64 %v233, i64* %v0
   br label %bb1
@@ -1005,542 +897,521 @@ bb9:
   store i64 %v282, i64* %v17
   br label %bb11
 bb10:
-  %v283 = load i64, i64* %v1
+  %v283 = load i64, i64* %v35
   %v284 = inttoptr i64 %v283 to i8*
   call void @roast_decref(i8* %v284)
-  %v285 = load i64, i64* %v19
+  %v285 = load i64, i64* %v60
   %v286 = inttoptr i64 %v285 to i8*
   call void @roast_decref(i8* %v286)
-  %v287 = load i64, i64* %v35
-  %v288 = inttoptr i64 %v287 to i8*
-  call void @roast_decref(i8* %v288)
-  %v289 = load i64, i64* %v38
-  %v290 = inttoptr i64 %v289 to i8*
-  call void @roast_decref(i8* %v290)
-  %v291 = load i64, i64* %v58
-  %v292 = inttoptr i64 %v291 to i8*
-  call void @roast_decref(i8* %v292)
-  %v293 = load i64, i64* %v60
-  %v294 = inttoptr i64 %v293 to i8*
-  call void @roast_decref(i8* %v294)
-  %v295 = load i64, i64* %v74
-  %v296 = inttoptr i64 %v295 to i8*
-  call void @roast_decref(i8* %v296)
-  %v297 = load i64, i64* %v131
-  %v298 = inttoptr i64 %v297 to i8*
-  call void @roast_decref(i8* %v298)
-  %v299 = load i64, i64* %v140
-  %v300 = inttoptr i64 %v299 to i8*
-  call void @roast_decref(i8* %v300)
   ret i64 0
 bb11:
-  %v301 = getelementptr [22 x i8], [22 x i8]* @.str.21, i64 0, i64 0
-  %v302 = call i8* @roast_str_new(i8* %v301, i64 21)
-  %v303 = ptrtoint i8* %v302 to i64
-  %v304 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v305 = call i8* @roast_str_new(i8* %v304, i64 0)
-  %v306 = ptrtoint i8* %v305 to i64
-  %v308 = getelementptr [22 x i8], [22 x i8]* @.str.21, i64 0, i64 0
-  %v309 = call i8* @roast_str_new(i8* %v308, i64 21)
-  %v310 = ptrtoint i8* %v309 to i64
-  %v312 = inttoptr i64 %v310 to i8*
-  call void @roast_print_roast_str(i8* %v312)
+  %v287 = getelementptr [22 x i8], [22 x i8]* @.str.21, i64 0, i64 0
+  %v288 = call i8* @roast_str_new(i8* %v287, i64 21)
+  %v289 = ptrtoint i8* %v288 to i64
+  %v290 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v291 = call i8* @roast_str_new(i8* %v290, i64 0)
+  %v292 = ptrtoint i8* %v291 to i64
+  %v294 = getelementptr [22 x i8], [22 x i8]* @.str.21, i64 0, i64 0
+  %v295 = call i8* @roast_str_new(i8* %v294, i64 21)
+  %v296 = ptrtoint i8* %v295 to i64
+  %v297 = inttoptr i64 %v296 to i8*
+  call void @roast_print_str(i8* %v297)
   call void @roast_print_space()
-  %v313 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v314 = call i8* @roast_str_new(i8* %v313, i64 0)
-  %v315 = ptrtoint i8* %v314 to i64
-  %v317 = inttoptr i64 %v315 to i8*
-  call void @roast_print_roast_str(i8* %v317)
+  %v298 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v299 = call i8* @roast_str_new(i8* %v298, i64 0)
+  %v300 = ptrtoint i8* %v299 to i64
+  %v301 = inttoptr i64 %v300 to i8*
+  call void @roast_print_str(i8* %v301)
   call void @roast_print_newline()
-  %v307 = add i64 0, 0
-  store i64 %v307, i64* %v18
+  %v293 = add i64 0, 0
+  store i64 %v293, i64* %v18
   br label %bb12
 bb12:
-  %v318 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v319 = call i8* @roast_str_new(i8* %v318, i64 0)
-  %v320 = ptrtoint i8* %v319 to i64
-  %v321 = call i64 @roast_input(i64 %v320)
-  store i64 %v321, i64* %v20
+  %v302 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v303 = call i8* @roast_str_new(i8* %v302, i64 0)
+  %v304 = ptrtoint i8* %v303 to i64
+  %v305 = call i64 @roast_input(i64 %v304)
+  store i64 %v305, i64* %v20
   br label %bb13
 bb13:
-  %v322 = load i64, i64* %v20
-  store i64 %v322, i64* %v19
-  %v323 = inttoptr i64 %v322 to i8*
-  call void @roast_incref(i8* %v323)
-  %v324 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v325 = call i8* @roast_str_new(i8* %v324, i64 0)
-  %v326 = ptrtoint i8* %v325 to i64
-  %v327 = call i64 @roast_print(i64 %v326)
-  store i64 %v327, i64* %v21
+  %v306 = load i64, i64* %v20
+  store i64 %v306, i64* %v19
+  %v307 = inttoptr i64 %v306 to i8*
+  call void @roast_incref(i8* %v307)
+  %v308 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v309 = call i8* @roast_str_new(i8* %v308, i64 0)
+  %v310 = ptrtoint i8* %v309 to i64
+  %v311 = call i64 @roast_print(i64 %v310)
+  store i64 %v311, i64* %v21
   br label %bb14
 bb14:
-  %v328 = load i64, i64* %v19
-  %v329 = getelementptr [2 x i8], [2 x i8]* @.str.22, i64 0, i64 0
-  %v330 = call i8* @roast_str_new(i8* %v329, i64 1)
-  %v331 = ptrtoint i8* %v330 to i64
-  %v333 = inttoptr i64 %v328 to i8*
-  %v334 = inttoptr i64 %v331 to i8*
-  %v335 = call i1 @roast_str_eq(i8* %v333, i8* %v334)
-  %v332 = zext i1 %v335 to i64
-  store i64 %v332, i64* %v22
-  %v336 = load i64, i64* %v22
-  store i64 %v336, i64* %v23
-  %v337 = load i64, i64* %v23
-  %v338 = icmp eq i64 %v337, 1
-  br i1 %v338, label %bb15, label %bb16
+  %v312 = load i64, i64* %v19
+  %v313 = getelementptr [2 x i8], [2 x i8]* @.str.22, i64 0, i64 0
+  %v314 = call i8* @roast_str_new(i8* %v313, i64 1)
+  %v315 = ptrtoint i8* %v314 to i64
+  %v317 = inttoptr i64 %v312 to i8*
+  %v318 = inttoptr i64 %v315 to i8*
+  %v319 = call i1 @roast_str_eq(i8* %v317, i8* %v318)
+  %v316 = zext i1 %v319 to i64
+  store i64 %v316, i64* %v22
+  %v320 = load i64, i64* %v22
+  store i64 %v320, i64* %v23
+  %v321 = load i64, i64* %v23
+  %v322 = icmp eq i64 %v321, 1
+  br i1 %v322, label %bb15, label %bb16
 bb15:
-  %v339 = getelementptr [19 x i8], [19 x i8]* @.str.23, i64 0, i64 0
-  %v340 = call i8* @roast_str_new(i8* %v339, i64 18)
-  %v341 = ptrtoint i8* %v340 to i64
-  %v342 = call i64 @roast_print(i64 %v341)
-  store i64 %v342, i64* %v24
+  %v323 = getelementptr [19 x i8], [19 x i8]* @.str.23, i64 0, i64 0
+  %v324 = call i8* @roast_str_new(i8* %v323, i64 18)
+  %v325 = ptrtoint i8* %v324 to i64
+  %v326 = call i64 @roast_print(i64 %v325)
+  store i64 %v326, i64* %v24
   br label %bb18
 bb16:
-  %v343 = load i64, i64* %v19
-  %v344 = getelementptr [2 x i8], [2 x i8]* @.str.24, i64 0, i64 0
-  %v345 = call i8* @roast_str_new(i8* %v344, i64 1)
-  %v346 = ptrtoint i8* %v345 to i64
-  %v348 = inttoptr i64 %v343 to i8*
-  %v349 = inttoptr i64 %v346 to i8*
-  %v350 = call i1 @roast_str_eq(i8* %v348, i8* %v349)
-  %v347 = zext i1 %v350 to i64
-  store i64 %v347, i64* %v55
-  %v351 = load i64, i64* %v55
-  store i64 %v351, i64* %v56
-  %v352 = load i64, i64* %v56
-  %v353 = icmp eq i64 %v352, 1
-  br i1 %v353, label %bb39, label %bb40
+  %v327 = load i64, i64* %v19
+  %v328 = getelementptr [2 x i8], [2 x i8]* @.str.24, i64 0, i64 0
+  %v329 = call i8* @roast_str_new(i8* %v328, i64 1)
+  %v330 = ptrtoint i8* %v329 to i64
+  %v332 = inttoptr i64 %v327 to i8*
+  %v333 = inttoptr i64 %v330 to i8*
+  %v334 = call i1 @roast_str_eq(i8* %v332, i8* %v333)
+  %v331 = zext i1 %v334 to i64
+  store i64 %v331, i64* %v55
+  %v335 = load i64, i64* %v55
+  store i64 %v335, i64* %v56
+  %v336 = load i64, i64* %v56
+  %v337 = icmp eq i64 %v336, 1
+  br i1 %v337, label %bb39, label %bb40
 bb17:
   br label %bb8
 bb18:
-  %v354 = load i64, i64* %v2
-  %v355 = call i64 @roast_len(i64 %v354)
-  store i64 %v355, i64* %v25
+  %v338 = load i64, i64* %v2
+  %v339 = call i64 @roast_len(i64 %v338)
+  store i64 %v339, i64* %v25
   br label %bb19
 bb19:
-  %v356 = load i64, i64* %v25
-  %v358 = icmp eq i64 %v356, 0
-  %v357 = zext i1 %v358 to i64
-  store i64 %v357, i64* %v26
-  %v359 = load i64, i64* %v26
-  store i64 %v359, i64* %v27
-  %v360 = load i64, i64* %v27
-  %v361 = icmp eq i64 %v360, 1
-  br i1 %v361, label %bb20, label %bb21
+  %v340 = load i64, i64* %v25
+  %v342 = icmp eq i64 %v340, 0
+  %v341 = zext i1 %v342 to i64
+  store i64 %v341, i64* %v26
+  %v343 = load i64, i64* %v26
+  store i64 %v343, i64* %v27
+  %v344 = load i64, i64* %v27
+  %v345 = icmp eq i64 %v344, 1
+  br i1 %v345, label %bb20, label %bb21
 bb20:
-  %v362 = getelementptr [16 x i8], [16 x i8]* @.str.25, i64 0, i64 0
-  %v363 = call i8* @roast_str_new(i8* %v362, i64 15)
-  %v364 = ptrtoint i8* %v363 to i64
-  %v365 = call i64 @roast_print(i64 %v364)
-  store i64 %v365, i64* %v28
+  %v346 = getelementptr [16 x i8], [16 x i8]* @.str.25, i64 0, i64 0
+  %v347 = call i8* @roast_str_new(i8* %v346, i64 15)
+  %v348 = ptrtoint i8* %v347 to i64
+  %v349 = call i64 @roast_print(i64 %v348)
+  store i64 %v349, i64* %v28
   br label %bb23
 bb21:
-  %v366 = load i64, i64* %v4
-  %v367 = call i64 @roast_range(i64 1, i64 %v366, i64 1)
-  store i64 %v367, i64* %v29
+  %v350 = load i64, i64* %v4
+  %v351 = call i64 @roast_range(i64 1, i64 %v350, i64 1)
+  store i64 %v351, i64* %v29
   br label %bb24
 bb22:
-  %v368 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v369 = call i8* @roast_str_new(i8* %v368, i64 0)
-  %v370 = ptrtoint i8* %v369 to i64
-  %v371 = call i64 @roast_print(i64 %v370)
-  store i64 %v371, i64* %v54
+  %v352 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v353 = call i8* @roast_str_new(i8* %v352, i64 0)
+  %v354 = ptrtoint i8* %v353 to i64
+  %v355 = call i64 @roast_print(i64 %v354)
+  store i64 %v355, i64* %v54
   br label %bb38
 bb23:
   br label %bb22
 bb24:
-  %v372 = load i64, i64* %v29
-  store i64 %v372, i64* %v30
+  %v356 = load i64, i64* %v29
+  store i64 %v356, i64* %v30
   br label %bb25
 bb25:
-  %v373 = load i64, i64* %v30
-  %v374 = inttoptr i64 %v373 to i8*
-  %v375 = call i8* @roast_iter_new(i8* %v374)
-  %v376 = ptrtoint i8* %v375 to i64
-  store i64 %v376, i64* %v31
+  %v357 = load i64, i64* %v30
+  %v358 = inttoptr i64 %v357 to i8*
+  %v359 = call i8* @roast_iter_new(i8* %v358)
+  %v360 = ptrtoint i8* %v359 to i64
+  store i64 %v360, i64* %v31
   br label %bb26
 bb26:
-  %v377 = load i64, i64* %v31
-  %v378 = inttoptr i64 %v377 to i8*
-  %v379 = alloca i1
-  %v380 = call i64 @roast_iter_next(i8* %v378, i1* %v379)
-  %v381 = load i1, i1* %v379
-  store i64 %v380, i64* %v32
-  br i1 %v381, label %bb28, label %bb27
+  %v361 = load i64, i64* %v31
+  %v362 = inttoptr i64 %v361 to i8*
+  %v363 = alloca i1
+  %v364 = call i64 @roast_iter_next(i8* %v362, i1* %v363)
+  %v365 = load i1, i1* %v363
+  store i64 %v364, i64* %v32
+  br i1 %v365, label %bb28, label %bb27
 bb27:
-  %v382 = load i64, i64* %v32
-  %v383 = load i64, i64* %v2
-  %v385 = inttoptr i64 %v383 to i8*
-  %v386 = call i1 @roast_list_contains(i8* %v385, i64 %v382)
-  %v384 = zext i1 %v386 to i64
-  store i64 %v384, i64* %v33
-  %v387 = load i64, i64* %v33
-  store i64 %v387, i64* %v34
-  %v388 = load i64, i64* %v34
-  %v389 = icmp eq i64 %v388, 1
-  br i1 %v389, label %bb29, label %bb30
+  %v366 = load i64, i64* %v32
+  %v367 = load i64, i64* %v2
+  %v369 = inttoptr i64 %v367 to i8*
+  %v370 = call i1 @roast_dict_contains(i8* %v369, i64 %v366)
+  %v368 = zext i1 %v370 to i64
+  store i64 %v368, i64* %v33
+  %v371 = load i64, i64* %v33
+  store i64 %v371, i64* %v34
+  %v372 = load i64, i64* %v34
+  %v373 = icmp eq i64 %v372, 1
+  br i1 %v373, label %bb29, label %bb30
 bb28:
   br label %bb22
 bb29:
-  %v390 = load i64, i64* %v2
-  store i64 %v390, i64* %v36
-  %v391 = load i64, i64* %v32
-  store i64 %v391, i64* %v37
-  %v392 = load i64, i64* %v36
-  %v393 = load i64, i64* %v37
-  %v394 = call i64 @roast_subscript_get(i64 %v392, i64 %v393)
-  store i64 %v394, i64* %v35
-  %v395 = inttoptr i64 %v394 to i8*
-  call void @roast_incref(i8* %v395)
-  %v396 = load i64, i64* %v35
-  %v397 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
-  %v398 = inttoptr i64 %v396 to i8*
-  %v399 = call i64 @roast_object_getattr_auto(i8* %v398, i8* %v397, i64 %v396)
-  store i64 %v399, i64* %v40
-  %v400 = load i64, i64* %v40
-  %v402 = icmp eq i64 %v400, 1
-  %v401 = zext i1 %v402 to i64
-  store i64 %v401, i64* %v41
-  %v403 = load i64, i64* %v41
-  store i64 %v403, i64* %v42
-  %v404 = load i64, i64* %v42
-  %v405 = icmp eq i64 %v404, 1
-  br i1 %v405, label %bb31, label %bb32
+  %v374 = load i64, i64* %v2
+  store i64 %v374, i64* %v36
+  %v375 = load i64, i64* %v32
+  store i64 %v375, i64* %v37
+  %v376 = load i64, i64* %v36
+  %v377 = load i64, i64* %v37
+  %v378 = call i64 @roast_subscript_get(i64 %v376, i64 %v377)
+  store i64 %v378, i64* %v35
+  %v379 = inttoptr i64 %v378 to i8*
+  call void @roast_incref(i8* %v379)
+  %v380 = load i64, i64* %v35
+  %v381 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
+  %v382 = inttoptr i64 %v380 to i8*
+  %v383 = call i64 @roast_object_getattr_auto(i8* %v382, i8* %v381, i64 %v380)
+  store i64 %v383, i64* %v40
+  %v384 = load i64, i64* %v40
+  %v386 = icmp eq i64 %v384, 1
+  %v385 = zext i1 %v386 to i64
+  store i64 %v385, i64* %v41
+  %v387 = load i64, i64* %v41
+  store i64 %v387, i64* %v42
+  %v388 = load i64, i64* %v42
+  %v389 = icmp eq i64 %v388, 1
+  br i1 %v389, label %bb31, label %bb32
 bb30:
   br label %bb26
 bb31:
-  %v406 = getelementptr [4 x i8], [4 x i8]* @.str.26, i64 0, i64 0
-  %v407 = call i8* @roast_str_new(i8* %v406, i64 3)
-  %v408 = ptrtoint i8* %v407 to i64
-  store i64 %v408, i64* %v39
+  %v390 = getelementptr [4 x i8], [4 x i8]* @.str.26, i64 0, i64 0
+  %v391 = call i8* @roast_str_new(i8* %v390, i64 3)
+  %v392 = ptrtoint i8* %v391 to i64
+  store i64 %v392, i64* %v39
   br label %bb33
 bb32:
-  %v409 = getelementptr [4 x i8], [4 x i8]* @.str.27, i64 0, i64 0
-  %v410 = call i8* @roast_str_new(i8* %v409, i64 3)
-  %v411 = ptrtoint i8* %v410 to i64
-  store i64 %v411, i64* %v39
+  %v393 = getelementptr [4 x i8], [4 x i8]* @.str.27, i64 0, i64 0
+  %v394 = call i8* @roast_str_new(i8* %v393, i64 3)
+  %v395 = ptrtoint i8* %v394 to i64
+  store i64 %v395, i64* %v39
   br label %bb33
 bb33:
-  %v412 = load i64, i64* %v39
-  store i64 %v412, i64* %v38
-  %v413 = inttoptr i64 %v412 to i8*
-  call void @roast_incref(i8* %v413)
-  %v414 = load i64, i64* %v38
-  %v415 = call i64 @roast_str(i64 %v414)
-  store i64 %v415, i64* %v44
+  %v396 = load i64, i64* %v39
+  store i64 %v396, i64* %v38
+  %v397 = inttoptr i64 %v396 to i8*
+  call void @roast_incref(i8* %v397)
+  %v398 = load i64, i64* %v38
+  %v399 = call i64 @roast_str(i64 %v398)
+  store i64 %v399, i64* %v44
   br label %bb34
 bb34:
-  %v416 = getelementptr [3 x i8], [3 x i8]* @.str.28, i64 0, i64 0
-  %v417 = call i8* @roast_str_new(i8* %v416, i64 2)
-  %v418 = ptrtoint i8* %v417 to i64
-  %v419 = load i64, i64* %v44
-  %v421 = inttoptr i64 %v418 to i8*
-  %v422 = inttoptr i64 %v419 to i8*
-  %v423 = call i8* @roast_str_concat(i8* %v421, i8* %v422)
-  %v420 = ptrtoint i8* %v423 to i64
-  store i64 %v420, i64* %v45
-  %v424 = load i64, i64* %v45
-  %v425 = getelementptr [2 x i8], [2 x i8]* @.str.29, i64 0, i64 0
-  %v426 = call i8* @roast_str_new(i8* %v425, i64 1)
-  %v427 = ptrtoint i8* %v426 to i64
-  %v429 = inttoptr i64 %v424 to i8*
-  %v430 = inttoptr i64 %v427 to i8*
-  %v431 = call i8* @roast_str_concat(i8* %v429, i8* %v430)
-  %v428 = ptrtoint i8* %v431 to i64
-  store i64 %v428, i64* %v46
-  %v432 = load i64, i64* %v35
-  %v433 = getelementptr [3 x i8], [3 x i8]* @.str.0, i64 0, i64 0
-  %v434 = inttoptr i64 %v432 to i8*
-  %v435 = call i64 @roast_object_getattr_auto(i8* %v434, i8* %v433, i64 %v432)
-  store i64 %v435, i64* %v48
-  %v436 = load i64, i64* %v48
-  %v437 = call i64 @roast_str(i64 %v436)
-  store i64 %v437, i64* %v47
+  %v400 = getelementptr [3 x i8], [3 x i8]* @.str.28, i64 0, i64 0
+  %v401 = call i8* @roast_str_new(i8* %v400, i64 2)
+  %v402 = ptrtoint i8* %v401 to i64
+  %v403 = load i64, i64* %v44
+  %v405 = inttoptr i64 %v402 to i8*
+  %v406 = inttoptr i64 %v403 to i8*
+  %v407 = call i8* @roast_str_concat(i8* %v405, i8* %v406)
+  %v404 = ptrtoint i8* %v407 to i64
+  store i64 %v404, i64* %v45
+  %v408 = load i64, i64* %v45
+  %v409 = getelementptr [2 x i8], [2 x i8]* @.str.29, i64 0, i64 0
+  %v410 = call i8* @roast_str_new(i8* %v409, i64 1)
+  %v411 = ptrtoint i8* %v410 to i64
+  %v413 = inttoptr i64 %v408 to i8*
+  %v414 = inttoptr i64 %v411 to i8*
+  %v415 = call i8* @roast_str_concat(i8* %v413, i8* %v414)
+  %v412 = ptrtoint i8* %v415 to i64
+  store i64 %v412, i64* %v46
+  %v416 = load i64, i64* %v35
+  %v417 = getelementptr [3 x i8], [3 x i8]* @.str.0, i64 0, i64 0
+  %v418 = inttoptr i64 %v416 to i8*
+  %v419 = call i64 @roast_object_getattr_auto(i8* %v418, i8* %v417, i64 %v416)
+  store i64 %v419, i64* %v48
+  %v420 = load i64, i64* %v48
+  %v421 = call i64 @roast_str(i64 %v420)
+  store i64 %v421, i64* %v47
   br label %bb35
 bb35:
-  %v438 = load i64, i64* %v46
-  %v439 = load i64, i64* %v47
-  %v441 = inttoptr i64 %v438 to i8*
-  %v442 = inttoptr i64 %v439 to i8*
-  %v443 = call i8* @roast_str_concat(i8* %v441, i8* %v442)
-  %v440 = ptrtoint i8* %v443 to i64
-  store i64 %v440, i64* %v49
-  %v444 = load i64, i64* %v49
-  %v445 = getelementptr [3 x i8], [3 x i8]* @.str.30, i64 0, i64 0
-  %v446 = call i8* @roast_str_new(i8* %v445, i64 2)
-  %v447 = ptrtoint i8* %v446 to i64
-  %v449 = inttoptr i64 %v444 to i8*
-  %v450 = inttoptr i64 %v447 to i8*
-  %v451 = call i8* @roast_str_concat(i8* %v449, i8* %v450)
-  %v448 = ptrtoint i8* %v451 to i64
-  store i64 %v448, i64* %v50
-  %v452 = load i64, i64* %v35
-  %v453 = getelementptr [6 x i8], [6 x i8]* @.str.1, i64 0, i64 0
-  %v454 = inttoptr i64 %v452 to i8*
-  %v455 = call i64 @roast_object_getattr_auto(i8* %v454, i8* %v453, i64 %v452)
-  store i64 %v455, i64* %v52
-  %v456 = load i64, i64* %v52
-  %v457 = call i64 @roast_str(i64 %v456)
-  store i64 %v457, i64* %v51
+  %v422 = load i64, i64* %v46
+  %v423 = load i64, i64* %v47
+  %v425 = inttoptr i64 %v422 to i8*
+  %v426 = inttoptr i64 %v423 to i8*
+  %v427 = call i8* @roast_str_concat(i8* %v425, i8* %v426)
+  %v424 = ptrtoint i8* %v427 to i64
+  store i64 %v424, i64* %v49
+  %v428 = load i64, i64* %v49
+  %v429 = getelementptr [3 x i8], [3 x i8]* @.str.30, i64 0, i64 0
+  %v430 = call i8* @roast_str_new(i8* %v429, i64 2)
+  %v431 = ptrtoint i8* %v430 to i64
+  %v433 = inttoptr i64 %v428 to i8*
+  %v434 = inttoptr i64 %v431 to i8*
+  %v435 = call i8* @roast_str_concat(i8* %v433, i8* %v434)
+  %v432 = ptrtoint i8* %v435 to i64
+  store i64 %v432, i64* %v50
+  %v436 = load i64, i64* %v35
+  %v437 = getelementptr [6 x i8], [6 x i8]* @.str.1, i64 0, i64 0
+  %v438 = inttoptr i64 %v436 to i8*
+  %v439 = call i64 @roast_object_getattr_auto(i8* %v438, i8* %v437, i64 %v436)
+  store i64 %v439, i64* %v52
+  %v440 = load i64, i64* %v52
+  %v441 = call i64 @roast_str(i64 %v440)
+  store i64 %v441, i64* %v51
   br label %bb36
 bb36:
-  %v458 = load i64, i64* %v50
-  %v459 = load i64, i64* %v51
-  %v461 = inttoptr i64 %v458 to i8*
-  %v462 = inttoptr i64 %v459 to i8*
-  %v463 = call i8* @roast_str_concat(i8* %v461, i8* %v462)
-  %v460 = ptrtoint i8* %v463 to i64
-  store i64 %v460, i64* %v53
-  %v464 = load i64, i64* %v53
-  %v465 = call i64 @roast_print(i64 %v464)
-  store i64 %v465, i64* %v43
+  %v442 = load i64, i64* %v50
+  %v443 = load i64, i64* %v51
+  %v445 = inttoptr i64 %v442 to i8*
+  %v446 = inttoptr i64 %v443 to i8*
+  %v447 = call i8* @roast_str_concat(i8* %v445, i8* %v446)
+  %v444 = ptrtoint i8* %v447 to i64
+  store i64 %v444, i64* %v53
+  %v448 = load i64, i64* %v53
+  %v449 = call i64 @roast_print(i64 %v448)
+  store i64 %v449, i64* %v43
   br label %bb37
 bb37:
   br label %bb30
 bb38:
   br label %bb17
 bb39:
-  %v466 = getelementptr [19 x i8], [19 x i8]* @.str.31, i64 0, i64 0
-  %v467 = call i8* @roast_str_new(i8* %v466, i64 18)
-  %v468 = ptrtoint i8* %v467 to i64
-  %v469 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v470 = call i8* @roast_str_new(i8* %v469, i64 0)
-  %v471 = ptrtoint i8* %v470 to i64
-  %v473 = getelementptr [19 x i8], [19 x i8]* @.str.31, i64 0, i64 0
-  %v474 = call i8* @roast_str_new(i8* %v473, i64 18)
-  %v475 = ptrtoint i8* %v474 to i64
-  %v477 = inttoptr i64 %v475 to i8*
-  call void @roast_print_roast_str(i8* %v477)
+  %v450 = getelementptr [19 x i8], [19 x i8]* @.str.31, i64 0, i64 0
+  %v451 = call i8* @roast_str_new(i8* %v450, i64 18)
+  %v452 = ptrtoint i8* %v451 to i64
+  %v453 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v454 = call i8* @roast_str_new(i8* %v453, i64 0)
+  %v455 = ptrtoint i8* %v454 to i64
+  %v457 = getelementptr [19 x i8], [19 x i8]* @.str.31, i64 0, i64 0
+  %v458 = call i8* @roast_str_new(i8* %v457, i64 18)
+  %v459 = ptrtoint i8* %v458 to i64
+  %v460 = inttoptr i64 %v459 to i8*
+  call void @roast_print_str(i8* %v460)
   call void @roast_print_space()
-  %v478 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v479 = call i8* @roast_str_new(i8* %v478, i64 0)
-  %v480 = ptrtoint i8* %v479 to i64
-  %v482 = inttoptr i64 %v480 to i8*
-  call void @roast_print_roast_str(i8* %v482)
+  %v461 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v462 = call i8* @roast_str_new(i8* %v461, i64 0)
+  %v463 = ptrtoint i8* %v462 to i64
+  %v464 = inttoptr i64 %v463 to i8*
+  call void @roast_print_str(i8* %v464)
   call void @roast_print_newline()
-  %v472 = add i64 0, 0
-  store i64 %v472, i64* %v57
+  %v456 = add i64 0, 0
+  store i64 %v456, i64* %v57
   br label %bb42
 bb40:
-  %v483 = load i64, i64* %v19
-  %v484 = getelementptr [2 x i8], [2 x i8]* @.str.32, i64 0, i64 0
-  %v485 = call i8* @roast_str_new(i8* %v484, i64 1)
-  %v486 = ptrtoint i8* %v485 to i64
-  %v488 = inttoptr i64 %v483 to i8*
-  %v489 = inttoptr i64 %v486 to i8*
-  %v490 = call i1 @roast_str_eq(i8* %v488, i8* %v489)
-  %v487 = zext i1 %v490 to i64
-  store i64 %v487, i64* %v71
-  %v491 = load i64, i64* %v71
-  store i64 %v491, i64* %v72
-  %v492 = load i64, i64* %v72
-  %v493 = icmp eq i64 %v492, 1
-  br i1 %v493, label %bb49, label %bb50
+  %v465 = load i64, i64* %v19
+  %v466 = getelementptr [2 x i8], [2 x i8]* @.str.32, i64 0, i64 0
+  %v467 = call i8* @roast_str_new(i8* %v466, i64 1)
+  %v468 = ptrtoint i8* %v467 to i64
+  %v470 = inttoptr i64 %v465 to i8*
+  %v471 = inttoptr i64 %v468 to i8*
+  %v472 = call i1 @roast_str_eq(i8* %v470, i8* %v471)
+  %v469 = zext i1 %v472 to i64
+  store i64 %v469, i64* %v71
+  %v473 = load i64, i64* %v71
+  store i64 %v473, i64* %v72
+  %v474 = load i64, i64* %v72
+  %v475 = icmp eq i64 %v474, 1
+  br i1 %v475, label %bb49, label %bb50
 bb41:
   br label %bb17
 bb42:
-  %v494 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v495 = call i8* @roast_str_new(i8* %v494, i64 0)
-  %v496 = ptrtoint i8* %v495 to i64
-  %v497 = call i64 @roast_input(i64 %v496)
-  store i64 %v497, i64* %v59
+  %v476 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v477 = call i8* @roast_str_new(i8* %v476, i64 0)
+  %v478 = ptrtoint i8* %v477 to i64
+  %v479 = call i64 @roast_input(i64 %v478)
+  store i64 %v479, i64* %v59
   br label %bb43
 bb43:
-  %v498 = load i64, i64* %v59
-  store i64 %v498, i64* %v58
-  %v499 = inttoptr i64 %v498 to i8*
-  call void @roast_incref(i8* %v499)
-  %v500 = load i64, i64* %v4
-  %v501 = load i64, i64* %v58
-  %v502 = call i64 @roast_fn_87(i64 %v500, i64 %v501, i64 0)
-  store i64 %v502, i64* %v61
+  %v480 = load i64, i64* %v59
+  store i64 %v480, i64* %v58
+  %v481 = inttoptr i64 %v480 to i8*
+  call void @roast_incref(i8* %v481)
+  %v482 = load i64, i64* %v4
+  %v483 = load i64, i64* %v58
+  %v484 = call i64 @roast_fn_87(i64 %v482, i64 %v483, i64 0)
+  store i64 %v484, i64* %v61
   br label %bb44
 bb44:
-  %v503 = load i64, i64* %v61
-  store i64 %v503, i64* %v60
-  %v504 = inttoptr i64 %v503 to i8*
-  call void @roast_incref(i8* %v504)
-  %v505 = load i64, i64* %v4
-  store i64 %v505, i64* %v62
-  %v506 = load i64, i64* %v60
-  %v507 = load i64, i64* %v2
-  %v508 = load i64, i64* %v62
-  %v509 = inttoptr i64 %v507 to i8*
-  call void @roast_subscript_set(i64 %v507, i64 %v508, i64 %v506)
-  %v510 = load i64, i64* %v4
-  %v511 = call i64 @roast_str(i64 %v510)
-  store i64 %v511, i64* %v64
+  %v485 = load i64, i64* %v61
+  store i64 %v485, i64* %v60
+  %v486 = inttoptr i64 %v485 to i8*
+  call void @roast_incref(i8* %v486)
+  %v487 = load i64, i64* %v4
+  store i64 %v487, i64* %v62
+  %v488 = load i64, i64* %v60
+  %v489 = load i64, i64* %v2
+  %v490 = load i64, i64* %v62
+  %v491 = inttoptr i64 %v489 to i8*
+  call void @roast_subscript_set(i64 %v489, i64 %v490, i64 %v488)
+  %v492 = load i64, i64* %v4
+  %v493 = call i64 @roast_str(i64 %v492)
+  store i64 %v493, i64* %v64
   br label %bb45
 bb45:
-  %v512 = getelementptr [9 x i8], [9 x i8]* @.str.33, i64 0, i64 0
-  %v513 = call i8* @roast_str_new(i8* %v512, i64 8)
-  %v514 = ptrtoint i8* %v513 to i64
-  %v515 = load i64, i64* %v64
-  %v517 = inttoptr i64 %v514 to i8*
-  %v518 = inttoptr i64 %v515 to i8*
-  %v519 = call i8* @roast_str_concat(i8* %v517, i8* %v518)
-  %v516 = ptrtoint i8* %v519 to i64
-  store i64 %v516, i64* %v65
-  %v520 = load i64, i64* %v65
-  %v521 = getelementptr [3 x i8], [3 x i8]* @.str.34, i64 0, i64 0
-  %v522 = call i8* @roast_str_new(i8* %v521, i64 2)
-  %v523 = ptrtoint i8* %v522 to i64
-  %v525 = inttoptr i64 %v520 to i8*
-  %v526 = inttoptr i64 %v523 to i8*
-  %v527 = call i8* @roast_str_concat(i8* %v525, i8* %v526)
-  %v524 = ptrtoint i8* %v527 to i64
-  store i64 %v524, i64* %v66
-  %v528 = load i64, i64* %v58
-  %v529 = call i64 @roast_str(i64 %v528)
-  store i64 %v529, i64* %v67
+  %v494 = getelementptr [9 x i8], [9 x i8]* @.str.33, i64 0, i64 0
+  %v495 = call i8* @roast_str_new(i8* %v494, i64 8)
+  %v496 = ptrtoint i8* %v495 to i64
+  %v497 = load i64, i64* %v64
+  %v499 = inttoptr i64 %v496 to i8*
+  %v500 = inttoptr i64 %v497 to i8*
+  %v501 = call i8* @roast_str_concat(i8* %v499, i8* %v500)
+  %v498 = ptrtoint i8* %v501 to i64
+  store i64 %v498, i64* %v65
+  %v502 = load i64, i64* %v65
+  %v503 = getelementptr [3 x i8], [3 x i8]* @.str.34, i64 0, i64 0
+  %v504 = call i8* @roast_str_new(i8* %v503, i64 2)
+  %v505 = ptrtoint i8* %v504 to i64
+  %v507 = inttoptr i64 %v502 to i8*
+  %v508 = inttoptr i64 %v505 to i8*
+  %v509 = call i8* @roast_str_concat(i8* %v507, i8* %v508)
+  %v506 = ptrtoint i8* %v509 to i64
+  store i64 %v506, i64* %v66
+  %v510 = load i64, i64* %v58
+  %v511 = call i64 @roast_str(i64 %v510)
+  store i64 %v511, i64* %v67
   br label %bb46
 bb46:
-  %v530 = load i64, i64* %v66
-  %v531 = load i64, i64* %v67
-  %v533 = inttoptr i64 %v530 to i8*
-  %v534 = inttoptr i64 %v531 to i8*
-  %v535 = call i8* @roast_str_concat(i8* %v533, i8* %v534)
-  %v532 = ptrtoint i8* %v535 to i64
-  store i64 %v532, i64* %v68
-  %v536 = load i64, i64* %v68
-  %v537 = call i64 @roast_print(i64 %v536)
-  store i64 %v537, i64* %v63
+  %v512 = load i64, i64* %v66
+  %v513 = load i64, i64* %v67
+  %v515 = inttoptr i64 %v512 to i8*
+  %v516 = inttoptr i64 %v513 to i8*
+  %v517 = call i8* @roast_str_concat(i8* %v515, i8* %v516)
+  %v514 = ptrtoint i8* %v517 to i64
+  store i64 %v514, i64* %v68
+  %v518 = load i64, i64* %v68
+  %v519 = call i64 @roast_print(i64 %v518)
+  store i64 %v519, i64* %v63
   br label %bb47
 bb47:
-  %v538 = load i64, i64* %v4
-  %v539 = add i64 %v538, 1
-  store i64 %v539, i64* %v69
-  %v540 = load i64, i64* %v69
-  store i64 %v540, i64* %v4
-  %v541 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v542 = call i8* @roast_str_new(i8* %v541, i64 0)
-  %v543 = ptrtoint i8* %v542 to i64
-  %v544 = call i64 @roast_print(i64 %v543)
-  store i64 %v544, i64* %v70
+  %v520 = load i64, i64* %v4
+  %v521 = add i64 %v520, 1
+  store i64 %v521, i64* %v69
+  %v522 = load i64, i64* %v69
+  store i64 %v522, i64* %v4
+  %v523 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v524 = call i8* @roast_str_new(i8* %v523, i64 0)
+  %v525 = ptrtoint i8* %v524 to i64
+  %v526 = call i64 @roast_print(i64 %v525)
+  store i64 %v526, i64* %v70
   br label %bb48
 bb48:
   br label %bb41
 bb49:
-  %v545 = getelementptr [29 x i8], [29 x i8]* @.str.35, i64 0, i64 0
-  %v546 = call i8* @roast_str_new(i8* %v545, i64 28)
-  %v547 = ptrtoint i8* %v546 to i64
-  %v548 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v549 = call i8* @roast_str_new(i8* %v548, i64 0)
-  %v550 = ptrtoint i8* %v549 to i64
-  %v552 = getelementptr [29 x i8], [29 x i8]* @.str.35, i64 0, i64 0
-  %v553 = call i8* @roast_str_new(i8* %v552, i64 28)
-  %v554 = ptrtoint i8* %v553 to i64
-  %v556 = inttoptr i64 %v554 to i8*
-  call void @roast_print_roast_str(i8* %v556)
+  %v527 = getelementptr [29 x i8], [29 x i8]* @.str.35, i64 0, i64 0
+  %v528 = call i8* @roast_str_new(i8* %v527, i64 28)
+  %v529 = ptrtoint i8* %v528 to i64
+  %v530 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v531 = call i8* @roast_str_new(i8* %v530, i64 0)
+  %v532 = ptrtoint i8* %v531 to i64
+  %v534 = getelementptr [29 x i8], [29 x i8]* @.str.35, i64 0, i64 0
+  %v535 = call i8* @roast_str_new(i8* %v534, i64 28)
+  %v536 = ptrtoint i8* %v535 to i64
+  %v537 = inttoptr i64 %v536 to i8*
+  call void @roast_print_str(i8* %v537)
   call void @roast_print_space()
-  %v557 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v558 = call i8* @roast_str_new(i8* %v557, i64 0)
-  %v559 = ptrtoint i8* %v558 to i64
-  %v561 = inttoptr i64 %v559 to i8*
-  call void @roast_print_roast_str(i8* %v561)
+  %v538 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v539 = call i8* @roast_str_new(i8* %v538, i64 0)
+  %v540 = ptrtoint i8* %v539 to i64
+  %v541 = inttoptr i64 %v540 to i8*
+  call void @roast_print_str(i8* %v541)
   call void @roast_print_newline()
-  %v551 = add i64 0, 0
-  store i64 %v551, i64* %v73
+  %v533 = add i64 0, 0
+  store i64 %v533, i64* %v73
   br label %bb52
 bb50:
-  %v562 = load i64, i64* %v19
-  %v563 = getelementptr [2 x i8], [2 x i8]* @.str.36, i64 0, i64 0
-  %v564 = call i8* @roast_str_new(i8* %v563, i64 1)
-  %v565 = ptrtoint i8* %v564 to i64
-  %v567 = inttoptr i64 %v562 to i8*
-  %v568 = inttoptr i64 %v565 to i8*
-  %v569 = call i1 @roast_str_eq(i8* %v567, i8* %v568)
-  %v566 = zext i1 %v569 to i64
-  store i64 %v566, i64* %v89
-  %v570 = load i64, i64* %v89
-  store i64 %v570, i64* %v90
-  %v571 = load i64, i64* %v90
-  %v572 = icmp eq i64 %v571, 1
-  br i1 %v572, label %bb63, label %bb64
+  %v542 = load i64, i64* %v19
+  %v543 = getelementptr [2 x i8], [2 x i8]* @.str.36, i64 0, i64 0
+  %v544 = call i8* @roast_str_new(i8* %v543, i64 1)
+  %v545 = ptrtoint i8* %v544 to i64
+  %v547 = inttoptr i64 %v542 to i8*
+  %v548 = inttoptr i64 %v545 to i8*
+  %v549 = call i1 @roast_str_eq(i8* %v547, i8* %v548)
+  %v546 = zext i1 %v549 to i64
+  store i64 %v546, i64* %v89
+  %v550 = load i64, i64* %v89
+  store i64 %v550, i64* %v90
+  %v551 = load i64, i64* %v90
+  %v552 = icmp eq i64 %v551, 1
+  br i1 %v552, label %bb63, label %bb64
 bb51:
   br label %bb41
 bb52:
-  %v573 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v574 = call i8* @roast_str_new(i8* %v573, i64 0)
-  %v575 = ptrtoint i8* %v574 to i64
-  %v576 = call i64 @roast_input(i64 %v575)
-  store i64 %v576, i64* %v75
+  %v553 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v554 = call i8* @roast_str_new(i8* %v553, i64 0)
+  %v555 = ptrtoint i8* %v554 to i64
+  %v556 = call i64 @roast_input(i64 %v555)
+  store i64 %v556, i64* %v75
   br label %bb53
 bb53:
-  %v577 = load i64, i64* %v75
-  store i64 %v577, i64* %v74
-  %v578 = inttoptr i64 %v577 to i8*
-  call void @roast_incref(i8* %v578)
-  %v579 = load i64, i64* %v74
-  %v580 = call i64 @roast_int(i64 %v579)
-  store i64 %v580, i64* %v77
+  %v557 = load i64, i64* %v75
+  store i64 %v557, i64* %v74
+  %v558 = inttoptr i64 %v557 to i8*
+  call void @roast_incref(i8* %v558)
+  %v559 = load i64, i64* %v74
+  %v560 = call i64 @roast_int(i64 %v559)
+  store i64 %v560, i64* %v77
   br label %bb54
 bb54:
-  %v581 = load i64, i64* %v77
-  store i64 %v581, i64* %v76
-  %v582 = load i64, i64* %v76
-  %v583 = load i64, i64* %v2
-  %v585 = inttoptr i64 %v583 to i8*
-  %v586 = call i1 @roast_list_contains(i8* %v585, i64 %v582)
-  %v584 = zext i1 %v586 to i64
-  store i64 %v584, i64* %v78
-  %v587 = load i64, i64* %v78
-  store i64 %v587, i64* %v79
-  %v588 = load i64, i64* %v79
-  %v589 = icmp eq i64 %v588, 1
-  br i1 %v589, label %bb55, label %bb56
+  %v561 = load i64, i64* %v77
+  store i64 %v561, i64* %v76
+  %v562 = load i64, i64* %v76
+  %v563 = load i64, i64* %v2
+  %v565 = inttoptr i64 %v563 to i8*
+  %v566 = call i1 @roast_dict_contains(i8* %v565, i64 %v562)
+  %v564 = zext i1 %v566 to i64
+  store i64 %v564, i64* %v78
+  %v567 = load i64, i64* %v78
+  store i64 %v567, i64* %v79
+  %v568 = load i64, i64* %v79
+  %v569 = icmp eq i64 %v568, 1
+  br i1 %v569, label %bb55, label %bb56
 bb55:
-  %v590 = load i64, i64* %v2
-  store i64 %v590, i64* %v80
-  %v591 = load i64, i64* %v76
-  store i64 %v591, i64* %v81
-  %v592 = load i64, i64* %v80
-  %v593 = load i64, i64* %v81
-  %v594 = call i64 @roast_subscript_get(i64 %v592, i64 %v593)
-  store i64 %v594, i64* %v35
-  %v595 = inttoptr i64 %v594 to i8*
-  call void @roast_incref(i8* %v595)
-  %v596 = load i64, i64* %v35
-  %v597 = call i64 @roast_fn_Todo_91(i64 %v596)
-  store i64 %v597, i64* %v82
+  %v570 = load i64, i64* %v2
+  store i64 %v570, i64* %v80
+  %v571 = load i64, i64* %v76
+  store i64 %v571, i64* %v81
+  %v572 = load i64, i64* %v80
+  %v573 = load i64, i64* %v81
+  %v574 = call i64 @roast_subscript_get(i64 %v572, i64 %v573)
+  store i64 %v574, i64* %v35
+  %v575 = inttoptr i64 %v574 to i8*
+  call void @roast_incref(i8* %v575)
+  %v576 = load i64, i64* %v35
+  %v577 = call i64 @roast_fn_Todo_91(i64 %v576)
+  store i64 %v577, i64* %v82
   br label %bb58
 bb56:
-  %v598 = getelementptr [16 x i8], [16 x i8]* @.str.37, i64 0, i64 0
-  %v599 = call i8* @roast_str_new(i8* %v598, i64 15)
-  %v600 = ptrtoint i8* %v599 to i64
-  %v601 = call i64 @roast_print(i64 %v600)
-  store i64 %v601, i64* %v87
+  %v578 = getelementptr [16 x i8], [16 x i8]* @.str.37, i64 0, i64 0
+  %v579 = call i8* @roast_str_new(i8* %v578, i64 15)
+  %v580 = ptrtoint i8* %v579 to i64
+  %v581 = call i64 @roast_print(i64 %v580)
+  store i64 %v581, i64* %v87
   br label %bb61
 bb57:
-  %v602 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v603 = call i8* @roast_str_new(i8* %v602, i64 0)
-  %v604 = ptrtoint i8* %v603 to i64
-  %v605 = call i64 @roast_print(i64 %v604)
-  store i64 %v605, i64* %v88
+  %v582 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v583 = call i8* @roast_str_new(i8* %v582, i64 0)
+  %v584 = ptrtoint i8* %v583 to i64
+  %v585 = call i64 @roast_print(i64 %v584)
+  store i64 %v585, i64* %v88
   br label %bb62
 bb58:
-  %v606 = load i64, i64* %v35
-  %v607 = getelementptr [6 x i8], [6 x i8]* @.str.1, i64 0, i64 0
-  %v608 = inttoptr i64 %v606 to i8*
-  %v609 = call i64 @roast_object_getattr_auto(i8* %v608, i8* %v607, i64 %v606)
-  store i64 %v609, i64* %v85
-  %v610 = load i64, i64* %v85
-  %v611 = call i64 @roast_str(i64 %v610)
-  store i64 %v611, i64* %v84
+  %v586 = load i64, i64* %v35
+  %v587 = getelementptr [6 x i8], [6 x i8]* @.str.1, i64 0, i64 0
+  %v588 = inttoptr i64 %v586 to i8*
+  %v589 = call i64 @roast_object_getattr_auto(i8* %v588, i8* %v587, i64 %v586)
+  store i64 %v589, i64* %v85
+  %v590 = load i64, i64* %v85
+  %v591 = call i64 @roast_str(i64 %v590)
+  store i64 %v591, i64* %v84
   br label %bb59
 bb59:
-  %v612 = getelementptr [14 x i8], [14 x i8]* @.str.38, i64 0, i64 0
-  %v613 = call i8* @roast_str_new(i8* %v612, i64 13)
-  %v614 = ptrtoint i8* %v613 to i64
-  %v615 = load i64, i64* %v84
-  %v617 = inttoptr i64 %v614 to i8*
-  %v618 = inttoptr i64 %v615 to i8*
-  %v619 = call i8* @roast_str_concat(i8* %v617, i8* %v618)
-  %v616 = ptrtoint i8* %v619 to i64
-  store i64 %v616, i64* %v86
-  %v620 = load i64, i64* %v86
-  %v621 = call i64 @roast_print(i64 %v620)
-  store i64 %v621, i64* %v83
+  %v592 = getelementptr [14 x i8], [14 x i8]* @.str.38, i64 0, i64 0
+  %v593 = call i8* @roast_str_new(i8* %v592, i64 13)
+  %v594 = ptrtoint i8* %v593 to i64
+  %v595 = load i64, i64* %v84
+  %v597 = inttoptr i64 %v594 to i8*
+  %v598 = inttoptr i64 %v595 to i8*
+  %v599 = call i8* @roast_str_concat(i8* %v597, i8* %v598)
+  %v596 = ptrtoint i8* %v599 to i64
+  store i64 %v596, i64* %v86
+  %v600 = load i64, i64* %v86
+  %v601 = call i64 @roast_print(i64 %v600)
+  store i64 %v601, i64* %v83
   br label %bb60
 bb60:
   br label %bb57
@@ -1549,316 +1420,342 @@ bb61:
 bb62:
   br label %bb51
 bb63:
-  %v622 = load i64, i64* %v2
-  %v623 = call i64 @roast_len(i64 %v622)
-  store i64 %v623, i64* %v92
+  %v602 = load i64, i64* %v2
+  %v603 = call i64 @roast_len(i64 %v602)
+  store i64 %v603, i64* %v92
   br label %bb66
 bb64:
-  %v624 = load i64, i64* %v19
-  %v625 = getelementptr [2 x i8], [2 x i8]* @.str.39, i64 0, i64 0
-  %v626 = call i8* @roast_str_new(i8* %v625, i64 1)
-  %v627 = ptrtoint i8* %v626 to i64
-  %v629 = inttoptr i64 %v624 to i8*
-  %v630 = inttoptr i64 %v627 to i8*
-  %v631 = call i1 @roast_str_eq(i8* %v629, i8* %v630)
-  %v628 = zext i1 %v631 to i64
-  store i64 %v628, i64* %v128
-  %v632 = load i64, i64* %v128
-  store i64 %v632, i64* %v129
-  %v633 = load i64, i64* %v129
-  %v634 = icmp eq i64 %v633, 1
-  br i1 %v634, label %bb88, label %bb89
+  %v604 = load i64, i64* %v19
+  %v605 = getelementptr [2 x i8], [2 x i8]* @.str.39, i64 0, i64 0
+  %v606 = call i8* @roast_str_new(i8* %v605, i64 1)
+  %v607 = ptrtoint i8* %v606 to i64
+  %v609 = inttoptr i64 %v604 to i8*
+  %v610 = inttoptr i64 %v607 to i8*
+  %v611 = call i1 @roast_str_eq(i8* %v609, i8* %v610)
+  %v608 = zext i1 %v611 to i64
+  store i64 %v608, i64* %v128
+  %v612 = load i64, i64* %v128
+  store i64 %v612, i64* %v129
+  %v613 = load i64, i64* %v129
+  %v614 = icmp eq i64 %v613, 1
+  br i1 %v614, label %bb88, label %bb89
 bb65:
   br label %bb51
 bb66:
-  %v635 = load i64, i64* %v92
-  store i64 %v635, i64* %v91
+  %v615 = load i64, i64* %v92
+  store i64 %v615, i64* %v91
   store i64 0, i64* %v93
-  %v636 = load i64, i64* %v4
-  %v637 = call i64 @roast_range(i64 1, i64 %v636, i64 1)
-  store i64 %v637, i64* %v94
+  %v616 = load i64, i64* %v4
+  %v617 = call i64 @roast_range(i64 1, i64 %v616, i64 1)
+  store i64 %v617, i64* %v94
   br label %bb67
 bb67:
-  %v638 = load i64, i64* %v94
-  store i64 %v638, i64* %v95
+  %v618 = load i64, i64* %v94
+  store i64 %v618, i64* %v95
   br label %bb68
 bb68:
-  %v639 = load i64, i64* %v95
-  %v640 = inttoptr i64 %v639 to i8*
-  %v641 = call i8* @roast_iter_new(i8* %v640)
-  %v642 = ptrtoint i8* %v641 to i64
-  store i64 %v642, i64* %v96
+  %v619 = load i64, i64* %v95
+  %v620 = inttoptr i64 %v619 to i8*
+  %v621 = call i8* @roast_iter_new(i8* %v620)
+  %v622 = ptrtoint i8* %v621 to i64
+  store i64 %v622, i64* %v96
   br label %bb69
 bb69:
-  %v643 = load i64, i64* %v96
-  %v644 = inttoptr i64 %v643 to i8*
-  %v645 = alloca i1
-  %v646 = call i64 @roast_iter_next(i8* %v644, i1* %v645)
-  %v647 = load i1, i1* %v645
-  store i64 %v646, i64* %v97
-  br i1 %v647, label %bb71, label %bb70
+  %v623 = load i64, i64* %v96
+  %v624 = inttoptr i64 %v623 to i8*
+  %v625 = alloca i1
+  %v626 = call i64 @roast_iter_next(i8* %v624, i1* %v625)
+  %v627 = load i1, i1* %v625
+  store i64 %v626, i64* %v97
+  br i1 %v627, label %bb71, label %bb70
 bb70:
-  %v648 = load i64, i64* %v97
-  %v649 = load i64, i64* %v2
-  %v651 = inttoptr i64 %v649 to i8*
-  %v652 = call i1 @roast_list_contains(i8* %v651, i64 %v648)
-  %v650 = zext i1 %v652 to i64
-  store i64 %v650, i64* %v98
-  %v653 = load i64, i64* %v98
-  store i64 %v653, i64* %v99
-  %v654 = load i64, i64* %v99
-  %v655 = icmp eq i64 %v654, 1
-  br i1 %v655, label %bb72, label %bb73
+  %v628 = load i64, i64* %v97
+  %v629 = load i64, i64* %v2
+  %v631 = inttoptr i64 %v629 to i8*
+  %v632 = call i1 @roast_dict_contains(i8* %v631, i64 %v628)
+  %v630 = zext i1 %v632 to i64
+  store i64 %v630, i64* %v98
+  %v633 = load i64, i64* %v98
+  store i64 %v633, i64* %v99
+  %v634 = load i64, i64* %v99
+  %v635 = icmp eq i64 %v634, 1
+  br i1 %v635, label %bb72, label %bb73
 bb71:
-  %v656 = load i64, i64* %v91
-  %v657 = load i64, i64* %v93
-  %v658 = sub i64 %v656, %v657
-  store i64 %v658, i64* %v107
-  %v659 = load i64, i64* %v107
-  store i64 %v659, i64* %v106
-  %v660 = getelementptr [19 x i8], [19 x i8]* @.str.40, i64 0, i64 0
-  %v661 = call i8* @roast_str_new(i8* %v660, i64 18)
-  %v662 = ptrtoint i8* %v661 to i64
-  %v663 = call i64 @roast_print(i64 %v662)
-  store i64 %v663, i64* %v108
+  %v636 = load i64, i64* %v91
+  %v637 = load i64, i64* %v93
+  %v638 = sub i64 %v636, %v637
+  store i64 %v638, i64* %v107
+  %v639 = load i64, i64* %v107
+  store i64 %v639, i64* %v106
+  %v640 = getelementptr [19 x i8], [19 x i8]* @.str.40, i64 0, i64 0
+  %v641 = call i8* @roast_str_new(i8* %v640, i64 18)
+  %v642 = ptrtoint i8* %v641 to i64
+  %v643 = call i64 @roast_print(i64 %v642)
+  store i64 %v643, i64* %v108
   br label %bb76
 bb72:
-  %v664 = load i64, i64* %v2
-  store i64 %v664, i64* %v100
-  %v665 = load i64, i64* %v97
-  store i64 %v665, i64* %v101
-  %v666 = load i64, i64* %v100
-  %v667 = load i64, i64* %v101
-  %v668 = call i64 @roast_subscript_get(i64 %v666, i64 %v667)
-  store i64 %v668, i64* %v35
-  %v669 = inttoptr i64 %v668 to i8*
-  call void @roast_incref(i8* %v669)
-  %v670 = load i64, i64* %v35
-  %v671 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
-  %v672 = inttoptr i64 %v670 to i8*
-  %v673 = call i64 @roast_object_getattr_auto(i8* %v672, i8* %v671, i64 %v670)
-  store i64 %v673, i64* %v102
-  %v674 = load i64, i64* %v102
-  %v676 = icmp eq i64 %v674, 1
-  %v675 = zext i1 %v676 to i64
-  store i64 %v675, i64* %v103
-  %v677 = load i64, i64* %v103
-  store i64 %v677, i64* %v104
-  %v678 = load i64, i64* %v104
-  %v679 = icmp eq i64 %v678, 1
-  br i1 %v679, label %bb74, label %bb75
+  %v644 = load i64, i64* %v2
+  store i64 %v644, i64* %v100
+  %v645 = load i64, i64* %v97
+  store i64 %v645, i64* %v101
+  %v646 = load i64, i64* %v100
+  %v647 = load i64, i64* %v101
+  %v648 = call i64 @roast_subscript_get(i64 %v646, i64 %v647)
+  store i64 %v648, i64* %v35
+  %v649 = inttoptr i64 %v648 to i8*
+  call void @roast_incref(i8* %v649)
+  %v650 = load i64, i64* %v35
+  %v651 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
+  %v652 = inttoptr i64 %v650 to i8*
+  %v653 = call i64 @roast_object_getattr_auto(i8* %v652, i8* %v651, i64 %v650)
+  store i64 %v653, i64* %v102
+  %v654 = load i64, i64* %v102
+  %v656 = icmp eq i64 %v654, 1
+  %v655 = zext i1 %v656 to i64
+  store i64 %v655, i64* %v103
+  %v657 = load i64, i64* %v103
+  store i64 %v657, i64* %v104
+  %v658 = load i64, i64* %v104
+  %v659 = icmp eq i64 %v658, 1
+  br i1 %v659, label %bb74, label %bb75
 bb73:
   br label %bb69
 bb74:
-  %v680 = load i64, i64* %v93
-  %v681 = add i64 %v680, 1
-  store i64 %v681, i64* %v105
-  %v682 = load i64, i64* %v105
-  store i64 %v682, i64* %v93
+  %v660 = load i64, i64* %v93
+  %v661 = add i64 %v660, 1
+  store i64 %v661, i64* %v105
+  %v662 = load i64, i64* %v105
+  store i64 %v662, i64* %v93
   br label %bb75
 bb75:
   br label %bb73
 bb76:
-  %v683 = load i64, i64* %v91
-  %v684 = call i64 @roast_str(i64 %v683)
-  store i64 %v684, i64* %v110
+  %v663 = load i64, i64* %v91
+  %v664 = call i64 @roast_str(i64 %v663)
+  store i64 %v664, i64* %v110
   br label %bb77
 bb77:
-  %v685 = getelementptr [10 x i8], [10 x i8]* @.str.41, i64 0, i64 0
-  %v686 = call i8* @roast_str_new(i8* %v685, i64 9)
-  %v687 = ptrtoint i8* %v686 to i64
-  %v688 = load i64, i64* %v110
-  %v690 = inttoptr i64 %v687 to i8*
-  %v691 = inttoptr i64 %v688 to i8*
-  %v692 = call i8* @roast_str_concat(i8* %v690, i8* %v691)
-  %v689 = ptrtoint i8* %v692 to i64
-  store i64 %v689, i64* %v111
-  %v693 = load i64, i64* %v111
-  %v694 = call i64 @roast_print(i64 %v693)
-  store i64 %v694, i64* %v109
+  %v665 = getelementptr [10 x i8], [10 x i8]* @.str.41, i64 0, i64 0
+  %v666 = call i8* @roast_str_new(i8* %v665, i64 9)
+  %v667 = ptrtoint i8* %v666 to i64
+  %v668 = load i64, i64* %v110
+  %v670 = inttoptr i64 %v667 to i8*
+  %v671 = inttoptr i64 %v668 to i8*
+  %v672 = call i8* @roast_str_concat(i8* %v670, i8* %v671)
+  %v669 = ptrtoint i8* %v672 to i64
+  store i64 %v669, i64* %v111
+  %v673 = load i64, i64* %v111
+  %v674 = call i64 @roast_print(i64 %v673)
+  store i64 %v674, i64* %v109
   br label %bb78
 bb78:
-  %v695 = load i64, i64* %v93
-  %v696 = call i64 @roast_str(i64 %v695)
-  store i64 %v696, i64* %v113
+  %v675 = load i64, i64* %v93
+  %v676 = call i64 @roast_str(i64 %v675)
+  store i64 %v676, i64* %v113
   br label %bb79
 bb79:
-  %v697 = getelementptr [9 x i8], [9 x i8]* @.str.42, i64 0, i64 0
-  %v698 = call i8* @roast_str_new(i8* %v697, i64 8)
-  %v699 = ptrtoint i8* %v698 to i64
-  %v700 = load i64, i64* %v113
-  %v702 = inttoptr i64 %v699 to i8*
-  %v703 = inttoptr i64 %v700 to i8*
-  %v704 = call i8* @roast_str_concat(i8* %v702, i8* %v703)
-  %v701 = ptrtoint i8* %v704 to i64
-  store i64 %v701, i64* %v114
-  %v705 = load i64, i64* %v114
-  %v706 = call i64 @roast_print(i64 %v705)
-  store i64 %v706, i64* %v112
+  %v677 = getelementptr [9 x i8], [9 x i8]* @.str.42, i64 0, i64 0
+  %v678 = call i8* @roast_str_new(i8* %v677, i64 8)
+  %v679 = ptrtoint i8* %v678 to i64
+  %v680 = load i64, i64* %v113
+  %v682 = inttoptr i64 %v679 to i8*
+  %v683 = inttoptr i64 %v680 to i8*
+  %v684 = call i8* @roast_str_concat(i8* %v682, i8* %v683)
+  %v681 = ptrtoint i8* %v684 to i64
+  store i64 %v681, i64* %v114
+  %v685 = load i64, i64* %v114
+  %v686 = call i64 @roast_print(i64 %v685)
+  store i64 %v686, i64* %v112
   br label %bb80
 bb80:
-  %v707 = load i64, i64* %v106
-  %v708 = call i64 @roast_str(i64 %v707)
-  store i64 %v708, i64* %v116
+  %v687 = load i64, i64* %v106
+  %v688 = call i64 @roast_str(i64 %v687)
+  store i64 %v688, i64* %v116
   br label %bb81
 bb81:
-  %v709 = getelementptr [12 x i8], [12 x i8]* @.str.43, i64 0, i64 0
-  %v710 = call i8* @roast_str_new(i8* %v709, i64 11)
-  %v711 = ptrtoint i8* %v710 to i64
-  %v712 = load i64, i64* %v116
-  %v714 = inttoptr i64 %v711 to i8*
-  %v715 = inttoptr i64 %v712 to i8*
-  %v716 = call i8* @roast_str_concat(i8* %v714, i8* %v715)
-  %v713 = ptrtoint i8* %v716 to i64
-  store i64 %v713, i64* %v117
-  %v717 = load i64, i64* %v117
-  %v718 = call i64 @roast_print(i64 %v717)
-  store i64 %v718, i64* %v115
+  %v689 = getelementptr [12 x i8], [12 x i8]* @.str.43, i64 0, i64 0
+  %v690 = call i8* @roast_str_new(i8* %v689, i64 11)
+  %v691 = ptrtoint i8* %v690 to i64
+  %v692 = load i64, i64* %v116
+  %v694 = inttoptr i64 %v691 to i8*
+  %v695 = inttoptr i64 %v692 to i8*
+  %v696 = call i8* @roast_str_concat(i8* %v694, i8* %v695)
+  %v693 = ptrtoint i8* %v696 to i64
+  store i64 %v693, i64* %v117
+  %v697 = load i64, i64* %v117
+  %v698 = call i64 @roast_print(i64 %v697)
+  store i64 %v698, i64* %v115
   br label %bb82
 bb82:
-  %v719 = load i64, i64* %v91
-  %v721 = icmp sgt i64 %v719, 0
-  %v720 = zext i1 %v721 to i64
-  store i64 %v720, i64* %v118
-  %v722 = load i64, i64* %v118
-  store i64 %v722, i64* %v119
-  %v723 = load i64, i64* %v119
-  %v724 = icmp eq i64 %v723, 1
-  br i1 %v724, label %bb83, label %bb84
+  %v699 = load i64, i64* %v91
+  %v701 = icmp sgt i64 %v699, 0
+  %v700 = zext i1 %v701 to i64
+  store i64 %v700, i64* %v118
+  %v702 = load i64, i64* %v118
+  store i64 %v702, i64* %v119
+  %v703 = load i64, i64* %v119
+  %v704 = icmp eq i64 %v703, 1
+  br i1 %v704, label %bb83, label %bb84
 bb83:
-  %v725 = load i64, i64* %v93
-  %v726 = mul i64 %v725, 100
-  store i64 %v726, i64* %v121
-  %v727 = load i64, i64* %v121
-  %v728 = load i64, i64* %v91
-  %v729 = sdiv i64 %v727, %v728
-  store i64 %v729, i64* %v122
-  %v730 = load i64, i64* %v122
-  store i64 %v730, i64* %v120
-  %v731 = load i64, i64* %v120
-  %v732 = call i64 @roast_str(i64 %v731)
-  store i64 %v732, i64* %v124
+  %v705 = load i64, i64* %v93
+  %v706 = mul i64 %v705, 100
+  store i64 %v706, i64* %v121
+  %v707 = load i64, i64* %v121
+  %v708 = load i64, i64* %v91
+  %v709 = sdiv i64 %v707, %v708
+  store i64 %v709, i64* %v122
+  %v710 = load i64, i64* %v122
+  store i64 %v710, i64* %v120
+  %v711 = load i64, i64* %v120
+  %v712 = call i64 @roast_str(i64 %v711)
+  store i64 %v712, i64* %v124
   br label %bb85
 bb84:
-  %v733 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v734 = call i8* @roast_str_new(i8* %v733, i64 0)
-  %v735 = ptrtoint i8* %v734 to i64
-  %v736 = call i64 @roast_print(i64 %v735)
-  store i64 %v736, i64* %v127
+  %v713 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v714 = call i8* @roast_str_new(i8* %v713, i64 0)
+  %v715 = ptrtoint i8* %v714 to i64
+  %v716 = call i64 @roast_print(i64 %v715)
+  store i64 %v716, i64* %v127
   br label %bb87
 bb85:
-  %v737 = getelementptr [15 x i8], [15 x i8]* @.str.44, i64 0, i64 0
-  %v738 = call i8* @roast_str_new(i8* %v737, i64 14)
-  %v739 = ptrtoint i8* %v738 to i64
-  %v740 = load i64, i64* %v124
-  %v742 = inttoptr i64 %v739 to i8*
-  %v743 = inttoptr i64 %v740 to i8*
-  %v744 = call i8* @roast_str_concat(i8* %v742, i8* %v743)
-  %v741 = ptrtoint i8* %v744 to i64
-  store i64 %v741, i64* %v125
-  %v745 = load i64, i64* %v125
-  %v746 = getelementptr [2 x i8], [2 x i8]* @.str.45, i64 0, i64 0
-  %v747 = call i8* @roast_str_new(i8* %v746, i64 1)
-  %v748 = ptrtoint i8* %v747 to i64
-  %v750 = inttoptr i64 %v745 to i8*
-  %v751 = inttoptr i64 %v748 to i8*
-  %v752 = call i8* @roast_str_concat(i8* %v750, i8* %v751)
-  %v749 = ptrtoint i8* %v752 to i64
-  store i64 %v749, i64* %v126
-  %v753 = load i64, i64* %v126
-  %v754 = call i64 @roast_print(i64 %v753)
-  store i64 %v754, i64* %v123
+  %v717 = getelementptr [15 x i8], [15 x i8]* @.str.44, i64 0, i64 0
+  %v718 = call i8* @roast_str_new(i8* %v717, i64 14)
+  %v719 = ptrtoint i8* %v718 to i64
+  %v720 = load i64, i64* %v124
+  %v722 = inttoptr i64 %v719 to i8*
+  %v723 = inttoptr i64 %v720 to i8*
+  %v724 = call i8* @roast_str_concat(i8* %v722, i8* %v723)
+  %v721 = ptrtoint i8* %v724 to i64
+  store i64 %v721, i64* %v125
+  %v725 = load i64, i64* %v125
+  %v726 = getelementptr [2 x i8], [2 x i8]* @.str.45, i64 0, i64 0
+  %v727 = call i8* @roast_str_new(i8* %v726, i64 1)
+  %v728 = ptrtoint i8* %v727 to i64
+  %v730 = inttoptr i64 %v725 to i8*
+  %v731 = inttoptr i64 %v728 to i8*
+  %v732 = call i8* @roast_str_concat(i8* %v730, i8* %v731)
+  %v729 = ptrtoint i8* %v732 to i64
+  store i64 %v729, i64* %v126
+  %v733 = load i64, i64* %v126
+  %v734 = call i64 @roast_print(i64 %v733)
+  store i64 %v734, i64* %v123
   br label %bb86
 bb86:
   br label %bb84
 bb87:
   br label %bb65
 bb88:
-  %v755 = getelementptr [18 x i8], [18 x i8]* @.str.46, i64 0, i64 0
-  %v756 = call i8* @roast_str_new(i8* %v755, i64 17)
-  %v757 = ptrtoint i8* %v756 to i64
-  %v758 = call i64 @roast_print(i64 %v757)
-  store i64 %v758, i64* %v130
+  %v735 = getelementptr [18 x i8], [18 x i8]* @.str.46, i64 0, i64 0
+  %v736 = call i8* @roast_str_new(i8* %v735, i64 17)
+  %v737 = ptrtoint i8* %v736 to i64
+  %v738 = call i64 @roast_print(i64 %v737)
+  store i64 %v738, i64* %v130
   br label %bb91
 bb89:
-  %v759 = getelementptr [26 x i8], [26 x i8]* @.str.47, i64 0, i64 0
-  %v760 = call i8* @roast_str_new(i8* %v759, i64 25)
-  %v761 = ptrtoint i8* %v760 to i64
-  %v762 = call i64 @roast_print(i64 %v761)
-  store i64 %v762, i64* %v159
+  %v739 = getelementptr [26 x i8], [26 x i8]* @.str.47, i64 0, i64 0
+  %v740 = call i8* @roast_str_new(i8* %v739, i64 25)
+  %v741 = ptrtoint i8* %v740 to i64
+  %v742 = call i64 @roast_print(i64 %v741)
+  store i64 %v742, i64* %v159
   br label %bb107
 bb90:
   br label %bb65
 bb91:
-  %v763 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v764 = call i8* @roast_str_new(i8* %v763, i64 0)
-  %v765 = ptrtoint i8* %v764 to i64
-  store i64 %v765, i64* %v131
-  %v766 = load i64, i64* %v4
-  %v767 = call i64 @roast_range(i64 1, i64 %v766, i64 1)
-  store i64 %v767, i64* %v132
+  %v743 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v744 = call i8* @roast_str_new(i8* %v743, i64 0)
+  %v745 = ptrtoint i8* %v744 to i64
+  store i64 %v745, i64* %v131
+  %v746 = load i64, i64* %v4
+  %v747 = call i64 @roast_range(i64 1, i64 %v746, i64 1)
+  store i64 %v747, i64* %v132
   br label %bb92
 bb92:
-  %v768 = load i64, i64* %v132
-  store i64 %v768, i64* %v133
+  %v748 = load i64, i64* %v132
+  store i64 %v748, i64* %v133
   br label %bb93
 bb93:
-  %v769 = load i64, i64* %v133
-  %v770 = inttoptr i64 %v769 to i8*
-  %v771 = call i8* @roast_iter_new(i8* %v770)
-  %v772 = ptrtoint i8* %v771 to i64
-  store i64 %v772, i64* %v134
+  %v749 = load i64, i64* %v133
+  %v750 = inttoptr i64 %v749 to i8*
+  %v751 = call i8* @roast_iter_new(i8* %v750)
+  %v752 = ptrtoint i8* %v751 to i64
+  store i64 %v752, i64* %v134
   br label %bb94
 bb94:
-  %v773 = load i64, i64* %v134
-  %v774 = inttoptr i64 %v773 to i8*
-  %v775 = alloca i1
-  %v776 = call i64 @roast_iter_next(i8* %v774, i1* %v775)
-  %v777 = load i1, i1* %v775
-  store i64 %v776, i64* %v135
-  br i1 %v777, label %bb96, label %bb95
+  %v753 = load i64, i64* %v134
+  %v754 = inttoptr i64 %v753 to i8*
+  %v755 = alloca i1
+  %v756 = call i64 @roast_iter_next(i8* %v754, i1* %v755)
+  %v757 = load i1, i1* %v755
+  store i64 %v756, i64* %v135
+  br i1 %v757, label %bb96, label %bb95
 bb95:
-  %v778 = load i64, i64* %v135
-  %v779 = load i64, i64* %v2
-  %v781 = inttoptr i64 %v779 to i8*
-  %v782 = call i1 @roast_list_contains(i8* %v781, i64 %v778)
-  %v780 = zext i1 %v782 to i64
-  store i64 %v780, i64* %v136
-  %v783 = load i64, i64* %v136
-  store i64 %v783, i64* %v137
-  %v784 = load i64, i64* %v137
-  %v785 = icmp eq i64 %v784, 1
-  br i1 %v785, label %bb97, label %bb98
+  %v758 = load i64, i64* %v135
+  %v759 = load i64, i64* %v2
+  %v761 = inttoptr i64 %v759 to i8*
+  %v762 = call i1 @roast_dict_contains(i8* %v761, i64 %v758)
+  %v760 = zext i1 %v762 to i64
+  store i64 %v760, i64* %v136
+  %v763 = load i64, i64* %v136
+  store i64 %v763, i64* %v137
+  %v764 = load i64, i64* %v137
+  %v765 = icmp eq i64 %v764, 1
+  br i1 %v765, label %bb97, label %bb98
 bb96:
-  %v786 = load i64, i64* %v1
-  %v787 = load i64, i64* %v131
-  %v788 = call i64 @roast_fn_96(i64 %v786, i64 %v787)
-  store i64 %v788, i64* %v153
+  %v766 = load i64, i64* %v1
+  %v767 = load i64, i64* %v131
+  %v768 = call i64 @roast_fn_96(i64 %v766, i64 %v767)
+  store i64 %v768, i64* %v153
   br label %bb102
 bb97:
-  %v789 = load i64, i64* %v2
-  store i64 %v789, i64* %v138
-  %v790 = load i64, i64* %v135
-  store i64 %v790, i64* %v139
-  %v791 = load i64, i64* %v138
-  %v792 = load i64, i64* %v139
-  %v793 = call i64 @roast_subscript_get(i64 %v791, i64 %v792)
-  store i64 %v793, i64* %v35
-  %v794 = inttoptr i64 %v793 to i8*
-  call void @roast_incref(i8* %v794)
-  %v795 = load i64, i64* %v35
-  %v796 = getelementptr [3 x i8], [3 x i8]* @.str.0, i64 0, i64 0
-  %v797 = inttoptr i64 %v795 to i8*
-  %v798 = call i64 @roast_object_getattr_auto(i8* %v797, i8* %v796, i64 %v795)
-  store i64 %v798, i64* %v142
-  %v799 = load i64, i64* %v142
-  %v800 = call i64 @roast_str(i64 %v799)
-  store i64 %v800, i64* %v141
+  %v769 = load i64, i64* %v2
+  store i64 %v769, i64* %v138
+  %v770 = load i64, i64* %v135
+  store i64 %v770, i64* %v139
+  %v771 = load i64, i64* %v138
+  %v772 = load i64, i64* %v139
+  %v773 = call i64 @roast_subscript_get(i64 %v771, i64 %v772)
+  store i64 %v773, i64* %v35
+  %v774 = inttoptr i64 %v773 to i8*
+  call void @roast_incref(i8* %v774)
+  %v775 = load i64, i64* %v35
+  %v776 = getelementptr [3 x i8], [3 x i8]* @.str.0, i64 0, i64 0
+  %v777 = inttoptr i64 %v775 to i8*
+  %v778 = call i64 @roast_object_getattr_auto(i8* %v777, i8* %v776, i64 %v775)
+  store i64 %v778, i64* %v142
+  %v779 = load i64, i64* %v142
+  %v780 = call i64 @roast_str(i64 %v779)
+  store i64 %v780, i64* %v141
   br label %bb99
 bb98:
   br label %bb94
 bb99:
-  %v801 = load i64, i64* %v141
+  %v781 = load i64, i64* %v141
+  %v782 = getelementptr [2 x i8], [2 x i8]* @.str.3, i64 0, i64 0
+  %v783 = call i8* @roast_str_new(i8* %v782, i64 1)
+  %v784 = ptrtoint i8* %v783 to i64
+  %v786 = inttoptr i64 %v781 to i8*
+  %v787 = inttoptr i64 %v784 to i8*
+  %v788 = call i8* @roast_str_concat(i8* %v786, i8* %v787)
+  %v785 = ptrtoint i8* %v788 to i64
+  store i64 %v785, i64* %v143
+  %v789 = load i64, i64* %v35
+  %v790 = getelementptr [6 x i8], [6 x i8]* @.str.1, i64 0, i64 0
+  %v791 = inttoptr i64 %v789 to i8*
+  %v792 = call i64 @roast_object_getattr_auto(i8* %v791, i8* %v790, i64 %v789)
+  store i64 %v792, i64* %v145
+  %v793 = load i64, i64* %v145
+  %v794 = call i64 @roast_str(i64 %v793)
+  store i64 %v794, i64* %v144
+  br label %bb100
+bb100:
+  %v795 = load i64, i64* %v143
+  %v796 = load i64, i64* %v144
+  %v798 = inttoptr i64 %v795 to i8*
+  %v799 = inttoptr i64 %v796 to i8*
+  %v800 = call i8* @roast_str_concat(i8* %v798, i8* %v799)
+  %v797 = ptrtoint i8* %v800 to i64
+  store i64 %v797, i64* %v146
+  %v801 = load i64, i64* %v146
   %v802 = getelementptr [2 x i8], [2 x i8]* @.str.3, i64 0, i64 0
   %v803 = call i8* @roast_str_new(i8* %v802, i64 1)
   %v804 = ptrtoint i8* %v803 to i64
@@ -1866,120 +1763,253 @@ bb99:
   %v807 = inttoptr i64 %v804 to i8*
   %v808 = call i8* @roast_str_concat(i8* %v806, i8* %v807)
   %v805 = ptrtoint i8* %v808 to i64
-  store i64 %v805, i64* %v143
+  store i64 %v805, i64* %v147
   %v809 = load i64, i64* %v35
-  %v810 = getelementptr [6 x i8], [6 x i8]* @.str.1, i64 0, i64 0
+  %v810 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
   %v811 = inttoptr i64 %v809 to i8*
   %v812 = call i64 @roast_object_getattr_auto(i8* %v811, i8* %v810, i64 %v809)
-  store i64 %v812, i64* %v145
-  %v813 = load i64, i64* %v145
+  store i64 %v812, i64* %v149
+  %v813 = load i64, i64* %v149
   %v814 = call i64 @roast_str(i64 %v813)
-  store i64 %v814, i64* %v144
-  br label %bb100
-bb100:
-  %v815 = load i64, i64* %v143
-  %v816 = load i64, i64* %v144
+  store i64 %v814, i64* %v148
+  br label %bb101
+bb101:
+  %v815 = load i64, i64* %v147
+  %v816 = load i64, i64* %v148
   %v818 = inttoptr i64 %v815 to i8*
   %v819 = inttoptr i64 %v816 to i8*
   %v820 = call i8* @roast_str_concat(i8* %v818, i8* %v819)
   %v817 = ptrtoint i8* %v820 to i64
-  store i64 %v817, i64* %v146
-  %v821 = load i64, i64* %v146
-  %v822 = getelementptr [2 x i8], [2 x i8]* @.str.3, i64 0, i64 0
+  store i64 %v817, i64* %v150
+  %v821 = load i64, i64* %v150
+  %v822 = getelementptr [2 x i8], [2 x i8]* @.str.48, i64 0, i64 0
   %v823 = call i8* @roast_str_new(i8* %v822, i64 1)
   %v824 = ptrtoint i8* %v823 to i64
   %v826 = inttoptr i64 %v821 to i8*
   %v827 = inttoptr i64 %v824 to i8*
   %v828 = call i8* @roast_str_concat(i8* %v826, i8* %v827)
   %v825 = ptrtoint i8* %v828 to i64
-  store i64 %v825, i64* %v147
-  %v829 = load i64, i64* %v35
-  %v830 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
-  %v831 = inttoptr i64 %v829 to i8*
-  %v832 = call i64 @roast_object_getattr_auto(i8* %v831, i8* %v830, i64 %v829)
-  store i64 %v832, i64* %v149
-  %v833 = load i64, i64* %v149
-  %v834 = call i64 @roast_str(i64 %v833)
-  store i64 %v834, i64* %v148
-  br label %bb101
-bb101:
-  %v835 = load i64, i64* %v147
-  %v836 = load i64, i64* %v148
-  %v838 = inttoptr i64 %v835 to i8*
-  %v839 = inttoptr i64 %v836 to i8*
-  %v840 = call i8* @roast_str_concat(i8* %v838, i8* %v839)
-  %v837 = ptrtoint i8* %v840 to i64
-  store i64 %v837, i64* %v150
-  %v841 = load i64, i64* %v150
-  %v842 = getelementptr [2 x i8], [2 x i8]* @.str.48, i64 0, i64 0
-  %v843 = call i8* @roast_str_new(i8* %v842, i64 1)
-  %v844 = ptrtoint i8* %v843 to i64
-  %v846 = inttoptr i64 %v841 to i8*
+  store i64 %v825, i64* %v151
+  %v829 = load i64, i64* %v151
+  store i64 %v829, i64* %v140
+  %v830 = inttoptr i64 %v829 to i8*
+  call void @roast_incref(i8* %v830)
+  %v831 = load i64, i64* %v131
+  %v832 = load i64, i64* %v140
+  %v834 = inttoptr i64 %v831 to i8*
+  %v835 = inttoptr i64 %v832 to i8*
+  %v836 = call i8* @roast_str_concat(i8* %v834, i8* %v835)
+  %v833 = ptrtoint i8* %v836 to i64
+  store i64 %v833, i64* %v152
+  %v837 = load i64, i64* %v152
+  store i64 %v837, i64* %v131
+  %v838 = inttoptr i64 %v837 to i8*
+  call void @roast_incref(i8* %v838)
+  br label %bb98
+bb102:
+  %v839 = load i64, i64* %v1
+  %v840 = call i64 @roast_str(i64 %v839)
+  store i64 %v840, i64* %v155
+  br label %bb103
+bb103:
+  %v841 = getelementptr [10 x i8], [10 x i8]* @.str.49, i64 0, i64 0
+  %v842 = call i8* @roast_str_new(i8* %v841, i64 9)
+  %v843 = ptrtoint i8* %v842 to i64
+  %v844 = load i64, i64* %v155
+  %v846 = inttoptr i64 %v843 to i8*
   %v847 = inttoptr i64 %v844 to i8*
   %v848 = call i8* @roast_str_concat(i8* %v846, i8* %v847)
   %v845 = ptrtoint i8* %v848 to i64
-  store i64 %v845, i64* %v151
-  %v849 = load i64, i64* %v151
-  store i64 %v849, i64* %v140
-  %v850 = inttoptr i64 %v849 to i8*
-  call void @roast_incref(i8* %v850)
-  %v851 = load i64, i64* %v131
-  %v852 = load i64, i64* %v140
-  %v854 = inttoptr i64 %v851 to i8*
-  %v855 = inttoptr i64 %v852 to i8*
-  %v856 = call i8* @roast_str_concat(i8* %v854, i8* %v855)
-  %v853 = ptrtoint i8* %v856 to i64
-  store i64 %v853, i64* %v152
-  %v857 = load i64, i64* %v152
-  store i64 %v857, i64* %v131
-  %v858 = inttoptr i64 %v857 to i8*
-  call void @roast_incref(i8* %v858)
-  br label %bb98
-bb102:
-  %v859 = load i64, i64* %v1
-  %v860 = call i64 @roast_str(i64 %v859)
-  store i64 %v860, i64* %v155
-  br label %bb103
-bb103:
-  %v861 = getelementptr [10 x i8], [10 x i8]* @.str.49, i64 0, i64 0
-  %v862 = call i8* @roast_str_new(i8* %v861, i64 9)
-  %v863 = ptrtoint i8* %v862 to i64
-  %v864 = load i64, i64* %v155
-  %v866 = inttoptr i64 %v863 to i8*
-  %v867 = inttoptr i64 %v864 to i8*
-  %v868 = call i8* @roast_str_concat(i8* %v866, i8* %v867)
-  %v865 = ptrtoint i8* %v868 to i64
-  store i64 %v865, i64* %v156
-  %v869 = load i64, i64* %v156
-  %v870 = call i64 @roast_print(i64 %v869)
-  store i64 %v870, i64* %v154
+  store i64 %v845, i64* %v156
+  %v849 = load i64, i64* %v156
+  %v850 = call i64 @roast_print(i64 %v849)
+  store i64 %v850, i64* %v154
   br label %bb104
 bb104:
-  %v871 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v872 = call i8* @roast_str_new(i8* %v871, i64 0)
-  %v873 = ptrtoint i8* %v872 to i64
-  %v874 = call i64 @roast_print(i64 %v873)
-  store i64 %v874, i64* %v157
+  %v851 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v852 = call i8* @roast_str_new(i8* %v851, i64 0)
+  %v853 = ptrtoint i8* %v852 to i64
+  %v854 = call i64 @roast_print(i64 %v853)
+  store i64 %v854, i64* %v157
   br label %bb105
 bb105:
-  %v875 = getelementptr [9 x i8], [9 x i8]* @.str.50, i64 0, i64 0
-  %v876 = call i8* @roast_str_new(i8* %v875, i64 8)
-  %v877 = ptrtoint i8* %v876 to i64
-  %v878 = call i64 @roast_print(i64 %v877)
-  store i64 %v878, i64* %v158
+  %v855 = getelementptr [9 x i8], [9 x i8]* @.str.50, i64 0, i64 0
+  %v856 = call i8* @roast_str_new(i8* %v855, i64 8)
+  %v857 = ptrtoint i8* %v856 to i64
+  %v858 = call i64 @roast_print(i64 %v857)
+  store i64 %v858, i64* %v158
   br label %bb106
 bb106:
   store i64 0, i64* %v14
   br label %bb90
 bb107:
-  %v879 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
-  %v880 = call i8* @roast_str_new(i8* %v879, i64 0)
-  %v881 = ptrtoint i8* %v880 to i64
-  %v882 = call i64 @roast_print(i64 %v881)
-  store i64 %v882, i64* %v160
+  %v859 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v860 = call i8* @roast_str_new(i8* %v859, i64 0)
+  %v861 = ptrtoint i8* %v860 to i64
+  %v862 = call i64 @roast_print(i64 %v861)
+  store i64 %v862, i64* %v160
   br label %bb108
 bb108:
   br label %bb90
+}
+
+define i64 @roast_fn_185() {
+entry:
+  %v0 = alloca i64
+  br label %bb0
+bb0:
+  %v1 = call i64 @roast_fn_126()
+  store i64 %v1, i64* %v0
+  br label %bb1
+bb1:
+  ret i64 0
+}
+
+define i64 @roast_fn_105() {
+entry:
+  %v0 = alloca i64
+  %v1 = alloca i64
+  %v2 = alloca i64
+  %v3 = alloca i64
+  %v4 = alloca i64
+  %v5 = alloca i64
+  br label %bb0
+bb0:
+  %v6 = getelementptr [2 x i8], [2 x i8]* @.str.6, i64 0, i64 0
+  %v7 = call i8* @roast_str_new(i8* %v6, i64 1)
+  %v8 = ptrtoint i8* %v7 to i64
+  %v10 = inttoptr i64 %v8 to i8*
+  %v11 = call i8* @roast_str_repeat(i8* %v10, i64 50)
+  %v9 = ptrtoint i8* %v11 to i64
+  store i64 %v9, i64* %v1
+  %v12 = load i64, i64* %v1
+  %v13 = call i64 @roast_print(i64 %v12)
+  store i64 %v13, i64* %v0
+  br label %bb1
+bb1:
+  %v14 = getelementptr [38 x i8], [38 x i8]* @.str.7, i64 0, i64 0
+  %v15 = call i8* @roast_str_new(i8* %v14, i64 37)
+  %v16 = ptrtoint i8* %v15 to i64
+  %v17 = call i64 @roast_print(i64 %v16)
+  store i64 %v17, i64* %v2
+  br label %bb2
+bb2:
+  %v18 = getelementptr [2 x i8], [2 x i8]* @.str.6, i64 0, i64 0
+  %v19 = call i8* @roast_str_new(i8* %v18, i64 1)
+  %v20 = ptrtoint i8* %v19 to i64
+  %v22 = inttoptr i64 %v20 to i8*
+  %v23 = call i8* @roast_str_repeat(i8* %v22, i64 50)
+  %v21 = ptrtoint i8* %v23 to i64
+  store i64 %v21, i64* %v4
+  %v24 = load i64, i64* %v4
+  %v25 = call i64 @roast_print(i64 %v24)
+  store i64 %v25, i64* %v3
+  br label %bb3
+bb3:
+  %v26 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v27 = call i8* @roast_str_new(i8* %v26, i64 0)
+  %v28 = ptrtoint i8* %v27 to i64
+  %v29 = call i64 @roast_print(i64 %v28)
+  store i64 %v29, i64* %v5
+  br label %bb4
+bb4:
+  ret i64 0
+}
+
+define i64 @roast_fn_107() {
+entry:
+  %v0 = alloca i64
+  %v1 = alloca i64
+  %v2 = alloca i64
+  %v3 = alloca i64
+  %v4 = alloca i64
+  %v5 = alloca i64
+  %v6 = alloca i64
+  br label %bb0
+bb0:
+  %v7 = getelementptr [10 x i8], [10 x i8]* @.str.9, i64 0, i64 0
+  %v8 = call i8* @roast_str_new(i8* %v7, i64 9)
+  %v9 = ptrtoint i8* %v8 to i64
+  %v10 = call i64 @roast_print(i64 %v9)
+  store i64 %v10, i64* %v0
+  br label %bb1
+bb1:
+  %v11 = getelementptr [21 x i8], [21 x i8]* @.str.10, i64 0, i64 0
+  %v12 = call i8* @roast_str_new(i8* %v11, i64 20)
+  %v13 = ptrtoint i8* %v12 to i64
+  %v14 = call i64 @roast_print(i64 %v13)
+  store i64 %v14, i64* %v1
+  br label %bb2
+bb2:
+  %v15 = getelementptr [19 x i8], [19 x i8]* @.str.11, i64 0, i64 0
+  %v16 = call i8* @roast_str_new(i8* %v15, i64 18)
+  %v17 = ptrtoint i8* %v16 to i64
+  %v18 = call i64 @roast_print(i64 %v17)
+  store i64 %v18, i64* %v2
+  br label %bb3
+bb3:
+  %v19 = getelementptr [21 x i8], [21 x i8]* @.str.12, i64 0, i64 0
+  %v20 = call i8* @roast_str_new(i8* %v19, i64 20)
+  %v21 = ptrtoint i8* %v20 to i64
+  %v22 = call i64 @roast_print(i64 %v21)
+  store i64 %v22, i64* %v3
+  br label %bb4
+bb4:
+  %v23 = getelementptr [22 x i8], [22 x i8]* @.str.13, i64 0, i64 0
+  %v24 = call i8* @roast_str_new(i8* %v23, i64 21)
+  %v25 = ptrtoint i8* %v24 to i64
+  %v26 = call i64 @roast_print(i64 %v25)
+  store i64 %v26, i64* %v4
+  br label %bb5
+bb5:
+  %v27 = getelementptr [20 x i8], [20 x i8]* @.str.14, i64 0, i64 0
+  %v28 = call i8* @roast_str_new(i8* %v27, i64 19)
+  %v29 = ptrtoint i8* %v28 to i64
+  %v30 = call i64 @roast_print(i64 %v29)
+  store i64 %v30, i64* %v5
+  br label %bb6
+bb6:
+  %v31 = getelementptr [1 x i8], [1 x i8]* @.str.8, i64 0, i64 0
+  %v32 = call i8* @roast_str_new(i8* %v31, i64 0)
+  %v33 = ptrtoint i8* %v32 to i64
+  %v34 = call i64 @roast_print(i64 %v33)
+  store i64 %v34, i64* %v6
+  br label %bb7
+bb7:
+  ret i64 0
+}
+
+define i64 @roast_fn_126() {
+entry:
+  %v0 = alloca i64
+  br label %bb0
+bb0:
+  %v1 = call i64 @roast_fn_108()
+  store i64 %v1, i64* %v0
+  br label %bb1
+bb1:
+  ret i64 0
+}
+
+
+define i32 @main(i32 %argc, i8** %argv) {
+entry:
+    call void @roast_init_classes()
+    call void @roast_fn_185()
+    ret i32 0
+}
+
+define i64 @roast_fn_Todo_91(i64 %arg0) {
+entry:
+  %v0 = alloca i64
+  store i64 %arg0, i64* %v0
+  br label %bb0
+bb0:
+  %v1 = load i64, i64* %v0
+  %v2 = inttoptr i64 %v1 to i8*
+  %v3 = getelementptr [5 x i8], [5 x i8]* @.str.2, i64 0, i64 0
+  call void @roast_object_setattr(i8* %v2, i8* %v3, i64 1)
+  ret i64 0
 }
 
 define i64 @roast_fn_93(i64 %arg0) {
@@ -1988,6 +2018,8 @@ entry:
   %v1 = alloca i64
   %v2 = alloca i64
   store i64 %arg0, i64* %v0
+  br label %bb0
+bb0:
   %v3 = call i8* @roast_list_new(i64 3)
   call void @roast_list_append(i8* %v3, i64 1)
   call void @roast_list_append(i8* %v3, i64 2)
@@ -1999,17 +2031,6 @@ entry:
   %v6 = inttoptr i64 %v5 to i8*
   call void @roast_incref(i8* %v6)
   %v7 = load i64, i64* %v1
-  %v8 = inttoptr i64 %v7 to i8*
-  call void @roast_decref(i8* %v8)
-  %v9 = load i64, i64* %v1
-  ret i64 %v9
-}
-
-
-define i32 @main(i32 %argc, i8** %argv) {
-entry:
-    call void @roast_init_classes()
-    call void @roast_fn_179()
-    ret i32 0
+  ret i64 %v7
 }
 

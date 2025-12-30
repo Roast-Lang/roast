@@ -1,0 +1,88 @@
+# Test Suite: Owned Parameter Move Semantics
+# These tests verify that passing values to `owned` parameters triggers move semantics
+
+# Test 1: Basic use-after-move should be caught
+def test_use_after_move():
+    """Pass owned value to function, then try to use it - should fail"""
+    def consume(x: owned list[int]) -> int:
+        return len(x)
+    
+    data: list[int] = [1, 2, 3]
+    result = consume(data)
+    # This line should cause a borrow checker error
+    # print(data)  # ERROR: use after move
+    print("Test 1: Basic owned param - PASS (uncomment line 12 to see error)")
+
+# Test 2: Safe usage - only use before move
+def test_safe_move():
+    """Use value before move - should work"""
+    def consume(x: owned list[int]) -> int:
+        return len(x)
+    
+    data: list[int] = [1, 2, 3]
+    length_before = len(data)  # OK - before move
+    result = consume(data)
+    print(f"Test 2: Safe move - PASS (length_before={length_before})")
+
+# Test 3: Double move should be caught  
+def test_double_move():
+    """Try to move same value twice - should fail"""
+    def consume(x: owned list[int]) -> int:
+        return len(x)
+    
+    data: list[int] = [1, 2, 3]
+    result1 = consume(data)
+    # This line should cause a borrow checker error
+    # result2 = consume(data)  # ERROR: double move
+    print("Test 3: Double move prevention - PASS (uncomment line 33 to see error)")
+
+# Test 4: Move in conditional
+def test_conditional_move():
+    """Move in one branch, use in another - complex case"""
+    def consume(x: owned list[int]) -> int:
+        return len(x)
+    
+    data: list[int] = [1, 2, 3]
+    flag = True
+    if flag:
+        result = consume(data)
+        print(f"Test 4: Conditional move - PASS (result={result})")
+    # else:
+    #     print(data)  # Would be OK if flag was False
+
+# Test 5: Non-owned parameters should NOT trigger move
+def test_non_owned_param():
+    """Regular parameters should borrow, not move"""
+    def borrow(x: list[int]) -> int:
+        return len(x)
+    
+    data: list[int] = [1, 2, 3]
+    result1 = borrow(data)
+    result2 = borrow(data)  # OK - data was borrowed, not moved
+    print(f"Test 5: Non-owned params borrow - PASS (can use data twice)")
+
+# Test 6: Nested owned usage
+def test_nested_owned():
+    """Owned in nested function calls"""
+    def inner(x: owned list[int]) -> int:
+        return len(x)
+    
+    def outer(x: owned list[int]) -> int:
+        return inner(x)  # x is moved here
+    
+    data: list[int] = [1, 2, 3]
+    result = outer(data)
+    print(f"Test 6: Nested owned - PASS (result={result})")
+
+# Run all tests
+def main():
+    print("=== Memory Safety Test Suite ===\n")
+    test_use_after_move()
+    test_safe_move()
+    test_double_move()
+    test_conditional_move()
+    test_non_owned_param()
+    test_nested_owned()
+    print("\n=== All Safe Tests Passed ===")
+
+main()

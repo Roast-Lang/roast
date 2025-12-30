@@ -1,0 +1,8 @@
+def test(a: int, b: int) -> int:
+    result: int = a + b
+    return result
+
+def main() -> int:
+    r: int = test(10, 3)
+    print(f"10 + 3 = {r}")
+    return 0

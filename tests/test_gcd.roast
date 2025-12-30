@@ -1,0 +1,12 @@
+def gcd(a: int, b: int) -> int:
+    while b != 0:
+        temp: int = b
+        b = a % b
+        a = temp
+    return a
+
+def main() -> int:
+    result: int = gcd(48, 18)
+    print(f"gcd(48, 18) = {result}")
+    print(f"Expected: 6")
+    return 0

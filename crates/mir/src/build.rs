@@ -45,6 +45,8 @@ pub struct MirBuilder<'a> {
     python_modules: std::collections::HashMap<Symbol, String>,
     /// Symbol for "super" builtin (for detecting super() calls)
     super_symbol: Option<Symbol>,
+    /// Module-level global variables (for __module_init__)
+    module_globals: std::collections::HashSet<Symbol>,
 }
 
 impl<'a> MirBuilder<'a> {
@@ -66,7 +68,18 @@ impl<'a> MirBuilder<'a> {
             modules: std::collections::HashSet::new(),
             python_modules: std::collections::HashMap::new(),
             super_symbol: None,
+            module_globals: std::collections::HashSet::new(),
         }
+    }
+
+    /// Register a module-level global variable.
+    pub fn register_module_global(&mut self, sym: Symbol) {
+        self.module_globals.insert(sym);
+    }
+
+    /// Check if a symbol is a module-level global.
+    pub fn is_module_global(&self, sym: &Symbol) -> bool {
+        self.module_globals.contains(sym)
     }
 
     /// Register a symbol as a module name
@@ -165,8 +178,26 @@ impl<'a> MirBuilder<'a> {
             name: func.name,
             params,
             return_ty: func.return_type.clone(),
-            locals: std::mem::take(&mut self.locals),
-            blocks: std::mem::take(&mut self.blocks),
+            locals: {
+                let locals = std::mem::take(&mut self.locals);
+                for l in &locals {
+                }
+                locals
+            },
+            blocks: {
+                // DEBUG: Check block 0 terminator BEFORE taking
+                if let Some(b0) = self.blocks.first() {
+                }
+                let blocks = std::mem::take(&mut self.blocks);
+                // Debug all blocks
+                for (i, b) in blocks.iter().enumerate() {
+                    if i == 0 && !b.stmts.is_empty() {
+                        if let Some(s0) = b.stmts.first() {
+                        }
+                    }
+                }
+                blocks
+            },
             is_async: func.is_async,
             span: func.span,
         }
@@ -222,6 +253,10 @@ impl<'a> MirBuilder<'a> {
         self.locals.push(local.clone());
         // Register named locals for variable lookup
         if let Some(n) = name {
+            // Debug: check if we're overwriting an existing mapping
+            if let Some(&old_id) = self.name_to_local.get(&n) {
+            } else {
+            }
             self.name_to_local.insert(n, id);
         }
         local
@@ -255,7 +290,7 @@ impl<'a> MirBuilder<'a> {
     }
 
     fn build_block(&mut self, block: &HirBlock) {
-        for stmt in &block.stmts {
+        for (i, stmt) in block.stmts.iter().enumerate() {
             self.build_stmt(stmt);
         }
     }
@@ -1154,7 +1189,7 @@ impl<'a> MirBuilder<'a> {
                     MirOperand::Global(*name)
                 }
             }
-            HirExprKind::Call { callee, args } => {
+            HirExprKind::Call { callee, args, callee_type } => {
                 // Check if this is a method call (callee is a field access)
                 let callee_expr = self.expr_arena.get(*callee).expect("callee expression");
 
@@ -1229,7 +1264,7 @@ impl<'a> MirBuilder<'a> {
 
                     // Check if this is a super().method() call
                     // Supports both super() and super(ClassName, self) forms
-                    let (is_super_call, super_class_override) = if let HirExprKind::Call { callee: super_callee, args: super_args } = &base_expr.kind {
+                    let (is_super_call, super_class_override) = if let HirExprKind::Call { callee: super_callee, args: super_args, callee_type: _ } = &base_expr.kind {
                         let super_callee_expr = self.expr_arena.get(*super_callee).expect("super callee");
                         if let HirExprKind::Var(var_name) = &super_callee_expr.kind {
                             let is_super = self.super_symbol.map_or(false, |s| *var_name == s);
@@ -1327,8 +1362,26 @@ impl<'a> MirBuilder<'a> {
                     let callee_op = self.build_expr(callee);
 
                     // Build all arguments - this may create new blocks for method calls
-                    let arg_ops: Vec<_> = args.iter()
-                        .map(|arg| self.build_expr_as_copy(arg))
+                    // Use Move for owned parameters to enable use-after-move detection
+                    let arg_ops: Vec<_> = args.iter().enumerate()
+                        .map(|(i, arg)| {
+                            // Check if this parameter is an owned type
+                            let is_owned_param = callee_type.as_ref().map(|ty| {
+                                if let roast_typer::Type::Callable { params, .. } = ty {
+                                    params.get(i).map(|p| matches!(p.ty, roast_typer::Type::Owned(_))).unwrap_or(false)
+                                } else {
+                                    false
+                                }
+                            }).unwrap_or(false);
+                            
+                            if is_owned_param {
+                                // Owned parameters consume the value - use Move
+                                self.build_expr(arg)
+                            } else {
+                                // Regular parameters borrow the value - use Copy
+                                self.build_expr_as_copy(arg)
+                            }
+                        })
                         .collect();
 
                     // NOW get return block AFTER args are built (current_block may have changed)
@@ -1344,6 +1397,14 @@ impl<'a> MirBuilder<'a> {
                         target: Some(next_block),
                         unwind: None,
                     };
+
+                    // DEBUG: Confirm the terminator was set correctly
+                    if let MirTerminator::Call { args: stored_args, .. } = &self.blocks[return_block as usize].terminator {
+                        for (i, arg) in stored_args.iter().enumerate() {
+                            if let MirOperand::Copy(place) | MirOperand::Move(place) = arg {
+                            }
+                        }
+                    }
 
                     // Continue in the next block after the call
                     self.current_block = next_block;
@@ -1652,7 +1713,7 @@ impl<'a> MirBuilder<'a> {
                 });
                 MirOperand::Copy(MirPlace::local(result_temp))
             }
-            HirExprKind::MethodCall { receiver, method, args } => {
+            HirExprKind::MethodCall { receiver, method, args, method_type } => {
                 // Direct method call expression (e.g., s.upper())
                 // Create a temp for the result
                 let result_temp = self.new_temp(expr.ty.clone());
@@ -2042,19 +2103,36 @@ impl<'a> MirBuilder<'a> {
 
     /// Build a place expression (for assignment targets)
     fn build_place(&mut self, expr_id: &HirExprId) -> MirPlace {
+        self.build_place_inner(expr_id, None)
+    }
+    
+    /// Inner helper for build_place that can optionally receive the span for statements
+    fn build_place_inner(&mut self, expr_id: &HirExprId, span_override: Option<Span>) -> MirPlace {
         let expr = self.expr_arena.get(*expr_id).expect("Expr not found");
+        let span = span_override.unwrap_or(expr.span);
         match &expr.kind {
             HirExprKind::Var(name) => {
                 if let Some(&local_id) = self.name_to_local.get(name) {
                     MirPlace::local(local_id)
                 } else {
-                    // Create a new local for undefined variable
-                    let local = self.new_local(Some(*name), expr.ty.clone(), true);
-                    MirPlace::local(local.id)
+                    // DEBUG: Print when we're creating a new local for unknown variable
+                    // This is a global variable - load it into a temp
+                    // For simple global scalar assignment, we preserve the name so the
+                    // LLVM backend can also store back to the global.
+                    // For container globals (dict, list), modifications via index update the original.
+                    let temp = self.new_local(Some(*name), expr.ty.clone(), false);
+                    self.push_stmt(MirStmt {
+                        kind: MirStmtKind::Assign {
+                            place: MirPlace::local(temp.id),
+                            value: MirRvalue::Use(MirOperand::Global(*name)),
+                        },
+                        span,
+                    });
+                    MirPlace::local(temp.id)
                 }
             }
             HirExprKind::Index { base, index } => {
-                let base_place = self.build_place(base);
+                let base_place = self.build_place_inner(base, Some(span));
                 let index_op = self.build_expr(index);
                 let index_temp = self.new_temp(Type::Unknown);
                 self.push_stmt(MirStmt {
@@ -2062,7 +2140,7 @@ impl<'a> MirBuilder<'a> {
                         place: MirPlace::local(index_temp),
                         value: MirRvalue::Use(index_op),
                     },
-                    span: expr.span,
+                    span,
                 });
                 MirPlace {
                     local: base_place.local,

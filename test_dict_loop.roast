@@ -1,0 +1,31 @@
+# Test dict access in loop with multiple dicts
+
+items_db: dict[int, str] = {}
+items_owner: dict[int, int] = {}
+
+def main() -> int:
+    print("1. Setting up dicts...")
+    items_db[1] = "Task 1"
+    items_db[2] = "Task 2"
+    items_db[3] = "Task 3"
+    
+    items_owner[1] = 1
+    items_owner[2] = 1
+    items_owner[3] = 2
+    
+    print("2. Iterating with range...")
+    for iid in range(1, 4):
+        print(f"  Checking item {iid}")
+        if iid in items_owner:
+            print(f"    Item {iid} in items_owner")
+            owner = items_owner[iid]
+            print(f"    Owner = {owner}")
+            if owner == 1:
+                print(f"    Owner is 1")
+            else:
+                print(f"    Owner is not 1")
+    
+    print("3. Done!")
+    return 0
+
+main()

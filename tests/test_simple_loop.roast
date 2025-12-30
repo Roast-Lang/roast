@@ -1,0 +1,11 @@
+def test(a: int, b: int) -> int:
+    print(a)
+    while b != 0:
+        a = 999
+        break
+    return a
+
+def main() -> int:
+    r: int = test(48, 18)
+    print(f"r={r}")
+    return 0

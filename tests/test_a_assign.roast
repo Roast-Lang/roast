@@ -1,0 +1,13 @@
+def test(a: int, b: int) -> int:
+    print(f"Before loop: a={a}, b={b}")
+    while b != 0:
+        a = 999
+        print(f"In loop: a={a}")
+        break
+    print(f"After loop: a={a}, b={b}")
+    return a
+
+def main() -> int:
+    r: int = test(48, 18)
+    print(f"result={r}")
+    return 0

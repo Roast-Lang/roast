@@ -483,22 +483,57 @@ impl<'a> BorrowChecker<'a> {
     }
 
     /// Checks if a type is Copy.
+    /// In Roast's memory model:
+    /// - Primitive types are always Copy
+    /// - RC-managed types (List, Dict, Class) are Copy in permissive mode
+    /// - Types explicitly marked with `owned` are NEVER Copy
+    /// - In strict mode, all heap-allocated types are non-Copy
     fn is_copy_type(&self, ty: &Type) -> bool {
         match ty {
-            // Primitive types are Copy
+            // CRITICAL: Owned types are NEVER Copy - they MUST be moved
+            // This enables proper use-after-move detection
+            Type::Owned(_) => false,
+
+            // Primitive types are always Copy
             Type::Bool | Type::Int | Type::Int8 | Type::Int16 | Type::Int32 |
             Type::Int64 | Type::Int128 | Type::UInt | Type::UInt8 | Type::UInt16 |
             Type::UInt32 | Type::UInt64 | Type::UInt128 | Type::Float |
             Type::Float32 | Type::Float64 => true,
 
-            // References are Copy
+            // References are Copy (they're just pointers)
             Type::Ref { .. } => true,
+
+            // Strings and bytes are immutable and ref-counted, so Copy
+            Type::Str | Type::Bytes => true,
+            
+            // Collections: In permissive mode (default), they're Copy due to RC
+            // In strict mode, they would be non-Copy
+            Type::List(_) | Type::Dict(_, _) | Type::Set(_) => true,
 
             // Tuples are Copy if all elements are Copy
             Type::Tuple(elems) => elems.iter().all(|e| self.is_copy_type(e)),
 
-            // Everything else is not Copy by default
-            _ => false,
+            // Class instances are reference-counted in Roast, so they're Copy
+            // (copying just copies the reference/pointer, refcount is managed by runtime)
+            Type::Class(_) | Type::Protocol(_) | Type::Generic { .. } | Type::Alias { .. } => true,
+            
+            // Optional: Copy if inner type is Copy. But Owned wrapper makes it non-Copy
+            Type::Optional(inner) => self.is_copy_type(inner),
+            
+            // Rc is explicitly reference-counted, so Copy (increments refcount)
+            Type::Rc(inner) => true,
+            
+            // Any, Unknown, SelfType are treated as Copy for flexibility
+            Type::Any | Type::Unknown | Type::SelfType => true,
+            
+            // None type is Copy (it's just a singleton)
+            Type::NoneType => true,
+            
+            // Union is Copy if all variants are Copy
+            Type::Union(types) => types.iter().all(|t| self.is_copy_type(t)),
+
+            // Everything else defaults to Copy for safety in RC model
+            _ => true,
         }
     }
 

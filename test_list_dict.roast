@@ -1,0 +1,55 @@
+# Test: iterate returned list AND access dict inside
+
+items_db: dict[int, str] = {}
+items_owner: dict[int, int] = {}
+next_item_id: int = 1
+
+def add_item(owner: int, title: str) -> int:
+    global next_item_id
+    item_id = next_item_id
+    next_item_id = next_item_id + 1
+    items_db[item_id] = title
+    items_owner[item_id] = owner
+    print(f"Added item {item_id}: {title}")
+    return item_id
+
+def get_items_for_user(user_id: int) -> list[int]:
+    result: list[int] = []
+    for iid in range(1, next_item_id):
+        if iid in items_owner:
+            if items_owner[iid] == user_id:
+                result.append(iid)
+    return result
+
+def list_items(user_id: int) -> str:
+    print("A. Getting items...")
+    item_ids = get_items_for_user(user_id)
+    print(f"B. Got {len(item_ids)} items")
+    
+    print("C. Iterating...")
+    for iid in item_ids:
+        print(f"  D. Item {iid}")
+        if iid in items_db:
+            print(f"  E. In items_db")
+            title = items_db[iid]
+            print(f"  F. Title: {title}")
+    
+    print("G. Done!")
+    return "OK"
+
+def main() -> int:
+    print("1. Setup...")
+    add_item(1, "Task 1")
+    add_item(1, "Task 2")
+    add_item(2, "Task 3")
+    
+    print("")
+    print("2. List items for user 1...")
+    result = list_items(1)
+    print(f"Result: {result}")
+    
+    print("")
+    print("3. Done!")
+    return 0
+
+main()

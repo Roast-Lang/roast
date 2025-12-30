@@ -1,0 +1,16 @@
+{
+  "files": {
+    "tests/test_basics.roast": {
+      "mtime": 1765362556,
+      "size": 3823,
+      "content_hash": 6413098919062031598,
+      "output_path": "tests/cooked/test_basics",
+      "dependencies": [],
+      "dependents": [],
+      "artifact_hash": null
+    }
+  },
+  "last_build": 1766695654,
+  "config_hash": null,
+  "version": 2
+}

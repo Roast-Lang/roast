@@ -1,0 +1,41 @@
+# Test parameter name collision
+
+data: dict[int, int] = {}
+counter: int = 1
+
+def add(user_id: int) -> int:
+    global counter
+    item_id = counter
+    counter = counter + 1
+    data[item_id] = user_id
+    print(f"Added {item_id} with user_id={user_id}")
+    return item_id
+
+def get_items(user_id: int) -> list[int]:
+    result: list[int] = []
+    print(f"Getting items for user_id={user_id}, counter={counter}")
+    for i in range(1, counter):
+        print(f"  i={i}")
+        if i in data:
+            val = data[i]
+            print(f"    data[{i}]={val}")
+            if val == user_id:
+                print(f"    match!")
+                result.append(i)
+    print(f"Returning {len(result)} items")
+    return result
+
+def main() -> int:
+    print("Adding items...")
+    add(1)
+    add(1)
+    add(2)
+    
+    print("")
+    print("Getting items...")
+    items = get_items(1)
+    print(f"Got {len(items)} items")
+    
+    return 0
+
+main()

@@ -134,7 +134,15 @@ fn fold_unary(op: MirUnaryOp, operand: &MirConstant) -> Option<MirConstant> {
 /// IMPORTANT: Only propagate copies for locals that are assigned exactly once.
 /// Variables assigned multiple times (like in loops) must not be propagated
 /// as their values change dynamically at runtime.
+/// 
+/// ALSO: Do not propagate copies for parameters - parameters have initial values
+/// from function arguments, so even if they're reassigned once, the original value
+/// was already used before the reassignment.
 pub fn copy_propagation(body: &mut MirBody) -> usize {
+    // Collect parameter local IDs - these should NOT be copy destinations
+    // because they have initial values from function arguments
+    let param_ids: FxHashSet<LocalId> = body.params.iter().map(|p| p.local.id).collect();
+    
     // First, count how many times each local is assigned
     let mut assignment_count: FxHashMap<LocalId, usize> = FxHashMap::default();
     for block in &body.blocks {
@@ -149,20 +157,38 @@ pub fn copy_propagation(body: &mut MirBody) -> usize {
     
     // Build a map of copies: dest -> source
     // Only include copies where the dest is assigned exactly once (SSA-like)
+    // AND the dest is NOT a parameter (parameters have initial values from args)
     let mut copies: FxHashMap<LocalId, LocalId> = FxHashMap::default();
 
     for block in &body.blocks {
         for stmt in &block.stmts {
             if let MirStmtKind::Assign { place, value } = &stmt.kind {
                 if place.projections.is_empty() {
+                    // Skip if destination is a parameter - parameters have initial values
+                    if param_ids.contains(&place.local) {
+                        continue;
+                    }
+                    
                     // Only consider this a valid copy if the destination is assigned exactly once
                     let dest_count = assignment_count.get(&place.local).copied().unwrap_or(0);
                     if dest_count == 1 {
                         if let MirRvalue::Use(MirOperand::Copy(src)) = value {
                             if src.projections.is_empty() {
-                                // Also verify the source is assigned exactly once
+                                // Source must NEVER be modified in this function.
+                                // For parameters: they should have 0 assignments in statements
+                                // (their only "assignment" is from function arguments)
+                                // For non-params: they should have exactly 1 assignment (their declaration)
+                                // If a source is modified anywhere, copy propagation is unsafe
+                                // because the value may change between the copy and its use.
                                 let src_count = assignment_count.get(&src.local).copied().unwrap_or(0);
-                                if src_count == 1 {
+                                let src_is_param = param_ids.contains(&src.local);
+                                let source_is_immutable = if src_is_param {
+                                    src_count == 0  // Param not modified in statements
+                                } else {
+                                    src_count == 1  // Non-param only has its declaration
+                                };
+                                
+                                if source_is_immutable {
                                     copies.insert(place.local, src.local);
                                 }
                             }

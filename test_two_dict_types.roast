@@ -1,0 +1,60 @@
+# Test accessing two dicts with different value types in nested function
+
+data_str: dict[int, str] = {}
+data_int: dict[int, int] = {}
+counter: int = 1
+
+def add(owner: int, title: str) -> int:
+    global counter
+    item_id = counter
+    counter = counter + 1
+    data_str[item_id] = title
+    data_int[item_id] = owner
+    print(f"Added {item_id}: {title} (owner={owner})")
+    return item_id
+
+def get_items(user_id: int) -> list[int]:
+    result: list[int] = []
+    print(f"Getting items for user_id={user_id}")
+    for i in range(1, counter):
+        print(f"  Checking {i}")
+        if i in data_int:
+            print(f"    In data_int")
+            owner = data_int[i]
+            print(f"    owner={owner}")
+            if owner == user_id:
+                print(f"    Match, appending")
+                result.append(i)
+    print(f"Returning {len(result)} items")
+    return result
+
+def do_list(user_id: int) -> str:
+    print("A. Getting items...")
+    items = get_items(user_id)
+    print(f"B. Got {len(items)} items")
+    
+    out = "["
+    print("C. Iterating...")
+    for iid in items:
+        print(f"  D. Item {iid}")
+        if iid in data_str:
+            print(f"    E. In data_str")
+            title = data_str[iid]
+            print(f"    F. title={title}")
+    
+    print("G. Done!")
+    return out
+
+def main() -> int:
+    print("Setup...")
+    add(1, "T1")
+    add(1, "T2")
+    add(2, "T3")
+    
+    print("")
+    print("Calling do_list(1)...")
+    result = do_list(1)
+    print(f"Result: {result}")
+    return 0
+
+main()

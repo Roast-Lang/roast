@@ -1,0 +1,15 @@
+# Test: use-after-move violations (these should FAIL to compile)
+# Run with: roastc run test_use_after_move_fail.roast
+# Expected: Borrow check error
+
+def consume(x: owned list[int]) -> int:
+    """Takes ownership of x, x cannot be used after this call"""
+    return len(x)
+
+def main():
+    data: list[int] = [1, 2, 3]
+    result = consume(data)
+    # ERROR: This should fail - data was moved to consume()
+    print(data)
+
+main()

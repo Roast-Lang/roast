@@ -94,7 +94,7 @@ pub enum TokenKind {
     Mut,
     Imm,
     Borrow,
-    Move,
+    // NOTE: 'move' removed - not a Python keyword (BUG-001 fix)
     Own,
     Ref,
     Where,
@@ -424,7 +424,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Mut => write!(f, "mut"),
             TokenKind::Imm => write!(f, "imm"),
             TokenKind::Borrow => write!(f, "borrow"),
-            TokenKind::Move => write!(f, "move"),
+            // 'move' is no longer a reserved keyword
             TokenKind::Own => write!(f, "own"),
             TokenKind::Ref => write!(f, "ref"),
             _ => write!(f, "{:?}", self),
@@ -477,7 +477,7 @@ pub fn keyword_to_token(s: &str) -> Option<TokenKind> {
         "mut" => TokenKind::Mut,
         "imm" => TokenKind::Imm,
         "borrow" => TokenKind::Borrow,
-        "move" => TokenKind::Move,
+        // "move" removed - not a Python keyword (BUG-001 fix)
         "own" => TokenKind::Own,
         "owned" => TokenKind::Own,  // Alias for 'own'
         "ref" => TokenKind::Ref,

@@ -1,0 +1,134 @@
+# Complex Test Project - Classes Module
+# Tests: inheritance, multiple methods, property access, method chaining
+
+# ==============================================================================
+# Base class: Entity
+# ==============================================================================
+
+class Entity:
+    def __init__(self, id: int, name: str) -> None:
+        self.id = id
+        self.name = name
+        self.active = True
+    
+    def get_id(self) -> int:
+        return self.id
+    
+    def get_name(self) -> str:
+        return self.name
+    
+    def deactivate(self) -> None:
+        self.active = False
+    
+    def is_active(self) -> bool:
+        return self.active
+
+
+# ==============================================================================
+# Derived class: Player (inherits from Entity)
+# ==============================================================================
+
+class Player(Entity):
+    def __init__(self, id: int, name: str, level: int) -> None:
+        self.id = id
+        self.name = name
+        self.active = True
+        self.level = level
+        self.score = 0
+        self.health = 100
+        self.max_health = 100
+    
+    def get_level(self) -> int:
+        return self.level
+    
+    def level_up(self) -> None:
+        self.level = self.level + 1
+        self.max_health = self.max_health + 10
+        self.health = self.max_health
+    
+    def add_score(self, points: int) -> None:
+        self.score = self.score + points
+    
+    def take_damage(self, damage: int) -> None:
+        self.health = self.health - damage
+        if self.health < 0:
+            self.health = 0
+    
+    def heal(self, amount: int) -> None:
+        self.health = self.health + amount
+        if self.health > self.max_health:
+            self.health = self.max_health
+    
+    def is_alive(self) -> bool:
+        return self.health > 0
+
+
+# ==============================================================================
+# Another class: Inventory
+# ==============================================================================
+
+class Inventory:
+    def __init__(self, capacity: int) -> None:
+        self.capacity = capacity
+        self.items: list[str] = []
+    
+    def add_item(self, item: str) -> bool:
+        if len(self.items) >= self.capacity:
+            return False
+        self.items.append(item)
+        return True
+    
+    def remove_item(self, item: str) -> bool:
+        if item in self.items:
+            self.items.remove(item)
+            return True
+        return False
+    
+    def has_item(self, item: str) -> bool:
+        return item in self.items
+    
+    def count(self) -> int:
+        return len(self.items)
+    
+    def is_full(self) -> bool:
+        return len(self.items) >= self.capacity
+    
+    def is_empty(self) -> bool:
+        return len(self.items) == 0
+    
+    def clear(self) -> None:
+        self.items = []
+
+
+# ==============================================================================
+# Composition class: Game
+# ==============================================================================
+
+class Game:
+    def __init__(self) -> None:
+        self.players: list[Player] = []
+        self.turn = 0
+        self.running = False
+    
+    def add_player(self, name: str) -> Player:
+        player_id: int = len(self.players) + 1
+        player: Player = Player(player_id, name, 1)
+        self.players.append(player)
+        return player
+    
+    def start(self) -> None:
+        self.running = True
+        self.turn = 1
+    
+    def end_turn(self) -> None:
+        self.turn = self.turn + 1
+    
+    def get_player_count(self) -> int:
+        return len(self.players)
+    
+    def get_active_players(self) -> list[Player]:
+        result: list[Player] = []
+        for player in self.players:
+            if player.is_alive():
+                result.append(player)
+        return result

@@ -14,7 +14,7 @@ mod bench;
 
 #[derive(Parser)]
 #[command(name = "roastc")]
-#[command(author = "Roast Language Team")]
+#[command(author = "Swadhin Biswas")]
 #[command(version)]
 #[command(about = "The Roast programming language compiler - Python syntax, Rust speed!", long_about = None)]
 #[command(after_help = "EXAMPLES:
@@ -80,6 +80,14 @@ enum Commands {
         /// Emit AST for debugging
         #[arg(long)]
         emit_ast: bool,
+
+        /// Enable incremental compilation (only recompile changed files)
+        #[arg(short, long)]
+        incremental: bool,
+
+        /// Clear the build cache before building
+        #[arg(long)]
+        clean_cache: bool,
     },
 
     /// Build and run a Roast file (compiles to native via LLVM by default)
@@ -324,6 +332,8 @@ fn run() -> Result<()> {
             emit_bytecode,
             emit_mir,
             emit_ast,
+            incremental,
+            clean_cache,
         }) => {
             // Default to LLVM unless bytecode/mir/ast is requested or native (Cranelift) is specified
             if emit_bytecode || emit_mir || emit_ast {
@@ -332,9 +342,10 @@ fn run() -> Result<()> {
                 commands::build_native(&path, output.as_deref(), opt_level, cli.debug)
             } else {
                 // Default: LLVM native compilation (Rust-like speed!)
-                commands::build_llvm(&path, output.as_deref(), opt_level, cli.debug)
+                commands::build_llvm_incremental(&path, output.as_deref(), opt_level, cli.debug, incremental, clean_cache)
             }
         }
+
         Some(Commands::Run { file, args, opt_level, cranelift, vm }) => {
             if vm {
                 // Legacy VM mode (hidden, for debugging)

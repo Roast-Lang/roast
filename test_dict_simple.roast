@@ -1,0 +1,44 @@
+# Ultra simple dict test
+
+d: dict[int, int] = {}
+
+def main() -> int:
+    print("1. Setting values...")
+    d[1] = 100
+    d[2] = 200
+    d[3] = 300
+    
+    print("2. Getting values...")
+    v1 = d[1]
+    print(f"d[1] = {v1}")
+    v2 = d[2]
+    print(f"d[2] = {v2}")
+    v3 = d[3]
+    print(f"d[3] = {v3}")
+    
+    print("3. Comparing values...")
+    if v1 == 100:
+        print("v1 == 100: True")
+    if v2 == 100:
+        print("v2 == 100: True")
+    else:
+        print("v2 == 100: False")
+    if v3 == 100:
+        print("v3 == 100: True")
+    else:
+        print("v3 == 100: False")
+    
+    print("4. Range iteration...")
+    for i in range(1, 4):
+        print(f"  i = {i}")
+        val = d[i]
+        print(f"  d[{i}] = {val}")
+        if val == 100:
+            print(f"    val == 100: True")
+        else:
+            print(f"    val == 100: False")
+    
+    print("5. Done!")
+    return 0
+
+main()

@@ -238,44 +238,61 @@ impl<'a> Parser<'a> {
             let start = self.current().span;
             self.advance(); // @
 
-            let name = self.parse_primary()?;
+            // Parse the decorator expression including attribute access (e.g., @app.route)
+            // Use parse_unary_postfix to handle cases like @app.route("/path")
+            let name = self.parse_unary_postfix()?;
             let mut arguments = Vec::new();
             let mut keywords = Vec::new();
 
-            if matches!(self.peek(), TokenKind::LeftParen) {
-                self.advance();
-                // Parse decorator arguments
-                while !matches!(self.peek(), TokenKind::RightParen | TokenKind::Eof) {
-                    if matches!(self.peek(), TokenKind::Name(_)) {
-                        if let Some(TokenKind::Equal) = self.peek_ahead(1) {
-                            // Keyword argument
-                            let kw_name = self.parse_ident()?;
-                            self.advance(); // =
-                            let value = self.parse_expression()?;
-                            keywords.push(Keyword {
-                                name: Some(kw_name),
-                                value,
-                                span: self.span_from(start),
-                            });
+            // Check if we need to parse additional arguments
+            // Note: if the decorator was already a call (e.g., @app.route("/path")),
+            // then parse_unary_postfix already consumed the arguments
+            if let ExprKind::Call { func, args, keywords: kws } = &name.kind {
+                // The decorator was a call expression, extract the function and args
+                decorators.push(Decorator {
+                    name: (**func).clone(),
+                    arguments: args.clone(),
+                    keywords: kws.clone(),
+                    span: self.span_from(start),
+                });
+            } else {
+                // Simple decorator without call, or attribute access like @app.route
+                // Check if there's a call after it
+                if matches!(self.peek(), TokenKind::LeftParen) {
+                    self.advance();
+                    // Parse decorator arguments
+                    while !matches!(self.peek(), TokenKind::RightParen | TokenKind::Eof) {
+                        if matches!(self.peek(), TokenKind::Name(_)) {
+                            if let Some(TokenKind::Equal) = self.peek_ahead(1) {
+                                // Keyword argument
+                                let kw_name = self.parse_ident()?;
+                                self.advance(); // =
+                                let value = self.parse_expression()?;
+                                keywords.push(Keyword {
+                                    name: Some(kw_name),
+                                    value,
+                                    span: self.span_from(start),
+                                });
+                            } else {
+                                arguments.push(self.parse_expression()?);
+                            }
                         } else {
                             arguments.push(self.parse_expression()?);
                         }
-                    } else {
-                        arguments.push(self.parse_expression()?);
+                        if !matches!(self.peek(), TokenKind::RightParen) {
+                            self.expect(&TokenKind::Comma)?;
+                        }
                     }
-                    if !matches!(self.peek(), TokenKind::RightParen) {
-                        self.expect(&TokenKind::Comma)?;
-                    }
+                    self.expect(&TokenKind::RightParen)?;
                 }
-                self.expect(&TokenKind::RightParen)?;
-            }
 
-            decorators.push(Decorator {
-                name,
-                arguments,
-                keywords,
-                span: self.span_from(start),
-            });
+                decorators.push(Decorator {
+                    name,
+                    arguments,
+                    keywords,
+                    span: self.span_from(start),
+                });
+            }
 
             self.skip_newlines();
         }
@@ -523,10 +540,7 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ownership::Borrow
             }
-            TokenKind::Move => {
-                self.advance();
-                Ownership::Move
-            }
+            // TokenKind::Move removed - 'move' is no longer a reserved keyword (BUG-001)
             TokenKind::Own => {
                 self.advance();
                 Ownership::Own

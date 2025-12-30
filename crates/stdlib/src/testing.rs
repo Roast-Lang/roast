@@ -860,3 +860,1141 @@ mod tests {
     }
 }
 
+// =============================================================================
+// Parallel Test Execution
+// =============================================================================
+
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+/// Run tests in parallel using a thread pool.
+pub fn run_tests_parallel<F>(tests: Vec<F>, num_threads: usize) -> Vec<TestResult>
+where
+    F: Fn() -> TestResult + Send + Sync + 'static,
+{
+    let tests: Vec<Arc<dyn Fn() -> TestResult + Send + Sync>> = tests
+        .into_iter()
+        .map(|f| Arc::new(f) as Arc<dyn Fn() -> TestResult + Send + Sync>)
+        .collect();
+    
+    let results = Arc::new(Mutex::new(Vec::new()));
+    let test_index = Arc::new(AtomicUsize::new(0));
+    let num_tests = tests.len();
+    let tests = Arc::new(tests);
+    
+    let mut handles = Vec::new();
+    
+    for _ in 0..num_threads.min(num_tests) {
+        let tests = Arc::clone(&tests);
+        let test_index = Arc::clone(&test_index);
+        let results = Arc::clone(&results);
+        
+        let handle = thread::spawn(move || {
+            loop {
+                let idx = test_index.fetch_add(1, Ordering::SeqCst);
+                if idx >= tests.len() {
+                    break;
+                }
+                
+                let test = &tests[idx];
+                let result = panic::catch_unwind(AssertUnwindSafe(|| test()))
+                    .unwrap_or_else(|e| {
+                        let msg = if let Some(s) = e.downcast_ref::<&str>() {
+                            s.to_string()
+                        } else if let Some(s) = e.downcast_ref::<String>() {
+                            s.clone()
+                        } else {
+                            "Unknown panic".to_string()
+                        };
+                        TestResult::Failed(msg)
+                    });
+                
+                let mut results = results.lock().unwrap();
+                results.push((idx, result));
+            }
+        });
+        
+        handles.push(handle);
+    }
+    
+    for handle in handles {
+        handle.join().ok();
+    }
+    
+    // Sort results by original index
+    let mut results = match Arc::try_unwrap(results) {
+        Ok(mutex) => mutex.into_inner().unwrap(),
+        Err(arc) => arc.lock().unwrap().clone(),
+    };
+    results.sort_by_key(|(idx, _)| *idx);
+    results.into_iter().map(|(_, r)| r).collect()
+}
+
+/// Parallel test suite runner.
+pub struct ParallelTestRunner {
+    tests: Vec<(String, Arc<dyn Fn() + Send + Sync>)>,
+    num_threads: usize,
+}
+
+impl ParallelTestRunner {
+    /// Create a new parallel test runner.
+    pub fn new(num_threads: usize) -> Self {
+        Self {
+            tests: Vec::new(),
+            num_threads,
+        }
+    }
+    
+    /// Add a test.
+    pub fn add_test<F>(&mut self, name: &str, test: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        self.tests.push((name.to_string(), Arc::new(test)));
+    }
+    
+    /// Run all tests in parallel.
+    pub fn run(&self) -> Vec<(String, TestResult, Duration)> {
+        let results: Arc<Mutex<Vec<(String, TestResult, Duration)>>> = 
+            Arc::new(Mutex::new(Vec::new()));
+        let test_index = Arc::new(AtomicUsize::new(0));
+        
+        let tests: Vec<_> = self.tests.iter()
+            .map(|(name, f)| (name.clone(), Arc::clone(f)))
+            .collect();
+        let tests = Arc::new(tests);
+        
+        let mut handles = Vec::new();
+        
+        for _ in 0..self.num_threads.min(self.tests.len()) {
+            let tests = Arc::clone(&tests);
+            let test_index = Arc::clone(&test_index);
+            let results = Arc::clone(&results);
+            
+            let handle = thread::spawn(move || {
+                loop {
+                    let idx = test_index.fetch_add(1, Ordering::SeqCst);
+                    if idx >= tests.len() {
+                        break;
+                    }
+                    
+                    let (name, test) = &tests[idx];
+                    let start = Instant::now();
+                    
+                    let result = panic::catch_unwind(AssertUnwindSafe(|| test()))
+                        .map(|_| TestResult::Passed)
+                        .unwrap_or_else(|e| {
+                            let msg = if let Some(s) = e.downcast_ref::<&str>() {
+                                s.to_string()
+                            } else if let Some(s) = e.downcast_ref::<String>() {
+                                s.clone()
+                            } else {
+                                "Unknown panic".to_string()
+                            };
+                            TestResult::Failed(msg)
+                        });
+                    
+                    let duration = start.elapsed();
+                    let mut results = results.lock().unwrap();
+                    results.push((name.clone(), result, duration));
+                }
+            });
+            
+            handles.push(handle);
+        }
+        
+        for handle in handles {
+            handle.join().ok();
+        }
+        
+        match Arc::try_unwrap(results) {
+            Ok(mutex) => mutex.into_inner().unwrap(),
+            Err(arc) => arc.lock().unwrap().clone(),
+        }
+    }
+}
+
+// =============================================================================
+// Mocking Framework
+// =============================================================================
+
+use std::collections::VecDeque;
+use std::any::Any;
+
+/// A mock function that records calls and returns configured values.
+pub struct MockFn<Args, Ret> {
+    calls: Mutex<Vec<Args>>,
+    returns: Mutex<VecDeque<Ret>>,
+    default_return: Mutex<Option<Box<dyn Fn() -> Ret + Send + Sync>>>,
+}
+
+impl<Args: Clone, Ret: Clone + Default> MockFn<Args, Ret> {
+    /// Create a new mock function.
+    pub fn new() -> Self {
+        Self {
+            calls: Mutex::new(Vec::new()),
+            returns: Mutex::new(VecDeque::new()),
+            default_return: Mutex::new(None),
+        }
+    }
+    
+    /// Configure a return value.
+    pub fn returns(&self, value: Ret) -> &Self {
+        self.returns.lock().unwrap().push_back(value);
+        self
+    }
+    
+    /// Configure multiple return values.
+    pub fn returns_many(&self, values: Vec<Ret>) -> &Self {
+        let mut returns = self.returns.lock().unwrap();
+        for value in values {
+            returns.push_back(value);
+        }
+        self
+    }
+    
+    /// Configure a default return value generator.
+    pub fn returns_with<F>(&self, f: F) -> &Self
+    where
+        F: Fn() -> Ret + Send + Sync + 'static,
+    {
+        *self.default_return.lock().unwrap() = Some(Box::new(f));
+        self
+    }
+    
+    /// Call the mock function.
+    pub fn call(&self, args: Args) -> Ret {
+        self.calls.lock().unwrap().push(args);
+        
+        if let Some(value) = self.returns.lock().unwrap().pop_front() {
+            return value;
+        }
+        
+        if let Some(ref f) = *self.default_return.lock().unwrap() {
+            return f();
+        }
+        
+        Ret::default()
+    }
+    
+    /// Get call count.
+    pub fn call_count(&self) -> usize {
+        self.calls.lock().unwrap().len()
+    }
+    
+    /// Get all calls.
+    pub fn calls(&self) -> Vec<Args> {
+        self.calls.lock().unwrap().clone()
+    }
+    
+    /// Verify the mock was called exactly n times.
+    pub fn verify_called(&self, n: usize) {
+        let count = self.call_count();
+        if count != n {
+            panic!("Expected {} calls, got {}", n, count);
+        }
+    }
+    
+    /// Verify the mock was never called.
+    pub fn verify_never_called(&self) {
+        self.verify_called(0);
+    }
+    
+    /// Verify the mock was called at least once.
+    pub fn verify_called_once(&self) {
+        self.verify_called(1);
+    }
+    
+    /// Reset the mock.
+    pub fn reset(&self) {
+        self.calls.lock().unwrap().clear();
+        self.returns.lock().unwrap().clear();
+    }
+}
+
+impl<Args: Clone, Ret: Clone + Default> Default for MockFn<Args, Ret> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// A spy that wraps a real implementation and records calls.
+pub struct Spy<T, Args, Ret> {
+    inner: T,
+    calls: Mutex<Vec<Args>>,
+    func: fn(&T, Args) -> Ret,
+}
+
+impl<T, Args: Clone, Ret> Spy<T, Args, Ret> {
+    /// Create a new spy.
+    pub fn new(inner: T, func: fn(&T, Args) -> Ret) -> Self {
+        Self {
+            inner,
+            calls: Mutex::new(Vec::new()),
+            func,
+        }
+    }
+    
+    /// Call through to the real implementation.
+    pub fn call(&self, args: Args) -> Ret {
+        self.calls.lock().unwrap().push(args.clone());
+        (self.func)(&self.inner, args)
+    }
+    
+    /// Get call count.
+    pub fn call_count(&self) -> usize {
+        self.calls.lock().unwrap().len()
+    }
+    
+    /// Get all calls.
+    pub fn calls(&self) -> Vec<Args> {
+        self.calls.lock().unwrap().clone()
+    }
+    
+    /// Get the inner value.
+    pub fn inner(&self) -> &T {
+        &self.inner
+    }
+}
+
+/// A stub that returns fixed values.
+pub struct Stub<Ret> {
+    value: Ret,
+    call_count: AtomicUsize,
+}
+
+impl<Ret: Clone> Stub<Ret> {
+    /// Create a new stub.
+    pub fn new(value: Ret) -> Self {
+        Self {
+            value,
+            call_count: AtomicUsize::new(0),
+        }
+    }
+    
+    /// Call the stub.
+    pub fn call(&self) -> Ret {
+        self.call_count.fetch_add(1, Ordering::SeqCst);
+        self.value.clone()
+    }
+    
+    /// Get call count.
+    pub fn call_count(&self) -> usize {
+        self.call_count.load(Ordering::SeqCst)
+    }
+}
+
+/// Builder for creating mock expectations.
+pub struct MockBuilder<Args, Ret> {
+    mock: Arc<MockFn<Args, Ret>>,
+}
+
+impl<Args: Clone + 'static, Ret: Clone + Default + 'static> MockBuilder<Args, Ret> {
+    /// Create a new mock builder.
+    pub fn new() -> Self {
+        Self {
+            mock: Arc::new(MockFn::new()),
+        }
+    }
+    
+    /// Configure expected return value.
+    pub fn when_called_return(self, value: Ret) -> Self {
+        self.mock.returns(value);
+        self
+    }
+    
+    /// Configure multiple expected returns.
+    pub fn when_called_return_sequence(self, values: Vec<Ret>) -> Self {
+        self.mock.returns_many(values);
+        self
+    }
+    
+    /// Build the mock.
+    pub fn build(self) -> Arc<MockFn<Args, Ret>> {
+        self.mock
+    }
+}
+
+impl<Args: Clone + 'static, Ret: Clone + Default + 'static> Default for MockBuilder<Args, Ret> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Trait for mockable types.
+pub trait Mockable {
+    /// The mock type.
+    type Mock;
+    
+    /// Create a mock.
+    fn mock() -> Self::Mock;
+}
+
+// =============================================================================
+// Test Doubles
+// =============================================================================
+
+/// A recorded call for verification.
+#[derive(Clone, Debug)]
+pub struct RecordedCall {
+    pub method: String,
+    pub args: Vec<String>,
+    pub timestamp: Instant,
+}
+
+/// Generic call recorder.
+pub struct CallRecorder {
+    calls: Mutex<Vec<RecordedCall>>,
+}
+
+impl CallRecorder {
+    /// Create a new call recorder.
+    pub fn new() -> Self {
+        Self {
+            calls: Mutex::new(Vec::new()),
+        }
+    }
+    
+    /// Record a call.
+    pub fn record(&self, method: &str, args: Vec<String>) {
+        self.calls.lock().unwrap().push(RecordedCall {
+            method: method.to_string(),
+            args,
+            timestamp: Instant::now(),
+        });
+    }
+    
+    /// Get all calls.
+    pub fn calls(&self) -> Vec<RecordedCall> {
+        self.calls.lock().unwrap().clone()
+    }
+    
+    /// Get calls to a specific method.
+    pub fn calls_to(&self, method: &str) -> Vec<RecordedCall> {
+        self.calls.lock().unwrap()
+            .iter()
+            .filter(|c| c.method == method)
+            .cloned()
+            .collect()
+    }
+    
+    /// Verify a method was called.
+    pub fn verify_called(&self, method: &str) {
+        let calls = self.calls_to(method);
+        if calls.is_empty() {
+            panic!("Expected '{}' to be called, but it was never called", method);
+        }
+    }
+    
+    /// Verify a method was called n times.
+    pub fn verify_called_times(&self, method: &str, n: usize) {
+        let calls = self.calls_to(method);
+        if calls.len() != n {
+            panic!(
+                "Expected '{}' to be called {} times, but it was called {} times",
+                method, n, calls.len()
+            );
+        }
+    }
+    
+    /// Verify a method was never called.
+    pub fn verify_never_called(&self, method: &str) {
+        self.verify_called_times(method, 0);
+    }
+    
+    /// Reset the recorder.
+    pub fn reset(&self) {
+        self.calls.lock().unwrap().clear();
+    }
+}
+
+impl Default for CallRecorder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod mock_tests {
+    use super::*;
+    
+    #[test]
+    fn test_mock_fn() {
+        let mock: MockFn<i32, String> = MockFn::new();
+        mock.returns("first".to_string())
+            .returns("second".to_string());
+        
+        assert_eq!(mock.call(1), "first");
+        assert_eq!(mock.call(2), "second");
+        assert_eq!(mock.call(3), String::default()); // Default
+        
+        mock.verify_called(3);
+        assert_eq!(mock.calls(), vec![1, 2, 3]);
+    }
+    
+    #[test]
+    fn test_stub() {
+        let stub = Stub::new(42);
+        
+        assert_eq!(stub.call(), 42);
+        assert_eq!(stub.call(), 42);
+        assert_eq!(stub.call_count(), 2);
+    }
+    
+    #[test]
+    fn test_call_recorder() {
+        let recorder = CallRecorder::new();
+        
+        recorder.record("get", vec!["key1".to_string()]);
+        recorder.record("set", vec!["key2".to_string(), "value".to_string()]);
+        recorder.record("get", vec!["key3".to_string()]);
+        
+        recorder.verify_called("get");
+        recorder.verify_called_times("get", 2);
+        recorder.verify_called_times("set", 1);
+    }
+    
+    #[test]
+    fn test_parallel_runner() {
+        let mut runner = ParallelTestRunner::new(4);
+        
+        runner.add_test("test1", || {
+            std::thread::sleep(Duration::from_millis(10));
+        });
+        runner.add_test("test2", || {
+            std::thread::sleep(Duration::from_millis(10));
+        });
+        runner.add_test("test3", || {
+            std::thread::sleep(Duration::from_millis(10));
+        });
+        
+        let results = runner.run();
+        assert_eq!(results.len(), 3);
+        
+        for (_, result, _) in &results {
+            assert!(result.is_passed());
+        }
+    }
+}
+
+// =============================================================================
+// Property-Based Testing / QuickCheck-style Testing
+// =============================================================================
+
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
+/// Configuration for property-based tests.
+#[derive(Clone, Debug)]
+pub struct PropTestConfig {
+    /// Number of test cases to generate.
+    pub num_tests: usize,
+    /// Maximum shrink iterations.
+    pub max_shrink_iters: usize,
+    /// Random seed for reproducibility.
+    pub seed: u64,
+    /// Maximum size hint for generators.
+    pub max_size: usize,
+    /// Whether to print progress.
+    pub verbose: bool,
+}
+
+impl Default for PropTestConfig {
+    fn default() -> Self {
+        Self {
+            num_tests: 100,
+            max_shrink_iters: 1000,
+            seed: 0,
+            max_size: 100,
+            verbose: false,
+        }
+    }
+}
+
+impl PropTestConfig {
+    /// Create a new config with default values.
+    pub fn new() -> Self {
+        Self::default()
+    }
+    
+    /// Set number of tests.
+    pub fn with_tests(mut self, n: usize) -> Self {
+        self.num_tests = n;
+        self
+    }
+    
+    /// Set random seed.
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = seed;
+        self
+    }
+    
+    /// Set max size hint.
+    pub fn with_max_size(mut self, size: usize) -> Self {
+        self.max_size = size;
+        self
+    }
+}
+
+/// A simple PRNG for generating test data.
+#[derive(Clone)]
+pub struct TestRng {
+    state: u64,
+}
+
+impl TestRng {
+    /// Create a new RNG with a seed.
+    pub fn new(seed: u64) -> Self {
+        Self { state: seed.wrapping_add(1) }
+    }
+    
+    /// Generate next u64.
+    pub fn next_u64(&mut self) -> u64 {
+        // PCG-like generator
+        let old = self.state;
+        self.state = old.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let xorshifted = (((old >> 18) ^ old) >> 27) as u32;
+        let rot = (old >> 59) as u32;
+        ((xorshifted >> rot) | (xorshifted << ((!rot).wrapping_add(1) & 31))) as u64
+    }
+    
+    /// Generate a value in range [0, max).
+    pub fn next_range(&mut self, max: u64) -> u64 {
+        if max == 0 {
+            return 0;
+        }
+        self.next_u64() % max
+    }
+    
+    /// Generate a boolean.
+    pub fn next_bool(&mut self) -> bool {
+        self.next_u64() & 1 == 0
+    }
+    
+    /// Generate a float in [0, 1).
+    pub fn next_f64(&mut self) -> f64 {
+        (self.next_u64() as f64) / (u64::MAX as f64)
+    }
+}
+
+/// Trait for types that can be randomly generated.
+pub trait Arbitrary: Sized + Clone {
+    /// Generate a random value.
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self;
+    
+    /// Shrink a value to find minimal counterexample.
+    fn shrink(&self) -> Vec<Self> {
+        Vec::new() // Default: no shrinking
+    }
+}
+
+// Implement Arbitrary for common types
+impl Arbitrary for bool {
+    fn arbitrary(rng: &mut TestRng, _size: usize) -> Self {
+        rng.next_bool()
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        if *self { vec![false] } else { vec![] }
+    }
+}
+
+impl Arbitrary for i32 {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        let max = (size as i64).min(i32::MAX as i64) as i32;
+        (rng.next_range((max as u64).saturating_mul(2).saturating_add(1)) as i32)
+            .wrapping_sub(max)
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        if *self == 0 {
+            return shrinks;
+        }
+        shrinks.push(0);
+        if *self > 0 {
+            shrinks.push(*self - 1);
+            shrinks.push(*self / 2);
+        } else {
+            shrinks.push(*self + 1);
+            shrinks.push(*self / 2);
+        }
+        shrinks
+    }
+}
+
+impl Arbitrary for i64 {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        let max = (size as i64).min(1000);
+        (rng.next_range((max as u64).saturating_mul(2).saturating_add(1)) as i64)
+            .wrapping_sub(max)
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        if *self == 0 {
+            return shrinks;
+        }
+        shrinks.push(0);
+        if *self > 0 {
+            shrinks.push(*self - 1);
+            shrinks.push(*self / 2);
+        } else {
+            shrinks.push(*self + 1);
+            shrinks.push(*self / 2);
+        }
+        shrinks
+    }
+}
+
+impl Arbitrary for u32 {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        rng.next_range(size as u64 + 1) as u32
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        if *self == 0 {
+            return shrinks;
+        }
+        shrinks.push(0);
+        shrinks.push(*self - 1);
+        shrinks.push(*self / 2);
+        shrinks
+    }
+}
+
+impl Arbitrary for u64 {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        rng.next_range(size as u64 + 1)
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        if *self == 0 {
+            return shrinks;
+        }
+        shrinks.push(0);
+        shrinks.push(*self - 1);
+        shrinks.push(*self / 2);
+        shrinks
+    }
+}
+
+impl Arbitrary for usize {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        rng.next_range(size as u64 + 1) as usize
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        if *self == 0 {
+            return shrinks;
+        }
+        shrinks.push(0);
+        shrinks.push(*self - 1);
+        shrinks.push(*self / 2);
+        shrinks
+    }
+}
+
+impl Arbitrary for f64 {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        let int_part = i32::arbitrary(rng, size) as f64;
+        let frac_part = rng.next_f64();
+        int_part + frac_part
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        if *self == 0.0 {
+            return shrinks;
+        }
+        shrinks.push(0.0);
+        shrinks.push(self.trunc());
+        shrinks.push(*self / 2.0);
+        shrinks
+    }
+}
+
+impl Arbitrary for String {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        let len = rng.next_range(size as u64 + 1) as usize;
+        (0..len)
+            .map(|_| {
+                let c = rng.next_range(95) as u8 + 32; // Printable ASCII
+                c as char
+            })
+            .collect()
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        if self.is_empty() {
+            return shrinks;
+        }
+        shrinks.push(String::new());
+        if self.len() > 1 {
+            shrinks.push(self[..self.len() / 2].to_string());
+            shrinks.push(self[self.len() / 2..].to_string());
+            shrinks.push(self[1..].to_string());
+            shrinks.push(self[..self.len() - 1].to_string());
+        }
+        shrinks
+    }
+}
+
+impl<T: Arbitrary> Arbitrary for Vec<T> {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        let len = rng.next_range(size as u64 + 1) as usize;
+        (0..len).map(|_| T::arbitrary(rng, size)).collect()
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        if self.is_empty() {
+            return shrinks;
+        }
+        
+        // Empty vector
+        shrinks.push(Vec::new());
+        
+        // Remove each element
+        for i in 0..self.len() {
+            let mut v = self.clone();
+            v.remove(i);
+            shrinks.push(v);
+        }
+        
+        // Shrink each element
+        for (i, elem) in self.iter().enumerate() {
+            for shrunk in elem.shrink() {
+                let mut v = self.clone();
+                v[i] = shrunk;
+                shrinks.push(v);
+            }
+        }
+        
+        shrinks
+    }
+}
+
+impl<T: Arbitrary> Arbitrary for Option<T> {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        if rng.next_bool() {
+            Some(T::arbitrary(rng, size))
+        } else {
+            None
+        }
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        match self {
+            None => Vec::new(),
+            Some(v) => {
+                let mut shrinks = vec![None];
+                for s in v.shrink() {
+                    shrinks.push(Some(s));
+                }
+                shrinks
+            }
+        }
+    }
+}
+
+impl<A: Arbitrary, B: Arbitrary> Arbitrary for (A, B) {
+    fn arbitrary(rng: &mut TestRng, size: usize) -> Self {
+        (A::arbitrary(rng, size), B::arbitrary(rng, size))
+    }
+    
+    fn shrink(&self) -> Vec<Self> {
+        let mut shrinks = Vec::new();
+        for a in self.0.shrink() {
+            shrinks.push((a, self.1.clone()));
+        }
+        for b in self.1.shrink() {
+            shrinks.push((self.0.clone(), b));
+        }
+        shrinks
+    }
+}
+
+/// Result of a property-based test.
+#[derive(Clone, Debug)]
+pub enum PropTestResult<T> {
+    /// All tests passed.
+    Passed {
+        num_tests: usize,
+    },
+    /// A test failed.
+    Failed {
+        /// The minimal counterexample.
+        counterexample: T,
+        /// Original failing input.
+        original: T,
+        /// Number of tests before failure.
+        tests_run: usize,
+        /// Number of shrink steps.
+        shrink_steps: usize,
+        /// Error message.
+        message: String,
+    },
+    /// Testing was exhausted (e.g., generator ran out of values).
+    Exhausted {
+        tests_run: usize,
+    },
+}
+
+impl<T: std::fmt::Debug> PropTestResult<T> {
+    /// Check if the test passed.
+    pub fn is_passed(&self) -> bool {
+        matches!(self, PropTestResult::Passed { .. })
+    }
+    
+    /// Panic if the test failed.
+    pub fn unwrap(self) {
+        match self {
+            PropTestResult::Passed { num_tests } => {
+                // Success
+            }
+            PropTestResult::Failed { counterexample, original, tests_run, shrink_steps, message } => {
+                panic!(
+                    "Property test failed after {} tests!\n\
+                     Counterexample: {:?}\n\
+                     Original failing input: {:?}\n\
+                     Shrink steps: {}\n\
+                     Message: {}",
+                    tests_run, counterexample, original, shrink_steps, message
+                );
+            }
+            PropTestResult::Exhausted { tests_run } => {
+                panic!("Property test exhausted after {} tests", tests_run);
+            }
+        }
+    }
+}
+
+/// Run a property-based test.
+pub fn prop_test<T, F>(config: &PropTestConfig, mut property: F) -> PropTestResult<T>
+where
+    T: Arbitrary + std::fmt::Debug,
+    F: FnMut(&T) -> bool,
+{
+    let seed = if config.seed == 0 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(12345)
+    } else {
+        config.seed
+    };
+    
+    let mut rng = TestRng::new(seed);
+    
+    for test_num in 0..config.num_tests {
+        let size = (test_num * config.max_size / config.num_tests).max(1);
+        let input = T::arbitrary(&mut rng, size);
+        
+        if !property(&input) {
+            // Found a failing case - try to shrink it
+            let (minimal, shrink_steps) = shrink_input(
+                input.clone(),
+                &mut property,
+                config.max_shrink_iters,
+            );
+            
+            return PropTestResult::Failed {
+                counterexample: minimal,
+                original: input,
+                tests_run: test_num + 1,
+                shrink_steps,
+                message: "Property returned false".to_string(),
+            };
+        }
+        
+        if config.verbose && (test_num + 1) % 10 == 0 {
+            eprintln!("Passed {}/{} tests", test_num + 1, config.num_tests);
+        }
+    }
+    
+    PropTestResult::Passed {
+        num_tests: config.num_tests,
+    }
+}
+
+/// Shrink a failing input to find a minimal counterexample.
+fn shrink_input<T, F>(initial: T, property: &mut F, max_iters: usize) -> (T, usize)
+where
+    T: Arbitrary,
+    F: FnMut(&T) -> bool,
+{
+    let mut current = initial;
+    let mut steps = 0;
+    
+    for _ in 0..max_iters {
+        let shrinks = current.shrink();
+        if shrinks.is_empty() {
+            break;
+        }
+        
+        let mut found_smaller = false;
+        for shrunk in shrinks {
+            if !property(&shrunk) {
+                current = shrunk;
+                found_smaller = true;
+                steps += 1;
+                break;
+            }
+        }
+        
+        if !found_smaller {
+            break;
+        }
+    }
+    
+    (current, steps)
+}
+
+/// Property test with panic catching.
+pub fn prop_test_panics<T, F>(config: &PropTestConfig, mut property: F) -> PropTestResult<T>
+where
+    T: Arbitrary + std::fmt::Debug + 'static,
+    F: FnMut(&T) + 'static,
+{
+    prop_test(config, move |input| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| property(input))).is_ok()
+    })
+}
+
+/// Convenience function to run a simple property test.
+pub fn quickcheck<T, F>(property: F) -> PropTestResult<T>
+where
+    T: Arbitrary + std::fmt::Debug,
+    F: FnMut(&T) -> bool,
+{
+    prop_test(&PropTestConfig::default(), property)
+}
+
+/// Assert a property holds.
+#[macro_export]
+macro_rules! assert_property {
+    ($property:expr) => {
+        $crate::testing::quickcheck($property).unwrap()
+    };
+    ($property:expr, $config:expr) => {
+        $crate::testing::prop_test(&$config, $property).unwrap()
+    };
+}
+
+#[cfg(test)]
+mod prop_tests {
+    use super::*;
+    
+    #[test]
+    fn test_arbitrary_bool() {
+        let mut rng = TestRng::new(42);
+        let values: Vec<bool> = (0..100).map(|_| bool::arbitrary(&mut rng, 10)).collect();
+        assert!(values.contains(&true));
+        assert!(values.contains(&false));
+    }
+    
+    #[test]
+    fn test_arbitrary_i32() {
+        let mut rng = TestRng::new(42);
+        let values: Vec<i32> = (0..100).map(|_| i32::arbitrary(&mut rng, 100)).collect();
+        assert!(values.iter().any(|&x| x > 0));
+        assert!(values.iter().any(|&x| x < 0));
+    }
+    
+    #[test]
+    fn test_arbitrary_string() {
+        let mut rng = TestRng::new(42);
+        let values: Vec<String> = (0..100).map(|_| String::arbitrary(&mut rng, 20)).collect();
+        assert!(values.iter().any(|s| !s.is_empty()));
+        assert!(values.iter().all(|s| s.len() <= 20));
+    }
+    
+    #[test]
+    fn test_arbitrary_vec() {
+        let mut rng = TestRng::new(42);
+        let values: Vec<Vec<i32>> = (0..100).map(|_| Vec::<i32>::arbitrary(&mut rng, 10)).collect();
+        assert!(values.iter().any(|v| !v.is_empty()));
+    }
+    
+    #[test]
+    fn test_shrink_i32() {
+        let shrinks = 42i32.shrink();
+        assert!(shrinks.contains(&0));
+        assert!(shrinks.contains(&41));
+        assert!(shrinks.contains(&21));
+    }
+    
+    #[test]
+    fn test_shrink_vec() {
+        let v = vec![1, 2, 3];
+        let shrinks = v.shrink();
+        assert!(shrinks.contains(&vec![]));
+        assert!(shrinks.contains(&vec![2, 3]));
+        assert!(shrinks.contains(&vec![1, 3]));
+        assert!(shrinks.contains(&vec![1, 2]));
+    }
+    
+    #[test]
+    fn test_prop_test_pass() {
+        let result: PropTestResult<i32> = prop_test(
+            &PropTestConfig::new().with_tests(50),
+            |x| x + 0 == *x, // Identity property
+        );
+        assert!(result.is_passed());
+    }
+    
+    #[test]
+    fn test_prop_test_fail_with_shrink() {
+        let result: PropTestResult<i32> = prop_test(
+            &PropTestConfig::new().with_tests(100).with_seed(42),
+            |x| *x < 50, // Will fail for some x >= 50
+        );
+        
+        match result {
+            PropTestResult::Failed { counterexample, .. } => {
+                assert!(counterexample >= 50);
+                // Shrinking should find the minimal counterexample: 50
+                assert_eq!(counterexample, 50);
+            }
+            _ => panic!("Expected test to fail"),
+        }
+    }
+    
+    #[test]
+    fn test_quickcheck() {
+        // Test that addition is commutative
+        let result: PropTestResult<(i32, i32)> = quickcheck(|(a, b): &(i32, i32)| {
+            a.wrapping_add(*b) == b.wrapping_add(*a)
+        });
+        assert!(result.is_passed());
+    }
+    
+    #[test]
+    fn test_string_property() {
+        // Test that reversing twice gives original
+        let result: PropTestResult<String> = quickcheck(|s: &String| {
+            let reversed: String = s.chars().rev().collect();
+            let double_reversed: String = reversed.chars().rev().collect();
+            *s == double_reversed
+        });
+        assert!(result.is_passed());
+    }
+    
+    #[test]
+    fn test_vec_property() {
+        // Test that sorting is idempotent
+        let result: PropTestResult<Vec<i32>> = quickcheck(|v: &Vec<i32>| {
+            let mut sorted1 = v.clone();
+            sorted1.sort();
+            let mut sorted2 = sorted1.clone();
+            sorted2.sort();
+            sorted1 == sorted2
+        });
+        assert!(result.is_passed());
+    }
+}

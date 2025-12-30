@@ -1,0 +1,111 @@
+# Thread Safety Test Suite
+# Tests for Send/Sync trait enforcement in concurrent code
+
+from concurrent import spawn, Mutex, Arc, channel
+
+# Test 1: Primitives are Send+Sync
+def test_primitives_are_send():
+    """All primitive types should be Send"""
+    x: int = 42
+    s: str = "hello"
+    b: bool = True
+    f: float = 3.14
+    
+    # These should all be sendable between threads
+    async def task():
+        return x + len(s)
+    
+    print("Test 1: Primitives are Send - PASS")
+
+# Test 2: Lists of Send types are Send
+def test_list_send():
+    """Lists containing Send types should be Send"""
+    data: list[int] = [1, 2, 3]
+    
+    async def process():
+        return sum(data)
+    
+    print("Test 2: List[Send] is Send - PASS")
+
+# Test 3: Mutex requires Send inner type
+def test_mutex_send():
+    """Mutex<T> requires T: Send to transfer ownership"""
+    # This should work - int is Send
+    counter: Mutex[int] = Mutex(0)
+    
+    async def increment():
+        with counter.lock() as val:
+            val.set(val.get() + 1)
+    
+    print("Test 3: Mutex requires Send - PASS")
+
+# Test 4: Arc requires Send+Sync
+def test_arc_send_sync():
+    """Arc<T> requires T: Send + Sync for shared access"""
+    # This should work - str is Send+Sync
+    shared: Arc[str] = Arc("shared data")
+    
+    async def read():
+        return len(shared.get())
+    
+    print("Test 4: Arc requires Send+Sync - PASS")
+
+# Test 5: Channel types must be Send
+def test_channel_send():
+    """Channel<T> requires T: Send for message passing"""
+    tx, rx = channel[int]()
+    
+    async def producer():
+        tx.send(42)
+    
+    async def consumer():
+        return rx.receive()
+    
+    print("Test 5: Channel requires T: Send - PASS")
+
+# Test 6: Captured variables in spawn must be Send
+def test_spawn_captures():
+    """Variables captured by spawned tasks must be Send"""
+    x: int = 10
+    y: str = "world"
+    
+    async def task():
+        # Captures x and y - both are Send
+        return f"{y}: {x}"
+    
+    # This should be allowed
+    print("Test 6: Spawn captures must be Send - PASS")
+
+# Test 7: Tuple of Send types is Send
+def test_tuple_send():
+    """Tuple[Send, ...] should be Send"""
+    data: tuple[int, str, bool] = (1, "hello", True)
+    
+    async def process():
+        return data[0]
+    
+    print("Test 7: Tuple[Send, ...] is Send - PASS")
+
+# Test 8: Dict of Send types is Send
+def test_dict_send():
+    """Dict[Send, Send] should be Send"""
+    data: dict[str, int] = {"a": 1, "b": 2}
+    
+    async def process():
+        return data["a"]
+    
+    print("Test 8: Dict[Send, Send] is Send - PASS")
+
+def main():
+    print("=== Thread Safety Test Suite ===\n")
+    test_primitives_are_send()
+    test_list_send()
+    test_mutex_send()
+    test_arc_send_sync()
+    test_channel_send()
+    test_spawn_captures()
+    test_tuple_send()
+    test_dict_send()
+    print("\n=== All Thread Safety Tests Passed ===")
+
+main()

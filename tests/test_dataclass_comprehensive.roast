@@ -1,0 +1,58 @@
+# Test comprehensive dataclass functionality
+from dataclasses import dataclass
+
+@dataclass
+class Point:
+    x: int
+    y: int
+
+@dataclass
+class Rectangle:
+    top_left: Point
+    bottom_right: Point
+
+@dataclass 
+class Person:
+    name: str
+    age: int
+
+def main() -> int:
+    # Test basic dataclass creation
+    p1: Point = Point(10, 20)
+    p2: Point = Point(10, 20)
+    p3: Point = Point(30, 40)
+    
+    # Test print (should show Point(10, 20))
+    print(p1)
+    
+    # Test __repr__ method
+    repr_str: str = p1.__repr__()
+    print(repr_str)
+    
+    # Test __eq__ method
+    if p1 == p2:
+        print("p1 equals p2: PASS")
+    else:
+        print("p1 equals p2: FAIL")
+    
+    if p1 == p3:
+        print("p1 equals p3: FAIL (should not be equal)")
+    else:
+        print("p1 not equals p3: PASS")
+    
+    # Test nested dataclass
+    rect: Rectangle = Rectangle(Point(0, 0), Point(100, 100))
+    print(rect)
+    
+    # Test with string fields
+    alice: Person = Person("Alice", 30)
+    bob: Person = Person("Bob", 25)
+    print(alice)
+    print(bob)
+    
+    # Test field access
+    print(alice.name)
+    print(alice.age)
+    
+    print("All dataclass tests completed!")
+    return 0

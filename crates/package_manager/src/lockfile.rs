@@ -165,7 +165,7 @@ mod tests {
         lockfile.add_package("example".to_string(), LockedPackage {
             version: "1.2.3".to_string(),
             source: LockedSource::Registry {
-                registry: "https://registry.roast-lang.org".to_string(),
+                registry: "https://registry.roastlang.wiki".to_string(),
             },
             checksum: Some("sha256:abc123".to_string()),
             dependencies: vec!["dep1".to_string()],
